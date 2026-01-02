@@ -3071,9 +3071,15 @@ def check_db_initialized():
         return result is not None
     except:
         return False
-if not check_db_initialized():
+def safe_init_db():
+    try:
+        if not check_db_initialized():
+            init_db()
+    except Exception as e:
+        print("DB init skipped:", e)
 
-    init_db()
+safe_init_db()
+
 
 migrate_db()
 

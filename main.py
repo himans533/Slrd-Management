@@ -3082,8 +3082,8 @@ def safe_init_db():
 
 safe_init_db()
 
-
-migrate_db()
+if os.getenv("RUN_DB_MIGRATION") == "true":
+    migrate_db()
 
 
 def update_project_status(project_id):

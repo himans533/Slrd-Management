@@ -48,8 +48,6 @@ def init_db():
     password=os.getenv("MYSQLPASSWORD"),
     database=os.getenv("MYSQLDATABASE"),
     port=(os.getenv("MYSQLPORT")
-    
-    )
 
     cursor = db.cursor()
 

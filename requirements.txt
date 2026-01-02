@@ -2,4 +2,5 @@ flask
 gunicorn
 mysql-connector-python
 Pillow
+flask-cors
 python-dotenv

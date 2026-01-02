@@ -4,7 +4,6 @@ from functools import wraps
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 from PIL import Image
-import sqlite3
 import secrets
 import json
 import re
@@ -12,6 +11,8 @@ import os
 import io
 from datetime import datetime, timezone, timedelta
 import logging
+import mysql.connector
+
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -21,7 +22,7 @@ app = Flask(__name__, static_folder='static', template_folder='templates')
 CORS(app)
 app.secret_key = secrets.token_hex(32)
 
-DATABASE = 'admin_system.db'
+
 
 valid_tokens = {}
 
@@ -38,11 +39,20 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['MAX_CONTENT_LENGTH'] = MAX_CONTENT_LENGTH
 
-
-def init_db():
-    conn = sqlite3.connect(DATABASE)
-    cursor = conn.cursor()
     
+def init_db():
+
+    db = mysql.connector.connect(
+    host=os.getenv("MYSQLHOST"),
+    user=os.getenv("MYSQLUSER"),
+    password=os.getenv("MYSQLPASSWORD"),
+    database=os.getenv("MYSQLDATABASE"),
+    port=os.getenv("MYSQLPORT")
+    
+    )
+
+    cursor = db.cursor()
+
     # Drop existing tables if they exist
     cursor.execute("DROP TABLE IF EXISTS documents")
     cursor.execute("DROP TABLE IF EXISTS document_versions")
@@ -226,16 +236,22 @@ def init_db():
     cursor.execute("INSERT INTO usertypes (user_role) VALUES ('Administrator')")
     cursor.execute("INSERT INTO usertypes (user_role) VALUES ('Employee')")
 
-    conn.commit()
-    conn.close()
+    db.commit()
+    db.close()
     print("[OK] Database initialized successfully!")
-
+    
 
 def migrate_db():
     """Add new columns without wiping existing data"""
-    conn = sqlite3.connect(DATABASE)
+    conn = mysql.connector.connect(
+    host=os.getenv("MYSQLHOST"),
+    user=os.getenv("MYSQLUSER"),
+    password=os.getenv("MYSQLPASSWORD"),
+    database=os.getenv("MYSQLDATABASE"),
+    port=os.getenv("MYSQLPORT")
+    )
     cursor = conn.cursor()
-
+    
     # List of columns to add
     columns_to_add = [
         ('users', 'phone', 'TEXT'),
@@ -249,17 +265,23 @@ def migrate_db():
     for table, column, col_type in columns_to_add:
         try:
             cursor.execute(f'ALTER TABLE {table} ADD COLUMN {column} {col_type}')
-        except sqlite3.OperationalError:
+        except mysql.connector.Error as e:
             pass  # Column already exists
 
     conn.commit()
     conn.close()
     print("[OK] Database migration completed!")
-
+    
 
 def get_db_connection():
-    conn = sqlite3.connect(DATABASE)
-    conn.row_factory = sqlite3.Row
+    conn = mysql.connector.connect(
+    host=os.getenv("MYSQLHOST"),
+    user=os.getenv("MYSQLUSER"),
+    password=os.getenv("MYSQLPASSWORD"),
+    database=os.getenv("MYSQLDATABASE"),
+    port=os.getenv("MYSQLPORT")
+    )
+    conn.row_factory = mysql.connector.Row
     return conn
 
 
@@ -977,7 +999,7 @@ def create_user_type():
                 "message": "User type created successfully!"
             }), 201
 
-        except sqlite3.IntegrityError:
+        except mysql.connector.IntegrityError:
             conn.close()
             return jsonify({"error": "User role already exists."}), 409
 
@@ -1015,7 +1037,7 @@ def update_user_type(id):
                 "message": "User type updated successfully!"
             }), 200
 
-        except sqlite3.IntegrityError:
+        except mysql.connector.IntegrityError:
             conn.close()
             return jsonify({"error": "User role already exists."}), 409
 
@@ -1145,7 +1167,7 @@ def create_user():
                                 INSERT INTO user_permissions (user_id, module, action, granted)
                                 VALUES (?, ?, ?, ?)
                             ''', (user_id, module, action, 1 if granted else 0))
-                        except sqlite3.IntegrityError:
+                        except mysql.connector.IntegrityError:
                             pass
 
             conn.commit()
@@ -1161,7 +1183,7 @@ def create_user():
                 "message": "User created successfully!"
             }), 201
 
-        except sqlite3.IntegrityError:
+        except mysql.connector.IntegrityError:
             conn.close()
             return jsonify({"error": "Username or email already exists."}), 409
 
@@ -1276,7 +1298,7 @@ def update_user(id):
                                 INSERT INTO user_permissions (user_id, module, action, granted)
                                 VALUES (?, ?, ?, ?)
                             ''', (id, module, action, 1 if granted else 0))
-                        except sqlite3.IntegrityError:
+                        except mysql.connector.IntegrityError:
                             pass
 
             conn.commit()
@@ -1291,7 +1313,7 @@ def update_user(id):
                 "message": "User updated successfully!"
             }), 200
 
-        except sqlite3.IntegrityError:
+        except mysql.connector.IntegrityError:
             conn.close()
             return jsonify({"error": "Username or email already exists."}), 409
 
@@ -1482,7 +1504,7 @@ def create_employee_project():
                     INSERT INTO project_assignments (user_id, project_id)
                     VALUES (?, ?)
                 ''', (member_id, project_id))
-            except sqlite3.IntegrityError:
+            except mysql.connector.IntegrityError:
                 pass
 
         conn.commit()
@@ -1731,7 +1753,7 @@ def create_employee_milestone():
 
             conn.commit()
             milestone_id = cursor.lastrowid
-        except sqlite3.OperationalError as e:
+        except mysql.connector.ProgrammingError as e:
             conn.close()
             print(f"[ERROR] Database schema error: {str(e)}")
             return jsonify({"error": "Database configuration error. Please contact administrator."}), 500
@@ -2380,7 +2402,7 @@ def add_employee_skill():
                 "skill_name": skill_name,
                 "message": "Skill added successfully!"
             }), 201
-        except sqlite3.IntegrityError:
+        except mysql.connector.IntegrityError:
             conn.close()
             return jsonify({"error": "Skill already exists"}), 409
 
@@ -2589,7 +2611,7 @@ def upload_avatar():
         try:
             cursor.execute('UPDATE users SET avatar_url = ? WHERE id = ?', (avatar_url, user_id))
             conn.commit()
-        except sqlite3.OperationalError as db_error:
+        except mysql.connector.OperationalError as db_error:
             # If column doesn't exist, add it
             if "no such column: avatar_url" in str(db_error):
                 try:
@@ -3050,7 +3072,7 @@ def check_db_initialized():
     except:
         return False
 
-if not os.path.exists(DATABASE) or not check_db_initialized():
+if not os.path.exists() or not check_db_initialized():
     init_db()
 
 migrate_db()

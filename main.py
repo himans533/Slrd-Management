@@ -3071,8 +3071,8 @@ def check_db_initialized():
         return result is not None
     except:
         return False
+if not check_db_initialized():
 
-if not os.path.exists() or not check_db_initialized():
     init_db()
 
 migrate_db()

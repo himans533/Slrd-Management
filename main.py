@@ -3079,7 +3079,7 @@ def check_db_initialized():
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
-       cursor.execute( "SHOW TABLES LIKE 'projects')
+      cursor.execute("SHOW TABLES LIKE 'projects'")
 
         result = cursor.fetchone()
         conn.close()

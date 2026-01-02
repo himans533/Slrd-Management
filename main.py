@@ -3078,7 +3078,8 @@ def check_db_initialized():
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
-        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='projects'")
+       cursor.execute( "SHOW TABLES LIKE 'projects')
+
         result = cursor.fetchone()
         conn.close()
         return result is not None

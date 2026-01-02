@@ -243,35 +243,45 @@ def init_db():
 
 def migrate_db():
     """Add new columns without wiping existing data"""
-   conn = mysql.connector.connect(
-    host=os.getenv("DB_HOST"),
-    user=os.getenv("DB_USER"),
-    password=os.getenv("DB_PASSWORD"),
-    database=os.getenv("DB_NAME"),
-    port=int(os.getenv("DB_PORT", 3306))
-)
+
+    # Safety check for Railway
+    if os.getenv("RUN_DB_MIGRATION", "false").lower() != "true":
+        print("DB init skipped")
+        return
+
+    conn = mysql.connector.connect(
+        host=os.getenv("DB_HOST"),
+        user=os.getenv("DB_USER"),
+        password=os.getenv("DB_PASSWORD"),
+        database=os.getenv("DB_NAME"),
+        port=int(os.getenv("DB_PORT", 3306))
+    )
 
     cursor = conn.cursor()
-    
+
     # List of columns to add
     columns_to_add = [
-        ('users', 'phone', 'TEXT'),
-        ('users', 'department', 'TEXT'),
-        ('users', 'bio', 'TEXT'),
-        ('users', 'avatar_url', 'TEXT'),
-        ('projects', 'completed_at', 'TIMESTAMP'),
-        ('projects', 'reporting_time', 'TIME')
+        ("users", "phone", "TEXT"),
+        ("users", "department", "TEXT"),
+        ("users", "bio", "TEXT"),
+        ("users", "avatar_url", "TEXT"),
+        ("projects", "completed_at", "TIMESTAMP"),
+        ("projects", "reporting_time", "TIME"),
     ]
 
     for table, column, col_type in columns_to_add:
         try:
-            cursor.execute(f'ALTER TABLE {table} ADD COLUMN {column} {col_type}')
-        except mysql.connector.Error as e:
+            cursor.execute(
+                f"ALTER TABLE {table} ADD COLUMN {column} {col_type}"
+            )
+        except mysql.connector.Error:
             pass  # Column already exists
 
     conn.commit()
+    cursor.close()
     conn.close()
     print("[OK] Database migration completed!")
+
     
 
 def get_db_connection():

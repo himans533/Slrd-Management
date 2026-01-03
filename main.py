@@ -995,7 +995,6 @@ finally:
 
 @app.route("/api/usertypes", methods=["POST"])
 @admin_required
-@app.route("/api/usertypes", methods=["POST"])
 def create_usertype():
     data = request.get_json()
     user_role = data.get("user_role")

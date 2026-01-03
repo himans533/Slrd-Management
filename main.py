@@ -458,12 +458,12 @@ def get_overdue_items():
                    t.assigned_to_id, u.username as assigned_to_name,
                    t.created_by_id, uc.username as created_by_name,
                    t.created_at, t.approval_status,
-                   julianday('now') - julianday(t.deadline) as days_overdue
+                   CURRENT_DATE - t.deadline as days_overdue
             FROM tasks t
             LEFT JOIN projects p ON t.project_id = p.id
             LEFT JOIN users u ON t.assigned_to_id = u.id
             LEFT JOIN users uc ON t.created_by_id = uc.id
-            WHERE t.deadline < date('now') 
+            WHERE t.deadline < CURRENT_DATE 
             AND t.status != 'Completed'
             AND t.status != 'Overdue'
             ORDER BY t.deadline ASC
@@ -475,10 +475,10 @@ def get_overdue_items():
             SELECT p.id, p.title, p.description, p.status, p.progress, 
                    p.deadline, p.created_by_id, u.username as creator_name,
                    p.created_at,
-                   julianday('now') - julianday(p.deadline) as days_overdue
+                   CURRENT_DATE - p.deadline as days_overdue
             FROM projects p
             LEFT JOIN users u ON p.created_by_id = u.id
-            WHERE p.deadline < date('now') 
+            WHERE p.deadline < CURRENT_DATE 
             AND p.status != 'Completed'
             ORDER BY p.deadline ASC
         ''')
@@ -622,14 +622,14 @@ def get_admin_dashboard_stats():
         cursor.execute(
             '''
             SELECT COUNT(*) as count FROM tasks 
-            WHERE deadline < date('now') AND status != ? AND status != %s
+            WHERE deadline < CURRENT_DATE AND status != %s AND status != %s
         ''', ('Completed', 'Overdue'))
         overdue_tasks = cursor.fetchone()['count']
 
         cursor.execute(
             '''
             SELECT COUNT(*) as count FROM tasks 
-            WHERE approval_status = ? OR approval_status IS NULL
+            WHERE approval_status = %s OR approval_status IS NULL
         ''', ('pending', ))
         pending_approvals = cursor.fetchone()['count']
 
@@ -986,8 +986,8 @@ def get_user_types():
         usertypes = []
         for row in rows:
             usertypes.append({
-                "id": row[0],
-                "user_role": row[1]
+                "id": row['id'],
+                "user_role": row['user_role']
             })
 
         return jsonify(usertypes), 200
@@ -1062,7 +1062,7 @@ def update_user_type(id):
                 "message": "User type updated successfully!"
             }), 200
 
-        except mysql.connector.IntegrityError:
+        except psycopg2.IntegrityError:
             conn.close()
             return jsonify({"error": "User role already exists."}), 409
 
@@ -1177,11 +1177,10 @@ def create_user():
             cursor.execute(
                 '''
                 INSERT INTO users (username, email, password, user_type_id) 
-                VALUES (%s,%s,%s,%s)
+                VALUES (%s,%s,%s,%s) RETURNING id
             ''', (username, email, hashed_password, user_type_id))
+            user_id = cursor.fetchone()['id']
             conn.commit()
-
-            user_id = cursor.lastrowid
 
             for module, actions in permissions.items():
                 if isinstance(actions, dict):
@@ -1192,7 +1191,7 @@ def create_user():
                                 INSERT INTO user_permissions (user_id, module, action, granted)
                                 VALUES (%s,%s,%s,%s)
                             ''', (user_id, module, action, 1 if granted else 0))
-                        except mysql.connector.IntegrityError:
+                        except psycopg2.IntegrityError:
                             pass
 
             conn.commit()
@@ -1208,7 +1207,7 @@ def create_user():
                 "message": "User created successfully!"
             }), 201
 
-        except mysql.connector.IntegrityError:
+        except psycopg2.IntegrityError:
             conn.close()
             return jsonify({"error": "Username or email already exists."}), 409
 
@@ -1402,7 +1401,7 @@ def user_login():
         cursor.execute(
             '''
             SELECT module, action, granted FROM user_permissions
-            WHERE user_id = ? ORDER BY module, action
+            WHERE user_id = %s ORDER BY module, action
         ''', (user['id'], ))
         permissions_rows = cursor.fetchall()
         conn.close()
@@ -1516,10 +1515,10 @@ def create_employee_project():
         cursor.execute(
             '''
             INSERT INTO projects (title, description, deadline, reporting_time, created_by_id)
-            VALUES (%s,%s,%s,%s,%s)
+            VALUES (%s,%s,%s,%s,%s) RETURNING id
         ''', (title, description, deadline or None, reporting_time, user_id))
 
-        project_id = cursor.lastrowid
+        project_id = cursor.fetchone()['id']
 
         for member_id in team_members:
             try:
@@ -1528,7 +1527,7 @@ def create_employee_project():
                     INSERT INTO project_assignments (user_id, project_id)
                     VALUES (%s,%s)
                 ''', (member_id, project_id))
-            except mysql.connector.IntegrityError:
+            except psycopg2.IntegrityError:
                 pass
 
         conn.commit()
@@ -1623,13 +1622,13 @@ def create_employee_task():
         cursor.execute(
             '''
             INSERT INTO tasks (title, description, project_id, created_by_id, assigned_to_id, priority, deadline, status)
-            VALUES (%s,%s,%s,%s,%s,%s,%s,%s)
+            VALUES (%s,%s,%s,%s,%s,%s,%s,%s) RETURNING id
             ''',
             (title, description, project_id, user_id, assigned_to_id, priority, deadline or None, status_to_set)
         )
 
+        task_id = cursor.fetchone()['id']
         conn.commit()
-        task_id = cursor.lastrowid
         conn.close()
 
         # Log activity
@@ -1772,12 +1771,12 @@ def create_employee_milestone():
         try:
             cursor.execute('''
                 INSERT INTO milestones (title, description, project_id, due_date, status, created_by_id)
-                VALUES (%s,%s,%s,%s, 'Pending', %s)
+                VALUES (%s,%s,%s,%s, 'Pending', %s) RETURNING id
             ''', (title, description, project_id, due_date, user_id))
 
+            milestone_id = cursor.fetchone()['id']
             conn.commit()
-            milestone_id = cursor.lastrowid
-        except mysql.connector.ProgrammingError as e:
+        except psycopg2.ProgrammingError as e:
             conn.close()
             print(f"[ERROR] Database schema error: {str(e)}")
             return jsonify({"error": "Database configuration error. Please contact administrator."}), 500
@@ -1853,7 +1852,7 @@ def get_employee_documents():
                    d.uploaded_at
             FROM documents d
             LEFT JOIN users u ON d.uploaded_by_id = u.id
-            WHERE d.uploaded_by_id = ? OR d.project_id IN (
+            WHERE d.uploaded_by_id = %s OR d.project_id IN (
                 SELECT project_id FROM project_assignments WHERE user_id = %s
             )
             ORDER BY d.uploaded_at DESC
@@ -1901,11 +1900,11 @@ def upload_employee_document():
         cursor.execute(
             '''
             INSERT INTO documents (filename, original_filename, file_size, uploaded_by_id, project_id)
-            VALUES (%s,%s,%s,%s,%s)
+            VALUES (%s,%s,%s,%s,%s) RETURNING id
         ''', (filename, file.filename, file_size, user_id, project_id))
 
+        doc_id = cursor.fetchone()['id']
         conn.commit()
-        doc_id = cursor.lastrowid
         conn.close()
 
         log_activity(user_id,
@@ -2039,10 +2038,10 @@ def get_employee_activities():
             LEFT JOIN projects p ON a.project_id = p.id
             LEFT JOIN tasks t ON a.task_id = t.id
             LEFT JOIN milestones m ON a.milestone_id = m.id
-            WHERE a.user_id = ? OR a.project_id IN (
+            WHERE a.user_id = %s OR a.project_id IN (
                 SELECT project_id FROM project_assignments WHERE user_id = %s
             ) OR a.task_id IN (
-                SELECT id FROM tasks WHERE assigned_to_id = ? OR created_by_id = %s
+                SELECT id FROM tasks WHERE assigned_to_id = %s OR created_by_id = %s
             ) OR a.milestone_id IN (
                 SELECT id FROM milestones WHERE project_id IN (
                     SELECT project_id FROM project_assignments WHERE user_id = %s
@@ -2094,7 +2093,7 @@ def search():
                 SELECT 'project' as type, p.id, p.title as name, p.description,
                        p.created_at, NULL as project_name, NULL as status
                 FROM projects p
-                WHERE (p.title LIKE %s OR p.description LIKE ?) AND
+                WHERE (p.title LIKE %s OR p.description LIKE %s) AND
                       (p.created_by_id = %s OR p.id IN (
                           SELECT project_id FROM project_assignments WHERE user_id = %s
                       ))
@@ -2175,7 +2174,7 @@ def search():
                 SELECT 'user' as type, id, username as name, email as description,
                        created_at, NULL as project_name, NULL as status
                 FROM users
-                WHERE username LIKE ? OR email LIKE ?
+                WHERE username LIKE %s OR email LIKE %s
                 ORDER BY created_at DESC
                 LIMIT 10
             ''', (f'%{query}%', f'%{query}%'))
@@ -2384,7 +2383,7 @@ def get_employee_skills():
             '''
             SELECT id, skill_name, created_at 
             FROM user_skills 
-            WHERE user_id = ?
+            WHERE user_id = %s
             ORDER BY skill_name
         ''', (user_id, ))
 
@@ -2415,10 +2414,10 @@ def add_employee_skill():
             cursor.execute(
                 '''
                 INSERT INTO user_skills (user_id, skill_name)
-                VALUES (?, ?)
+                VALUES (%s, %s) RETURNING id
             ''', (user_id, skill_name))
+            skill_id = cursor.fetchone()['id']
             conn.commit()
-            skill_id = cursor.lastrowid
             conn.close()
 
             return jsonify({
@@ -2426,7 +2425,7 @@ def add_employee_skill():
                 "skill_name": skill_name,
                 "message": "Skill added successfully!"
             }), 201
-        except mysql.connector.IntegrityError:
+        except psycopg2.IntegrityError:
             conn.close()
             return jsonify({"error": "Skill already exists"}), 409
 
@@ -2635,7 +2634,7 @@ def upload_avatar():
         try:
             cursor.execute('UPDATE users SET avatar_url = %s WHERE id = %s', (avatar_url, user_id))
             conn.commit()
-        except mysql.connector.OperationalError as db_error:
+        except psycopg2.OperationalError as db_error:
             # If column doesn't exist, add it
             if "no such column: avatar_url" in str(db_error):
                 try:
@@ -3093,7 +3092,7 @@ def check_db_initialized():
                 WHERE table_name = 'usertypes'
             );
         """)
-        exists = cursor.fetchone()[0]
+        exists = cursor.fetchone()['exists']
         cursor.close()
         conn.close()
         return exists

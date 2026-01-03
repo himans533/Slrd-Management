@@ -20,7 +20,7 @@ from psycopg2 import errors
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-app = Flask(__name__, static_folder='static', template_folder='templates')
+app = Flask(__name__)
 CORS(app)
 app.secret_key = secrets.token_hex(32)
 
@@ -71,12 +71,13 @@ def init_db():
     cursor.execute("DROP TABLE IF EXISTS progress_history")
     cursor.execute("DROP TABLE IF EXISTS user_skills")
 
+    try:
     cursor.execute('''
         CREATE TABLE usertypes (
            id SERIAL PRIMARY KEY,
             user_role TEXT NOT NULL UNIQUE,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
+        );
     ''')
 
     cursor.execute('''
@@ -93,8 +94,11 @@ def init_db():
             avatar_url TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (user_type_id) REFERENCES usertypes(id)
-        )
+        );
     ''')
+
+        conn.commit()
+        print("[OK] DB initialized")
 
     cursor.execute('''
         CREATE TABLE user_permissions (

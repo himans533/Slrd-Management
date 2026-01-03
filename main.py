@@ -77,6 +77,7 @@ def init_db():
             email TEXT NOT NULL UNIQUE,
             password TEXT NOT NULL,
             user_type_id INTEGER NOT NULL,
+            granted BOOLEAN DEFAULT FALSE
             phone TEXT,
             department TEXT,
             bio TEXT,
@@ -760,7 +761,7 @@ def get_project_progress_history(project_id):
                 total_milestones,
                 recorded_at
             FROM progress_history 
-            WHERE project_id = ? 
+            WHERE project_id = %s
             ORDER BY recorded_at DESC
             LIMIT 30
         ''', (project_id,))
@@ -1508,7 +1509,6 @@ def create_employee_project():
         if not perm or not perm['granted']:
             conn.close()
             return jsonify({"error": "Permission denied"}), 403
-
         cursor.execute(
             '''
             INSERT INTO projects (title, description, deadline, reporting_time, created_by_id)

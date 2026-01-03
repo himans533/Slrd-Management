@@ -3061,29 +3061,24 @@ def get_employee_realtime_projects():
 
 
 
-
 def check_db_initialized():
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
-
-      cursor.execute("""
-SELECT EXISTS (
-    SELECT 1
-    FROM information_schema.tables
-    WHERE table_name = 'projects'
-)
-""")
-
-
-        exists = cursor.fetchone()[0]
-        cursor.close()
+        cursor.execute("""
+        SELECT EXISTS (
+            SELECT 1
+            FROM information_schema.tables
+            WHERE table_name = 'projects'
+        )
+        """)
+        result = cursor.fetchone()
         conn.close()
-        return exists
-
+        return result["exists"]
     except Exception as e:
         print("DB check failed:", e)
         return False
+
 
 
 def safe_init_db():

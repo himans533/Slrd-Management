@@ -65,7 +65,7 @@ def init_db():
 
     cursor.execute('''
         CREATE TABLE usertypes (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+           id SERIAL PRIMARY KEY,
             user_role TEXT NOT NULL UNIQUE,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
@@ -73,7 +73,7 @@ def init_db():
 
     cursor.execute('''
         CREATE TABLE users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             username TEXT NOT NULL UNIQUE,
             email TEXT NOT NULL UNIQUE,
             password TEXT NOT NULL,
@@ -89,7 +89,7 @@ def init_db():
 
     cursor.execute('''
         CREATE TABLE user_permissions (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+         id SERIAL PRIMARY KEY,
             user_id INTEGER NOT NULL,
             module TEXT NOT NULL,
             action TEXT NOT NULL,
@@ -100,7 +100,7 @@ def init_db():
     ''')
 
     cursor.execute('''CREATE TABLE projects (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id SERIAL PRIMARY KEY,
         title TEXT NOT NULL,
         description TEXT,
         status TEXT DEFAULT 'In Progress',
@@ -115,7 +115,7 @@ def init_db():
     )''')
 
     cursor.execute('''CREATE TABLE tasks (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id SERIAL PRIMARY KEY,
         title TEXT NOT NULL,
         description TEXT,
         status TEXT DEFAULT 'Pending',
@@ -135,7 +135,7 @@ def init_db():
     )''')
 
     cursor.execute('''CREATE TABLE comments (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id SERIAL PRIMARY KEY,
         content TEXT NOT NULL,
         author_id INTEGER NOT NULL,
         project_id INTEGER,
@@ -147,7 +147,7 @@ def init_db():
     )''')
 
     cursor.execute('''CREATE TABLE documents (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+       id SERIAL PRIMARY KEY,
         filename TEXT NOT NULL,
         original_filename TEXT NOT NULL,
         file_size INTEGER,
@@ -161,7 +161,7 @@ def init_db():
     )''')
 
     cursor.execute('''CREATE TABLE milestones (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+       id SERIAL PRIMARY KEY,
         title TEXT NOT NULL,
         description TEXT,
         due_date DATE,
@@ -175,7 +175,7 @@ def init_db():
     )''')
 
     cursor.execute('''CREATE TABLE project_assignments (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     user_id INTEGER NOT NULL,
     project_id INTEGER NOT NULL,
     FOREIGN KEY (user_id) REFERENCES users(id),
@@ -185,7 +185,7 @@ def init_db():
 
     cursor.execute('''
     CREATE TABLE IF NOT EXISTS progress_history (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+         id SERIAL PRIMARY KEY,
         project_id INTEGER NOT NULL,
         progress_percentage INTEGER,
         tasks_completed INTEGER,
@@ -203,7 +203,7 @@ def init_db():
 ''')
 
     cursor.execute('''CREATE TABLE activities (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+         id SERIAL PRIMARY KEY,
         user_id INTEGER NOT NULL,
         activity_type TEXT NOT NULL,
         description TEXT NOT NULL,
@@ -218,7 +218,7 @@ def init_db():
     )''')
 
     cursor.execute('''CREATE TABLE user_skills (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id SERIAL PRIMARY KEY,
         user_id INTEGER NOT NULL,
         skill_name TEXT NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

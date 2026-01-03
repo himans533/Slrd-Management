@@ -839,7 +839,7 @@ def get_live_dashboard_progress():
                 LEFT JOIN tasks t ON p.id = t. project_id
                 LEFT JOIN milestones m ON p.id = m.project_id
                 LEFT JOIN project_assignments pa ON p. id = pa.project_id
-                WHERE (p.created_by_id = ? OR p.id IN (
+                WHERE (p.created_by_id = %s OR p.id IN (
                     SELECT project_id FROM project_assignments WHERE user_id = %s
                 ))
                 AND p.status != 'Completed'

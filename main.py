@@ -980,14 +980,15 @@ def get_user_types():
         conn = get_db_connection()
         cursor = conn.cursor()
 
-        cursor.execute("SELECT id, user_role FROM usertypes")
+        cursor.execute("SELECT id, user_role, created_at FROM usertypes ORDER BY created_at DESC")
         rows = cursor.fetchall()
 
         usertypes = []
         for row in rows:
             usertypes.append({
                 "id": row['id'],
-                "user_role": row['user_role']
+                "user_role": row['user_role'],
+                "created_at": row['created_at'].isoformat() if row['created_at'] else None
             })
 
         return jsonify(usertypes), 200
@@ -1017,15 +1018,20 @@ def create_usertype():
         cursor = conn.cursor()
 
         cursor.execute(
-            "INSERT INTO usertypes (user_role) VALUES (%s)",
+            "INSERT INTO usertypes (user_role) VALUES (%s) RETURNING id, created_at",
             (user_role,)
         )
-
+        row = cursor.fetchone()
         conn.commit()
         cursor.close()
         conn.close()
 
-        return jsonify({"message": "User type created successfully"}), 201
+        return jsonify({
+            "id": row['id'],
+            "user_role": user_role,
+            "created_at": row['created_at'].isoformat() if row['created_at'] else None,
+            "message": "User type created successfully"
+        }), 201
 
     except psycopg2.errors.UniqueViolation:
         return jsonify({"error": "User role already exists"}), 409
@@ -1117,7 +1123,14 @@ def get_users():
         users = cursor.fetchall()
         conn.close()
 
-        return jsonify([dict(row) for row in users]), 200
+        return jsonify([{
+            "id": row['id'],
+            "username": row['username'],
+            "email": row['email'],
+            "user_type_id": row['user_type_id'],
+            "user_role": row['user_role'],
+            "created_at": row['created_at'].isoformat() if row['created_at'] else None
+        } for row in users]), 200
     except Exception as e:
         print(f"[ERROR] /api/users GET failed: {str(e)}")
         return jsonify({"error": str(e)}), 500
@@ -1252,6 +1265,8 @@ def get_user(id):
 
         user_dict = dict(user)
         user_dict['permissions'] = permissions
+        if user_dict['created_at']:
+            user_dict['created_at'] = user_dict['created_at'].isoformat()
 
         return jsonify(user_dict), 200
     except Exception as e:

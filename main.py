@@ -968,8 +968,6 @@ def set_user_permissions(user_id):
 @app.route("/api/usertypes", methods=["GET"])
 @login_required
 def get_user_types():
-  conn = None
-cursor = None
 
 try:
     conn = get_db_connection()
@@ -997,36 +995,39 @@ finally:
 
 @app.route("/api/usertypes", methods=["POST"])
 @admin_required
-def create_user_type():
+@app.route("/api/usertypes", methods=["POST"])
+def create_usertype():
+    data = request.get_json()
+    user_role = data.get("user_role")
+
+    if not user_role:
+        return jsonify({"error": "user_role is required"}), 400
+
+    conn = None
+    cursor = None
+
     try:
-        data = request.get_json() or {}
-        user_role = (data.get("user_role") or "").strip()
-
-        if not user_role:
-            return jsonify({"error": "User role is required."}), 400
-
         conn = get_db_connection()
         cursor = conn.cursor()
 
-        try:
-            cursor.execute('INSERT INTO usertypes (user_role) VALUES (?)',
-                           (user_role, ))
-            conn.commit()
-            user_type_id = cursor.lastrowid
-            conn.close()
+        cursor.execute(
+            "INSERT INTO usertypes (user_role) VALUES (%s)",
+            (user_role,)
+        )
 
-            return jsonify({
-                "id": user_type_id,
-                "user_role": user_role,
-                "message": "User type created successfully!"
-            }), 201
-
-        except mysql.connector.IntegrityError:
-            conn.close()
-            return jsonify({"error": "User role already exists."}), 409
+        conn.commit()
+        return jsonify({"message": "User type created successfully"}), 201
 
     except Exception as e:
+        print("DB error:", e)
         return jsonify({"error": str(e)}), 500
+
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+
 
 
 @app.route("/api/usertypes/<int:id>", methods=["PUT"])

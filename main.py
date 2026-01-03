@@ -13,8 +13,7 @@ from datetime import datetime, timezone, timedelta
 import logging
 import psycopg2
 from psycopg2.extras import RealDictCursor
-
-
+from urllib.parse import urlparse
 
 
 # Setup logging
@@ -285,13 +284,20 @@ def migrate_db():
     print("[OK] Database migration completed!")
 
 def get_db_connection():
+    database_url = os.getenv("DATABASE_URL")
+
+    if not database_url:
+        raise Exception("DATABASE_URL not set")
+
+    result = urlparse(database_url)
+
     return psycopg2.connect(
-        host=os.getenv("PGHOST"),
-        database=os.getenv("POSTGRES_DB"),
-        user=os.getenv("PGUSER"),
-        password=os.getenv("PGPASSWORD"),
-        port=os.getenv("PGPORT"),
-        cursor_factory=RealDictCursor
+        dbname=result.path[1:],
+        user=result.username,
+        password=result.password,
+        host=result.hostname,
+        port=result.port,
+        sslmode="require"
     )
 
 
@@ -3074,18 +3080,19 @@ def check_db_initialized():
         conn = get_db_connection()
         cursor = conn.cursor()
         cursor.execute("""
-        SELECT EXISTS (
-            SELECT 1
-            FROM information_schema.tables
-            WHERE table_name = 'projects'
-        )
+            SELECT EXISTS (
+                SELECT FROM information_schema.tables
+                WHERE table_name = 'usertypes'
+            );
         """)
-        result = cursor.fetchone()
+        exists = cursor.fetchone()[0]
+        cursor.close()
         conn.close()
-        return result["exists"]
+        return exists
     except Exception as e:
         print("DB check failed:", e)
         return False
+
 
 
 

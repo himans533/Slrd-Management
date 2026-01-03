@@ -1011,9 +1011,10 @@ def create_usertype():
         cursor = conn.cursor()
 
         cursor.execute(
-            "INSERT INTO usertypes (user_role) VALUES (%s)",
-            (user_role,)
-        )
+    "INSERT INTO usertypes (user_role) VALUES ($1)",
+    (user_role,)
+)
+
 
         conn.commit()
         return jsonify({"message": "User type created successfully"}), 201

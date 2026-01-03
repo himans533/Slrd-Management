@@ -3078,13 +3078,15 @@ def check_db_initialized():
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
-      cursor.execute("SHOW TABLES LIKE 'projects'")
-
+        cursor.execute("SHOW TABLES LIKE 'projects'")
         result = cursor.fetchone()
+        cursor.close()
         conn.close()
         return result is not None
-    except:
+    except Exception as e:
+        print("DB check failed:", e)
         return False
+
 def safe_init_db():
     try:
         if not check_db_initialized():
@@ -3096,6 +3098,7 @@ safe_init_db()
 
 if os.getenv("RUN_DB_MIGRATION") == "true":
     migrate_db()
+
 
 
 def update_project_status(project_id):

@@ -1220,7 +1220,8 @@ def create_user():
                 "message": "User created successfully!"
             }), 201
 
-        except psycopg2.IntegrityError:
+        except psycopg2.IntegrityError as e:
+            print(f"[ERROR] User creation conflict: {e}")
             conn.close()
             return jsonify({"error": "Username or email already exists."}), 409
 
@@ -1337,7 +1338,8 @@ def update_user(id):
                                 INSERT INTO user_permissions (user_id, module, action, granted)
                                 VALUES (%s,%s,%s,%s)
                             ''', (id, module, action, 1 if granted else 0))
-                        except mysql.connector.IntegrityError:
+                        except psycopg2.IntegrityError as e:
+                            print(f"[DEBUG] Permission insert conflict: {e}")
                             pass
 
             conn.commit()
@@ -1352,7 +1354,8 @@ def update_user(id):
                 "message": "User updated successfully!"
             }), 200
 
-        except mysql.connector.IntegrityError:
+        except psycopg2.IntegrityError as e:
+            print(f"[ERROR] User update conflict: {e}")
             conn.close()
             return jsonify({"error": "Username or email already exists."}), 409
 

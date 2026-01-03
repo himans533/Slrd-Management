@@ -1,6 +1,6 @@
 flask
 gunicorn
-mysql-connector-python
 python-dotenv
 flask-cors
 Pillow
+psycopg2

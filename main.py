@@ -231,9 +231,17 @@ def init_db():
     cursor.execute("INSERT INTO usertypes (user_role) VALUES ('Administrator')")
     cursor.execute("INSERT INTO usertypes (user_role) VALUES ('Employee')")
 
-   conn.commit()
+try:
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute(query)
+    conn.commit()
     cursor.close()
     conn.close()
+except Exception as e:
+    print("DB error:", e)
+
+    
     print("[OK] Database initialized successfully!")
     
 

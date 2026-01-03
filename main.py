@@ -43,15 +43,17 @@ app.config['MAX_CONTENT_LENGTH'] = MAX_CONTENT_LENGTH
     
 def init_db():
 
-    db = mysql.connector.connect(
-    host=os.getenv("MYSQLHOST"),
-    user=os.getenv("MYSQLUSER"),
-    password=os.getenv("MYSQLPASSWORD"),
-    database=os.getenv("MYSQLDATABASE"),
-    port=int(os.getenv("MYSQLPORT" , 3306))
-    )
+    conn = get_db_connection()
+    cursor = conn.cursor()
 
-    cursor = db.cursor()
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS projects (
+            id SERIAL PRIMARY KEY,
+            name VARCHAR(255) NOT NULL,
+            description TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+    """)
 
     # Drop existing tables if they exist
     cursor.execute("DROP TABLE IF EXISTS documents")
@@ -236,8 +238,9 @@ def init_db():
     cursor.execute("INSERT INTO usertypes (user_role) VALUES ('Administrator')")
     cursor.execute("INSERT INTO usertypes (user_role) VALUES ('Employee')")
 
-    db.commit()
-    db.close()
+   conn.commit()
+    cursor.close()
+    conn.close()
     print("[OK] Database initialized successfully!")
     
 
@@ -3077,18 +3080,27 @@ def get_employee_realtime_projects():
 
 
 def check_db_initialized():
-    """Check if database has required tables"""
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
-        cursor.execute("SHOW TABLES LIKE 'projects'")
-        result = cursor.fetchone()
+
+        cursor.execute("""
+            SELECT EXISTS (
+                SELECT FROM information_schema.tables
+                WHERE table_schema = 'public'
+                AND table_name = 'projects'
+            );
+        """)
+
+        exists = cursor.fetchone()[0]
         cursor.close()
         conn.close()
-        return result is not None
+        return exists
+
     except Exception as e:
         print("DB check failed:", e)
         return False
+
 
 def safe_init_db():
     try:

@@ -12,6 +12,8 @@ import io
 from datetime import datetime, timezone, timedelta
 import logging
 import psycopg2
+from psycopg2.extras import RealDictCursor
+
 
 
 
@@ -274,14 +276,16 @@ def migrate_db():
     conn.close()
     print("[OK] Database migration completed!")
 
- def get_db_connection():
+def get_db_connection():
     return psycopg2.connect(
         host=os.getenv("PGHOST"),
-        database=os.getenv("PGDATABASE"),
-        user=os.getenv("PGUSER"),
-        password=os.getenv("PGPASSWORD"),
-        port=os.getenv("PGPORT", 5432)
+        database=os.getenv("POSTGRES_DB"),
+        user=os.getenv("POSTGRES_USER"),
+        password=os.getenv("POSTGRES_PASSWORD"),
+        port=os.getenv("PGPORT"),
+        cursor_factory=RealDictCursor
     )
+
 
 def validate_password_complexity(password):
     if len(password) < 8:
@@ -3063,13 +3067,14 @@ def check_db_initialized():
         conn = get_db_connection()
         cursor = conn.cursor()
 
-        cursor.execute("""
-            SELECT EXISTS (
-                SELECT FROM information_schema.tables
-                WHERE table_schema = 'public'
-                AND table_name = 'projects'
-            );
-        """)
+      cursor.execute("""
+SELECT EXISTS (
+    SELECT 1
+    FROM information_schema.tables
+    WHERE table_name = 'projects'
+)
+""")
+
 
         exists = cursor.fetchone()[0]
         cursor.close()

@@ -52,7 +52,7 @@ def get_db_connection():
     )
 
 def init_db():
-   conn = get_db_connection()
+   
     cursor = conn.cursor()
 
     # Drop existing tables if they exist

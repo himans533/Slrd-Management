@@ -1000,36 +1000,29 @@ def get_user_types():
 @app.route("/api/usertypes", methods=["POST"])
 @admin_required
 def create_usertype():
+    data = request.get_json() or {}
+    user_role = (data.get("user_role") or "").strip()
+
+    if not user_role:
+        return jsonify({"error": "User role is required"}), 400
+
     try:
-        data = request.get_json()
-        user_role = data.get("user_role")
-
-        if not user_role:
-            return jsonify({"error": "user_role is required"}), 400
-
         conn = get_db_connection()
         cursor = conn.cursor()
 
         cursor.execute(
-    "INSERT INTO usertypes (user_role) VALUES (%s)",
-    (user_role,)
-)
-
-
+            "INSERT INTO usertypes (user_role) VALUES (%s)",
+            (user_role,)
+        )
 
         conn.commit()
+        cursor.close()
+        conn.close()
+
         return jsonify({"message": "User type created successfully"}), 201
 
-    except Exception as e:
-        print("DB error:", e)
-        return jsonify({"error": str(e)}), 500
-
-    finally:
-        if cursor:
-            cursor.close()
-        if conn:
-            conn.close()
-
+    except psycopg2.errors.UniqueViolation:
+        return jsonify({"error": "User role already exists"}), 409
 
 
 

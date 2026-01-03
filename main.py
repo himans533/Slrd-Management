@@ -77,7 +77,7 @@ def init_db():
             email TEXT NOT NULL UNIQUE,
             password TEXT NOT NULL,
             user_type_id INTEGER NOT NULL,
-            granted BOOLEAN DEFAULT FALSE
+            granted BOOLEAN DEFAULT FALSE,
             phone TEXT,
             department TEXT,
             bio TEXT,
@@ -289,8 +289,8 @@ def get_db_connection():
         database=os.getenv("PGDATABASE"),
         user=os.getenv("PGUSER"),
         password=os.getenv("PGPASSWORD"),
-        port=os.getenv("PGPORT", 5432),
-        cursor_factory=psycopg2.extras.RealDictCursor
+        port=int(os.getenv("PGPORT", 5432)),
+        cursor_factory=RealDictCursor
     )
 
 

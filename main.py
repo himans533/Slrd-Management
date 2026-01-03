@@ -602,22 +602,22 @@ def get_admin_dashboard_stats():
         cursor = conn.cursor()
 
         cursor.execute(
-            'SELECT COUNT(*) as count FROM projects WHERE status = ?',
+            'SELECT COUNT(*) as count FROM projects WHERE status = %s',
             ('In Progress', ))
         active_projects = cursor.fetchone()['count']
 
-        cursor.execute('SELECT COUNT(*) as count FROM tasks WHERE status = ?',
+        cursor.execute('SELECT COUNT(*) as count FROM tasks WHERE status = %s',
                        ('Completed', ))
         completed_tasks = cursor.fetchone()['count']
 
-        cursor.execute('SELECT COUNT(*) as count FROM tasks WHERE status = ?',
+        cursor.execute('SELECT COUNT(*) as count FROM tasks WHERE status = %s',
                        ('In Progress', ))
         active_tasks = cursor.fetchone()['count']
 
         cursor.execute(
             '''
             SELECT COUNT(*) as count FROM tasks 
-            WHERE deadline < date('now') AND status != ? AND status != ?
+            WHERE deadline < date('now') AND status != ? AND status != %s
         ''', ('Completed', 'Overdue'))
         overdue_tasks = cursor.fetchone()['count']
 
@@ -635,7 +635,7 @@ def get_admin_dashboard_stats():
         total_user_types = cursor.fetchone()['count']
 
         # Add total outcomes (completed projects)
-        cursor.execute('SELECT COUNT(*) as count FROM projects WHERE status = ?',
+        cursor.execute('SELECT COUNT(*) as count FROM projects WHERE status = %s',
                        ('Completed', ))
         total_outcomes = cursor.fetchone()['count']
 
@@ -675,7 +675,7 @@ def calculate_project_progress(project_id):
                 COALESCE(SUM(weightage), 0) as total_weightage,
                 COALESCE(SUM(CASE WHEN status = 'Completed' THEN weightage ELSE 0 END), 0) as completed_weightage
             FROM tasks 
-            WHERE project_id = ? 
+            WHERE project_id = %s
         ''', (project_id,))
         task_data = cursor.fetchone()
         
@@ -687,7 +687,7 @@ def calculate_project_progress(project_id):
                 COALESCE(SUM(weightage), 0) as total_m_weightage,
                 COALESCE(SUM(CASE WHEN status = 'Completed' THEN weightage ELSE 0 END), 0) as completed_m_weightage
             FROM milestones 
-            WHERE project_id = ?
+            WHERE project_id = %s
         ''', (project_id,))
         milestone_data = cursor.fetchone()
         
@@ -706,8 +706,8 @@ def calculate_project_progress(project_id):
         # Update project progress in database
         cursor.execute('''
             UPDATE projects 
-            SET progress = ?, updated_at = CURRENT_TIMESTAMP 
-            WHERE id = ?
+            SET progress = %s, updated_at = CURRENT_TIMESTAMP 
+            WHERE id = %s
         ''', (overall_progress, project_id))
         
         # Record progress history
@@ -716,7 +716,7 @@ def calculate_project_progress(project_id):
                 project_id, progress_percentage, 
                 tasks_completed, total_tasks,
                 milestones_completed, total_milestones
-            ) VALUES (?, ?, ?, ?, ?, ?)
+            ) VALUES (%s, %s, %s, %s, %s, %s)
         ''', (
             project_id, overall_progress,
             task_data['completed_tasks'] or 0, task_data['total_tasks'] or 0,
@@ -840,7 +840,7 @@ def get_live_dashboard_progress():
                 LEFT JOIN milestones m ON p.id = m.project_id
                 LEFT JOIN project_assignments pa ON p. id = pa.project_id
                 WHERE (p.created_by_id = ? OR p.id IN (
-                    SELECT project_id FROM project_assignments WHERE user_id = ? 
+                    SELECT project_id FROM project_assignments WHERE user_id = %s
                 ))
                 AND p.status != 'Completed'
                 GROUP BY p.id
@@ -913,7 +913,7 @@ def get_user_permissions(user_id):
         cursor.execute(
             '''
             SELECT module, action, granted FROM user_permissions 
-            WHERE user_id = ? ORDER BY module, action
+            WHERE user_id = %s ORDER BY module, action
         ''', (user_id, ))
         permissions = cursor.fetchall()
         conn.close()
@@ -945,7 +945,7 @@ def set_user_permissions(user_id):
         conn = get_db_connection()
         cursor = conn.cursor()
 
-        cursor.execute('DELETE FROM user_permissions WHERE user_id = ?',
+        cursor.execute('DELETE FROM user_permissions WHERE user_id = %s',
                        (user_id, ))
 
         for module, actions in permissions.items():
@@ -954,7 +954,8 @@ def set_user_permissions(user_id):
                     cursor.execute(
                         '''
                         INSERT INTO user_permissions (user_id, module, action, granted)
-                        VALUES (?, ?, ?, ?)
+                        VALUES (%s,%s,%s,%s)
+                        
                     ''', (user_id, module, action, 1 if granted else 0))
 
         conn.commit()
@@ -1039,13 +1040,13 @@ def update_user_type(id):
         conn = get_db_connection()
         cursor = conn.cursor()
 
-        cursor.execute('SELECT id FROM usertypes WHERE id = ?', (id, ))
+        cursor.execute('SELECT id FROM usertypes WHERE id = %s', (id, ))
         if not cursor.fetchone():
             conn.close()
             return jsonify({"error": "User type not found."}), 404
 
         try:
-            cursor.execute('UPDATE usertypes SET user_role = ? WHERE id = ?',
+            cursor.execute('UPDATE usertypes SET user_role = %s WHERE id = %s',
                            (user_role, id))
             conn.commit()
             conn.close()
@@ -1071,13 +1072,13 @@ def delete_user_type(id):
         conn = get_db_connection()
         cursor = conn.cursor()
 
-        cursor.execute('SELECT id FROM usertypes WHERE id = ?', (id, ))
+        cursor.execute('SELECT id FROM usertypes WHERE id = %s', (id, ))
         if not cursor.fetchone():
             conn.close()
             return jsonify({"error": "User type not found."}), 404
 
         cursor.execute(
-            'SELECT COUNT(*) as count FROM users WHERE user_type_id = ?',
+            'SELECT COUNT(*) as count FROM users WHERE user_type_id = %s',
             (id, ))
         if cursor.fetchone()['count'] > 0:
             conn.close()
@@ -1086,7 +1087,7 @@ def delete_user_type(id):
                 "Cannot delete user type that has associated users."
             }), 400
 
-        cursor.execute('DELETE FROM usertypes WHERE id = ?', (id, ))
+        cursor.execute('DELETE FROM usertypes WHERE id = %s', (id, ))
         conn.commit()
         conn.close()
 
@@ -1159,7 +1160,7 @@ def create_user():
         conn = get_db_connection()
         cursor = conn.cursor()
 
-        cursor.execute('SELECT id FROM usertypes WHERE id = ?',
+        cursor.execute('SELECT id FROM usertypes WHERE id = %s',
                        (user_type_id, ))
         if not cursor.fetchone():
             conn.close()
@@ -1171,7 +1172,7 @@ def create_user():
             cursor.execute(
                 '''
                 INSERT INTO users (username, email, password, user_type_id) 
-                VALUES (?, ?, ?, ?)
+                VALUES (%s,%s,%s,%s)
             ''', (username, email, hashed_password, user_type_id))
             conn.commit()
 
@@ -1184,7 +1185,7 @@ def create_user():
                             cursor.execute(
                                 '''
                                 INSERT INTO user_permissions (user_id, module, action, granted)
-                                VALUES (?, ?, ?, ?)
+                                VALUES (%s,%s,%s,%s)
                             ''', (user_id, module, action, 1 if granted else 0))
                         except mysql.connector.IntegrityError:
                             pass
@@ -1222,7 +1223,7 @@ def get_user(id):
             SELECT u.id, u.username, u.email, u.user_type_id, ut.user_role, u.created_at
             FROM users u 
             LEFT JOIN usertypes ut ON u.user_type_id = ut.id 
-            WHERE u.id = ?
+            WHERE u.id = %s
         ''', (id, ))
         user = cursor.fetchone()
 
@@ -1233,7 +1234,7 @@ def get_user(id):
         cursor.execute(
             '''
             SELECT module, action, granted FROM user_permissions 
-            WHERE user_id = ? ORDER BY module, action
+            WHERE user_id = %s ORDER BY module, action
         ''', (id, ))
         permissions_rows = cursor.fetchall()
         conn.close()
@@ -1279,7 +1280,7 @@ def update_user(id):
         conn = get_db_connection()
         cursor = conn.cursor()
 
-        cursor.execute('SELECT id FROM users WHERE id = ?', (id, ))
+        cursor.execute('SELECT id FROM users WHERE id = %s', (id, ))
         if not cursor.fetchone():
             conn.close()
             return jsonify({"error": "User not found."}), 404
@@ -1295,17 +1296,17 @@ def update_user(id):
                     password, method='pbkdf2:sha256')
                 cursor.execute(
                     '''
-                    UPDATE users SET username = ?, email = ?, password = ?, user_type_id = ?
-                    WHERE id = ?
+                    UPDATE users SET username = %s, email = %s, password = %s, user_type_id = %s
+                    WHERE id = %s
                 ''', (username, email, hashed_password, user_type_id, id))
             else:
                 cursor.execute(
                     '''
-                    UPDATE users SET username = ?, email = ?, user_type_id = ?
-                    WHERE id = ?
+                    UPDATE users SET username = %s, email = %s, user_type_id = %s
+                    WHERE id = %s
                 ''', (username, email, user_type_id, id))
 
-            cursor.execute('DELETE FROM user_permissions WHERE user_id = ?',
+            cursor.execute('DELETE FROM user_permissions WHERE user_id = %s',
                            (id, ))
 
             for module, actions in permissions.items():
@@ -1315,7 +1316,7 @@ def update_user(id):
                             cursor.execute(
                                 '''
                                 INSERT INTO user_permissions (user_id, module, action, granted)
-                                VALUES (?, ?, ?, ?)
+                                VALUES (%s,%s,%s,%s)
                             ''', (id, module, action, 1 if granted else 0))
                         except mysql.connector.IntegrityError:
                             pass
@@ -1347,14 +1348,14 @@ def delete_user(id):
         conn = get_db_connection()
         cursor = conn.cursor()
 
-        cursor.execute('SELECT id FROM users WHERE id = ?', (id, ))
+        cursor.execute('SELECT id FROM users WHERE id = %s', (id, ))
         if not cursor.fetchone():
             conn.close()
             return jsonify({"error": "User not found."}), 404
 
-        cursor.execute('DELETE FROM user_permissions WHERE user_id = ?',
+        cursor.execute('DELETE FROM user_permissions WHERE user_id = %s',
                        (id, ))
-        cursor.execute('DELETE FROM users WHERE id = ?', (id, ))
+        cursor.execute('DELETE FROM users WHERE id = %s', (id, ))
         conn.commit()
         conn.close()
 
@@ -1381,7 +1382,7 @@ def user_login():
             SELECT u.id, u.username, u.email, u.password, ut.user_role
             FROM users u
             LEFT JOIN usertypes ut ON u.user_type_id = ut.id
-            WHERE u.email = ?
+            WHERE u.email = %s
         ''', (email, ))
         user = cursor.fetchone()
 
@@ -1465,8 +1466,8 @@ def get_employee_projects():
                    p.deadline, p.created_by_id, u.username as creator_name, p.created_at
             FROM projects p 
             LEFT JOIN users u ON p.created_by_id = u.id
-            WHERE p.created_by_id = ? OR p.id IN (
-                SELECT project_id FROM project_assignments WHERE user_id = ?
+            WHERE p.created_by_id = %s OR p.id IN (
+                SELECT project_id FROM project_assignments WHERE user_id = %s
             )
             ORDER BY p.created_at DESC
         ''', (user_id, user_id))
@@ -1500,7 +1501,7 @@ def create_employee_project():
         cursor.execute(
             '''
             SELECT granted FROM user_permissions 
-            WHERE user_id = ? AND module = ? AND action = ?
+            WHERE user_id = %s AND module = %s AND action = %s
         ''', (user_id, 'Proj', 'Add'))
         perm = cursor.fetchone()
 
@@ -1511,7 +1512,7 @@ def create_employee_project():
         cursor.execute(
             '''
             INSERT INTO projects (title, description, deadline, reporting_time, created_by_id)
-            VALUES (?, ?, ?, ?, ?)
+            VALUES (%s,%s,%s,%s,%s)
         ''', (title, description, deadline or None, reporting_time, user_id))
 
         project_id = cursor.lastrowid
@@ -1521,7 +1522,7 @@ def create_employee_project():
                 cursor.execute(
                     '''
                     INSERT INTO project_assignments (user_id, project_id)
-                    VALUES (?, ?)
+                    VALUES (%s,%s)
                 ''', (member_id, project_id))
             except mysql.connector.IntegrityError:
                 pass
@@ -1566,7 +1567,7 @@ def get_employee_tasks():
             FROM tasks t
             LEFT JOIN projects p ON t.project_id = p.id
             LEFT JOIN users u ON t.assigned_to_id = u.id
-            WHERE t.assigned_to_id = ? OR t.created_by_id = ?
+            WHERE t.assigned_to_id = %s OR t.created_by_id = %s
             ORDER BY t.created_at DESC
         ''', (user_id, user_id))
 
@@ -1601,7 +1602,7 @@ def create_employee_task():
         cursor.execute(
             '''
             SELECT granted FROM user_permissions 
-            WHERE user_id = ? AND module = ? AND action = ?
+            WHERE user_id = %s AND module = %s AND action = %s
             ''', (user_id, 'task', 'Add'))
         perm = cursor.fetchone()
 
@@ -1618,7 +1619,7 @@ def create_employee_task():
         cursor.execute(
             '''
             INSERT INTO tasks (title, description, project_id, created_by_id, assigned_to_id, priority, deadline, status)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (%s,%s,%s,%s,%s,%s,%s,%s)
             ''',
             (title, description, project_id, user_id, assigned_to_id, priority, deadline or None, status_to_set)
         )
@@ -1661,7 +1662,7 @@ def complete_employee_task(task_id):
 
         # Get task and project details
         cursor.execute('''
-            SELECT status, project_id FROM tasks WHERE id = ?  AND (assigned_to_id = ? OR created_by_id = ?)
+            SELECT status, project_id FROM tasks WHERE id = %s  AND (assigned_to_id = %s OR created_by_id = %s)
         ''', (task_id, user_id, user_id))
         task = cursor.fetchone()
 
@@ -1675,8 +1676,8 @@ def complete_employee_task(task_id):
 
         # Update task status
         cursor.execute('''
-            UPDATE tasks SET status = ?, completed_at = CURRENT_TIMESTAMP
-            WHERE id = ?
+            UPDATE tasks SET status = %s, completed_at = CURRENT_TIMESTAMP
+            WHERE id = %s
         ''', ('Completed', task_id))
 
         conn.commit()
@@ -1717,8 +1718,8 @@ def get_employee_milestones():
                    p.title as project_title, m.created_at
             FROM milestones m
             LEFT JOIN projects p ON m.project_id = p.id
-            WHERE p.created_by_id = ? OR m.project_id IN (
-                SELECT project_id FROM project_assignments WHERE user_id = ?
+            WHERE p.created_by_id = %s OR m.project_id IN (
+                SELECT project_id FROM project_assignments WHERE user_id = %s
             )
             ORDER BY m.created_at DESC
         ''', (user_id, user_id))
@@ -1752,9 +1753,9 @@ def create_employee_milestone():
         # Verify user has access to this project
         cursor.execute('''
             SELECT id FROM projects 
-            WHERE id = ? AND (
-                created_by_id = ? OR id IN (
-                    SELECT project_id FROM project_assignments WHERE user_id = ?
+            WHERE id = %s AND (
+                created_by_id = %s OR id IN (
+                    SELECT project_id FROM project_assignments WHERE user_id = %s
                 )
             )
         ''', (project_id, user_id, user_id))
@@ -1767,7 +1768,7 @@ def create_employee_milestone():
         try:
             cursor.execute('''
                 INSERT INTO milestones (title, description, project_id, due_date, status, created_by_id)
-                VALUES (?, ?, ?, ?, 'Pending', ?)
+                VALUES (%s,%s,%s,%s, 'Pending', %s)
             ''', (title, description, project_id, due_date, user_id))
 
             conn.commit()
@@ -1801,7 +1802,7 @@ def complete_employee_milestone(milestone_id):
         conn = get_db_connection()
         cursor = conn.cursor()
 
-        cursor.execute('SELECT project_id FROM milestones WHERE id = ?', (milestone_id,))
+        cursor.execute('SELECT project_id FROM milestones WHERE id = %s', (milestone_id,))
         milestone = cursor.fetchone()
         
         if not milestone:
@@ -1810,8 +1811,8 @@ def complete_employee_milestone(milestone_id):
 
         cursor.execute(
             '''
-            UPDATE milestones SET status = ?
-            WHERE id = ?
+            UPDATE milestones SET status = %s
+            WHERE id = %s
         ''', ('Completed', milestone_id))
 
         conn.commit()
@@ -1849,7 +1850,7 @@ def get_employee_documents():
             FROM documents d
             LEFT JOIN users u ON d.uploaded_by_id = u.id
             WHERE d.uploaded_by_id = ? OR d.project_id IN (
-                SELECT project_id FROM project_assignments WHERE user_id = ?
+                SELECT project_id FROM project_assignments WHERE user_id = %s
             )
             ORDER BY d.uploaded_at DESC
         ''', (user_id, user_id))
@@ -1896,7 +1897,7 @@ def upload_employee_document():
         cursor.execute(
             '''
             INSERT INTO documents (filename, original_filename, file_size, uploaded_by_id, project_id)
-            VALUES (?, ?, ?, ?, ?)
+            VALUES (%s,%s,%s,%s,%s)
         ''', (filename, file.filename, file_size, user_id, project_id))
 
         conn.commit()
@@ -1927,7 +1928,7 @@ def delete_employee_document(doc_id):
         cursor = conn.cursor()
 
         cursor.execute(
-            'SELECT uploaded_by_id, project_id, filename FROM documents WHERE id = ?',
+            'SELECT uploaded_by_id, project_id, filename FROM documents WHERE id = %s',
             (doc_id, ))
         doc_info = cursor.fetchone()
 
@@ -1938,7 +1939,7 @@ def delete_employee_document(doc_id):
         # Check ownership or project assignment
         if doc_info['uploaded_by_id'] != user_id:
             cursor.execute('''
-                SELECT 1 FROM project_assignments WHERE user_id = ? AND project_id = ?
+                SELECT 1 FROM project_assignments WHERE user_id = %s AND project_id = %s
             ''', (user_id, doc_info['project_id']))
             if not cursor.fetchone():
                 conn.close()
@@ -1953,7 +1954,7 @@ def delete_employee_document(doc_id):
             print(f"[WARNING] Could not delete file {file_path}: {e}")
             # Continue with deletion from DB even if file deletion fails
 
-        cursor.execute('DELETE FROM documents WHERE id = ?', (doc_id, ))
+        cursor.execute('DELETE FROM documents WHERE id = %s', (doc_id, ))
         conn.commit()
         conn.close()
 
@@ -1978,17 +1979,17 @@ def get_employee_dashboard_stats():
         cursor.execute(
             '''
             SELECT COUNT(DISTINCT id) as count FROM projects 
-            WHERE created_by_id = ? OR id IN (SELECT project_id FROM project_assignments WHERE user_id = ?)
+            WHERE created_by_id = %s OR id IN (SELECT project_id FROM project_assignments WHERE user_id = %s)
         ''', (user_id, user_id))
         total_projects = cursor.fetchone()['count']
 
         cursor.execute(
-            'SELECT COUNT(*) as count FROM tasks WHERE assigned_to_id = ? OR created_by_id = ?',
+            'SELECT COUNT(*) as count FROM tasks WHERE assigned_to_id = %s OR created_by_id = %s',
             (user_id, user_id))
         total_tasks = cursor.fetchone()['count']
 
         cursor.execute(
-            'SELECT COUNT(*) as count FROM tasks WHERE (assigned_to_id = ? OR created_by_id = ?) AND status = ?',
+            'SELECT COUNT(*) as count FROM tasks WHERE (assigned_to_id = %s OR created_by_id = %s) AND status = %s',
             (user_id, user_id, 'Completed'))
         completed_tasks = cursor.fetchone()['count']
 
@@ -1996,8 +1997,8 @@ def get_employee_dashboard_stats():
             '''
             SELECT COUNT(*) as count FROM milestones m 
             WHERE m.project_id IN (
-                SELECT id FROM projects WHERE created_by_id = ? OR id IN (
-                    SELECT project_id FROM project_assignments WHERE user_id = ?
+                SELECT id FROM projects WHERE created_by_id = %s OR id IN (
+                    SELECT project_id FROM project_assignments WHERE user_id = %s
                 )
             )
         ''', (user_id, user_id))
@@ -2035,12 +2036,12 @@ def get_employee_activities():
             LEFT JOIN tasks t ON a.task_id = t.id
             LEFT JOIN milestones m ON a.milestone_id = m.id
             WHERE a.user_id = ? OR a.project_id IN (
-                SELECT project_id FROM project_assignments WHERE user_id = ?
+                SELECT project_id FROM project_assignments WHERE user_id = %s
             ) OR a.task_id IN (
-                SELECT id FROM tasks WHERE assigned_to_id = ? OR created_by_id = ?
+                SELECT id FROM tasks WHERE assigned_to_id = ? OR created_by_id = %s
             ) OR a.milestone_id IN (
                 SELECT id FROM milestones WHERE project_id IN (
-                    SELECT project_id FROM project_assignments WHERE user_id = ?
+                    SELECT project_id FROM project_assignments WHERE user_id = %s
                 )
             )
             ORDER BY a.created_at DESC
@@ -2079,7 +2080,7 @@ def search():
                 SELECT 'project' as type, id, title as name, description,
                        created_at, NULL as project_name, NULL as status
                 FROM projects
-                WHERE title LIKE ? OR description LIKE ?
+                WHERE title LIKE %s OR description LIKE %s
                 ORDER BY created_at DESC
                 LIMIT 10
             ''', (f'%{query}%', f'%{query}%'))
@@ -2089,9 +2090,9 @@ def search():
                 SELECT 'project' as type, p.id, p.title as name, p.description,
                        p.created_at, NULL as project_name, NULL as status
                 FROM projects p
-                WHERE (p.title LIKE ? OR p.description LIKE ?) AND
-                      (p.created_by_id = ? OR p.id IN (
-                          SELECT project_id FROM project_assignments WHERE user_id = ?
+                WHERE (p.title LIKE %s OR p.description LIKE ?) AND
+                      (p.created_by_id = %s OR p.id IN (
+                          SELECT project_id FROM project_assignments WHERE user_id = %s
                       ))
                 ORDER BY p.created_at DESC
                 LIMIT 10
@@ -2124,7 +2125,7 @@ def search():
                        t.created_at, p.title as project_name, t.status
                 FROM tasks t
                 LEFT JOIN projects p ON t.project_id = p.id
-                WHERE t.title LIKE ? OR t.description LIKE ?
+                WHERE t.title LIKE %s OR t.description LIKE %s
                 ORDER BY t.created_at DESC
                 LIMIT 10
             ''', (f'%{query}%', f'%{query}%'))
@@ -2135,8 +2136,8 @@ def search():
                        t.created_at, p.title as project_name, t.status
                 FROM tasks t
                 LEFT JOIN projects p ON t.project_id = p.id
-                WHERE (t.title LIKE ? OR t.description LIKE ?) AND
-                      (t.assigned_to_id = ? OR t.created_by_id = ?)
+                WHERE (t.title LIKE %s OR t.description LIKE %s) AND
+                      (t.assigned_to_id = %s OR t.created_by_id = %s)
                 ORDER BY t.created_at DESC
                 LIMIT 10
             ''', (f'%{query}%', f'%{query}%', user_id, user_id))
@@ -2194,7 +2195,7 @@ def search():
                        m.created_at, p.title as project_name, m.status
                 FROM milestones m
                 LEFT JOIN projects p ON m.project_id = p.id
-                WHERE m.title LIKE ? OR m.description LIKE ?
+                WHERE m.title LIKE %s OR m.description LIKE %s
                 ORDER BY m.created_at DESC
                 LIMIT 10
             ''', (f'%{query}%', f'%{query}%'))
@@ -2205,9 +2206,9 @@ def search():
                        m.created_at, p.title as project_name, m.status
                 FROM milestones m
                 LEFT JOIN projects p ON m.project_id = p.id
-                WHERE (m.title LIKE ? OR m.description LIKE ?) AND
-                      (p.created_by_id = ? OR m.project_id IN (
-                          SELECT project_id FROM project_assignments WHERE user_id = ?
+                WHERE (m.title LIKE %s OR m.description LIKE %s) AND
+                      (p.created_by_id = %s OR m.project_id IN (
+                          SELECT project_id FROM project_assignments WHERE user_id = %s
                       ))
                 ORDER BY m.created_at DESC
                 LIMIT 10
@@ -2245,7 +2246,7 @@ def search():
                        d.file_size, d.uploaded_at, p.title as project_name, NULL as status
                 FROM documents d
                 LEFT JOIN projects p ON d.project_id = p.id
-                WHERE d.original_filename LIKE ?
+                WHERE d.original_filename LIKE %s
                 ORDER BY d.uploaded_at DESC
                 LIMIT 10
             ''', (f'%{query}%', ))
@@ -2256,9 +2257,9 @@ def search():
                        d.file_size, d.uploaded_at, p.title as project_name, NULL as status
                 FROM documents d
                 LEFT JOIN projects p ON d.project_id = p.id
-                WHERE d.original_filename LIKE ? AND
-                      (d.uploaded_by_id = ? OR d.project_id IN (
-                          SELECT project_id FROM project_assignments WHERE user_id = ?
+                WHERE d.original_filename LIKE %s AND
+                      (d.uploaded_by_id = %s OR d.project_id IN (
+                          SELECT project_id FROM project_assignments WHERE user_id = %s
                       ))
                 ORDER BY d.uploaded_at DESC
                 LIMIT 10
@@ -2357,7 +2358,7 @@ def log_activity(user_id,
         cursor.execute(
             '''
             INSERT INTO activities (user_id, activity_type, description, project_id, task_id, milestone_id)
-            VALUES (?, ?, ?, ?, ?, ?)
+            VALUES (%s,%s,%s,%s,%s,%s)
         ''', (user_id, activity_type, description, project_id, task_id,
               milestone_id))
         conn.commit()
@@ -2439,13 +2440,13 @@ def delete_employee_skill(skill_id):
         cursor = conn.cursor()
 
         cursor.execute(
-            'SELECT id FROM user_skills WHERE id = ? AND user_id = ?',
+            'SELECT id FROM user_skills WHERE id = %s AND user_id = %s',
             (skill_id, user_id))
         if not cursor.fetchone():
             conn.close()
             return jsonify({"error": "Skill not found"}), 404
 
-        cursor.execute('DELETE FROM user_skills WHERE id = ? AND user_id = ?',
+        cursor.execute('DELETE FROM user_skills WHERE id = %s AND user_id = %s',
                        (skill_id, user_id))
         conn.commit()
         conn.close()
@@ -2473,7 +2474,7 @@ def get_employee_profile():
                    u.phone, u.department, u.bio, u.avatar_url, u.created_at
             FROM users u
             LEFT JOIN usertypes ut ON u.user_type_id = ut.id
-            WHERE u.id = ?
+            WHERE u.id = %s
         ''', (user_id, ))
 
         user = cursor.fetchone()
@@ -2483,7 +2484,7 @@ def get_employee_profile():
 
         cursor.execute(
             '''
-            SELECT skill_name FROM user_skills WHERE user_id = ? ORDER BY skill_name
+            SELECT skill_name FROM user_skills WHERE user_id = %s ORDER BY skill_name
         ''', (user_id, ))
         skills = [row['skill_name'] for row in cursor.fetchall()]
 
@@ -2524,8 +2525,8 @@ def update_employee_profile():
         cursor.execute(
             '''
             UPDATE users 
-            SET phone = ?, department = ?, bio = ?
-            WHERE id = ?
+            SET phone = %s, department = %s, bio = %s
+            WHERE id = %s
         ''', (phone, department, bio, user_id))
 
         conn.commit()
@@ -2628,7 +2629,7 @@ def upload_avatar():
         avatar_url = f"/uploads/profiles/{filename}"
         
         try:
-            cursor.execute('UPDATE users SET avatar_url = ? WHERE id = ?', (avatar_url, user_id))
+            cursor.execute('UPDATE users SET avatar_url = %s WHERE id = %s', (avatar_url, user_id))
             conn.commit()
         except mysql.connector.OperationalError as db_error:
             # If column doesn't exist, add it
@@ -2636,7 +2637,7 @@ def upload_avatar():
                 try:
                     cursor.execute('ALTER TABLE users ADD COLUMN avatar_url TEXT')
                     conn.commit()
-                    cursor.execute('UPDATE users SET avatar_url = ? WHERE id = ?', (avatar_url, user_id))
+                    cursor.execute('UPDATE users SET avatar_url = %s WHERE id = %s', (avatar_url, user_id))
                     conn.commit()
                     print(f"[INFO] Added avatar_url column for user {user_id}")
                 except Exception as alter_error:
@@ -2667,7 +2668,7 @@ def delete_avatar():
         conn = get_db_connection()
         cursor = conn.cursor()
 
-        cursor.execute('SELECT avatar_url FROM users WHERE id = ?', (user_id,))
+        cursor.execute('SELECT avatar_url FROM users WHERE id = %s', (user_id,))
         user = cursor.fetchone()
 
         if not user or not user['avatar_url']:
@@ -2684,7 +2685,7 @@ def delete_avatar():
             pass
 
         # Update database
-        cursor.execute('UPDATE users SET avatar_url = NULL WHERE id = ?', (user_id,))
+        cursor.execute('UPDATE users SET avatar_url = NULL WHERE id = %s', (user_id,))
         conn.commit()
         conn.close()
 
@@ -2719,11 +2720,11 @@ def get_project_progress(project_id):
         cursor = conn.cursor()
 
         # Count total tasks
-        cursor.execute("SELECT COUNT(*) as total FROM tasks WHERE project_id = ?", (project_id,))
+        cursor.execute("SELECT COUNT(*) as total FROM tasks WHERE project_id = %s", (project_id,))
         total = cursor.fetchone()["total"]
 
         # Count completed tasks
-        cursor.execute("SELECT COUNT(*) as completed FROM tasks WHERE project_id = ? AND status = 'Completed'", (project_id,))
+        cursor.execute("SELECT COUNT(*) as completed FROM tasks WHERE project_id = %s AND status = 'Completed'", (project_id,))
         completed = cursor.fetchone()["completed"]
 
         # Avoid division by zero
@@ -2732,7 +2733,7 @@ def get_project_progress(project_id):
             progress = int((completed / total) * 100)
 
         # Save progress in DB
-        cursor.execute("UPDATE projects SET progress = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?", (progress, project_id))
+        cursor.execute("UPDATE projects SET progress = %s, updated_at = CURRENT_TIMESTAMP WHERE id = %s", (progress, project_id))
         conn.commit()
         conn.close()
 
@@ -2754,13 +2755,13 @@ def download_document(doc_id):
         cursor.execute('''
             SELECT d.filename, d.original_filename, d.project_id
             FROM documents d
-            WHERE d.id = ? AND (
-                d.uploaded_by_id = ? OR 
+            WHERE d.id = %s AND (
+                d.uploaded_by_id = %s OR 
                 d.project_id IN (
-                    SELECT project_id FROM project_assignments WHERE user_id = ?
+                    SELECT project_id FROM project_assignments WHERE user_id = %s
                 ) OR
                 d.project_id IN (
-                    SELECT id FROM projects WHERE created_by_id = ?
+                    SELECT id FROM projects WHERE created_by_id = %s
                 )
             )
         ''', (doc_id, user_id, user_id, user_id))
@@ -2802,7 +2803,7 @@ def admin_download_document(doc_id):
         cursor.execute('''
             SELECT filename, original_filename, project_id
             FROM documents
-            WHERE id = ?
+            WHERE id = %s
         ''', (doc_id,))
         
         doc = cursor.fetchone()
@@ -2839,8 +2840,8 @@ def get_employee_profile_stats():
         # Total projects
         cursor.execute('''
             SELECT COUNT(DISTINCT id) as count FROM projects 
-            WHERE created_by_id = ? OR id IN (
-                SELECT project_id FROM project_assignments WHERE user_id = ?
+            WHERE created_by_id = %s OR id IN (
+                SELECT project_id FROM project_assignments WHERE user_id = %s
             )
         ''', (user_id, user_id))
         total_projects = cursor.fetchone()['count']
@@ -2848,14 +2849,14 @@ def get_employee_profile_stats():
         # Completed tasks
         cursor.execute('''
             SELECT COUNT(*) as count FROM tasks 
-            WHERE (assigned_to_id = ? OR created_by_id = ?) AND status = 'Completed'
+            WHERE (assigned_to_id = %s OR created_by_id = %s) AND status = 'Completed'
         ''', (user_id, user_id))
         completed_tasks = cursor.fetchone()['count']
         
         # Pending tasks
         cursor.execute('''
             SELECT COUNT(*) as count FROM tasks 
-            WHERE (assigned_to_id = ? OR created_by_id = ?) 
+            WHERE (assigned_to_id = %s OR created_by_id = %s) 
             AND status != 'Completed'
         ''', (user_id, user_id))
         pending_tasks = cursor.fetchone()['count']
@@ -2864,8 +2865,8 @@ def get_employee_profile_stats():
         cursor.execute('''
             SELECT COUNT(*) as count FROM milestones m
             WHERE m.project_id IN (
-                SELECT id FROM projects WHERE created_by_id = ? 
-                OR id IN (SELECT project_id FROM project_assignments WHERE user_id = ?)
+                SELECT id FROM projects WHERE created_by_id = %s
+                OR id IN (SELECT project_id FROM project_assignments WHERE user_id = %s)
             )
         ''', (user_id, user_id))
         total_milestones = cursor.fetchone()['count']
@@ -2874,15 +2875,15 @@ def get_employee_profile_stats():
         cursor.execute('''
             SELECT COUNT(*) as count FROM milestones m
             WHERE m.status = 'Completed' AND m.project_id IN (
-                SELECT id FROM projects WHERE created_by_id = ? 
-                OR id IN (SELECT project_id FROM project_assignments WHERE user_id = ?)
+                SELECT id FROM projects WHERE created_by_id = %s
+                OR id IN (SELECT project_id FROM project_assignments WHERE user_id = %s)
             )
         ''', (user_id, user_id))
         completed_milestones = cursor.fetchone()['count']
         
         # Documents uploaded
         cursor.execute('''
-            SELECT COUNT(*) as count FROM documents WHERE uploaded_by_id = ?
+            SELECT COUNT(*) as count FROM documents WHERE uploaded_by_id = %s
         ''', (user_id,))
         documents_uploaded = cursor.fetchone()['count']
         
@@ -2966,7 +2967,7 @@ def get_admin_project_detail(project_id):
             LEFT JOIN users u ON p.created_by_id = u.id
             LEFT JOIN tasks t ON p.id = t.project_id
             LEFT JOIN milestones m ON p.id = m.project_id
-            WHERE p.id = ?
+            WHERE p.id = %s
             GROUP BY p.id
         ''', (project_id,))
         
@@ -2998,7 +2999,7 @@ def get_admin_task_detail(task_id):
             LEFT JOIN projects p ON t.project_id = p.id
             LEFT JOIN users u ON t.assigned_to_id = u.id
             LEFT JOIN users uc ON t.created_by_id = uc.id
-            WHERE t.id = ?
+            WHERE t.id = %s
         ''', (task_id,))
         
         task = cursor.fetchone()
@@ -3036,8 +3037,8 @@ def get_employee_realtime_projects():
             LEFT JOIN tasks t ON p.id = t.project_id
             LEFT JOIN milestones m ON p.id = m.project_id
             LEFT JOIN project_assignments pa ON p.id = pa.project_id
-            WHERE (p.created_by_id = ? OR p.id IN (
-                SELECT project_id FROM project_assignments WHERE user_id = ?
+            WHERE (p.created_by_id = %s OR p.id IN (
+                SELECT project_id FROM project_assignments WHERE user_id = %s
             )) AND p.status != 'Completed'
             GROUP BY p.id
             ORDER BY p.updated_at DESC

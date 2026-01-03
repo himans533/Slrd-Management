@@ -1,4918 +1,3233 @@
-<!doctype html>
-<html lang="en">
-
-<head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Employee Dashboard - Project Management System</title>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet" />
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet" />
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css" rel="stylesheet" />
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        :root {
-            --primary: #667eea;
-            --secondary: #764ba2;
-            --bg: #ffffff;
-            --bg-secondary: #f7fafc;
-            --text: #2d3748;
-            --text-secondary: #718096;
-            --border: #e2e8f0;
-            --shadow: rgba(0, 0, 0, 0.1);
-            --success: #48bb78;
-            --warning: #ed8936;
-            --danger: #f56565;
-            --info: #4299e1;
-            --hover: #edf2f7;
-        }
-
-        .dark-mode {
-            --bg: #1a202c;
-            --bg-secondary: #2d3748;
-            --text: #f7fafc;
-            --text-secondary: #a0aec0;
-            --border: #4a5568;
-            --shadow: rgba(0, 0, 0, 0.3);
-            --hover: #4a5568;
-        }
-
-        body {
-            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
-            font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-            min-height: 100vh;
-            padding: 20px 0;
-            color: var(--text);
-            transition: background-color 0.3s ease, color 0.3s ease;
-        }
-
-        .dark-mode body {
-            background: var(--bg-secondary);
-        }
-
-        /* Global Component Styles using Variables */
-        .dashboard-header,
-        .tab-content,
-        .content-card,
-        .item-card,
-        .stat-card,
-        .permission-module,
-        .team-member-list,
-        .team-member-checkbox,
-        .modal-content,
-        .search-results,
-        .form-group input,
-        .form-group textarea,
-        .form-group select {
-            background: var(--bg);
-            color: var(--text);
-            border-color: var(--border);
-        }
-
-        .dashboard-header {
-            background: var(--bg);
-            box-shadow: 0 12px 40px var(--shadow);
-        }
-
-        .stat-card {
-            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
-            color: white !important;
-            /* Stat cards always white text unless overridden */
-        }
-
-        /* Dark mode overrides for stat cards to look good */
-        .dark-mode .stat-card {
-            background: var(--bg);
-            color: var(--text) !important;
-            border: 1px solid var(--border);
-        }
-
-        /* Specific text colors */
-        h1,
-        h2,
-        h3,
-        h4,
-        .user-details h3,
-        .item-content h5,
-        .permission-module h5,
-        .team-members-section h5,
-        .real-time-stat h6,
-        .modal-header h3,
-        .form-group label {
-            color: var(--text);
-        }
-
-        p,
-        .user-details p,
-        .item-content p,
-        .item-meta,
-        .team-member-email,
-        .empty-state,
-        .fa-search {
-            color: var(--text-secondary);
-        }
-
-        /* Backgrounds */
-        .content-card,
-        .team-members-section,
-        .real-time-stat,
-        .item-card:hover,
-        .cropper-container-wrapper,
-        .search-result-item:hover,
-        .tab-button:hover {
-            background: var(--bg-secondary);
-        }
-
-        /* Inputs */
-        .search-container input,
-        .form-group input,
-        .form-group textarea,
-        .form-group select {
-            background: var(--bg);
-            color: var(--text);
-            border: 1px solid var(--border);
-        }
-
-        .search-container input:focus,
-        .form-group input:focus,
-        .form-group textarea:focus,
-        .form-group select:focus {
-            border-color: var(--primary);
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-        }
-
-        /* Tabs */
-        .tabs-nav {
-            background: var(--bg);
-            border-bottom: 2px solid var(--border);
-        }
-
-        .tab-button {
-            color: var(--text-secondary);
-        }
-
-        .tab-button.active {
-            color: var(--primary);
-            border-bottom-color: var(--primary);
-        }
-
-
-        .theme-toggle {
-            background: var(--bg-secondary);
-            border: 2px solid var(--border);
-            border-radius: 50%;
-            width: 45px;
-            height: 45px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.3s ease;
-            color: var(--text);
-        }
-
-        .theme-toggle:hover {
-            background: var(--hover);
-            transform: scale(1.05);
-        }
-
-        /* Toggle Button Style */
-        .theme-toggle-btn {
-            background: transparent;
-            border: none;
-            color: #2d3748;
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            margin-right: 15px;
-            font-size: 1.2rem;
-        }
-
-        body.dark-mode .theme-toggle-btn {
-            color: #f7fafc;
-        }
-
-        .theme-toggle-btn:hover {
-            background: rgba(0, 0, 0, 0.05);
-            transform: rotate(15deg);
-        }
-
-        body.dark-mode .theme-toggle-btn:hover {
-            background: rgba(255, 255, 255, 0.1);
-        }
-
-        body {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-            min-height: 100vh;
-            padding: 20px 0;
-        }
-
-        .dashboard-container {
-            max-width: 1400px;
-            margin: 0 auto;
-        }
-
-        .dashboard-header {
-            background: var(--bg);
-            padding: 24px 30px;
-            border-radius: 16px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 35px;
-            box-shadow: 0 12px 40px var(--shadow);
-            backdrop-filter: blur(10px);
-            flex-wrap: wrap;
-            gap: 20px;
-        }
-
-        .header-left {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            flex: 1;
-        }
-
-        .company-logo {
-            height: 50px;
-            width: auto;
-            max-width: 150px;
-            object-fit: contain;
-        }
-
-        .search-container {
-            display: flex;
-            gap: 10px;
-            align-items: center;
-            flex: 1;
-            min-width: 250px;
-            max-width: 500px;
-            position: relative;
-        }
-
-        .search-container input {
-            width: 100%;
-            padding: 12px 15px;
-            border: 2px solid var(--border);
-            border-radius: 8px;
-            font-size: 0.95rem;
-            transition: all 0.3s ease;
-            background: var(--bg);
-            color: var(--text);
-        }
-
-        .search-container input:focus {
-            outline: none;
-            border-color: #667eea;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-        }
-
-        .search-results {
-            position: absolute;
-            top: 100%;
-            left: 0;
-            right: 0;
-            background: var(--bg);
-            border: 1px solid var(--border);
-            border-top: none;
-            border-radius: 0 0 8px 8px;
-            max-height: 300px;
-            overflow-y: auto;
-            z-index: 1000;
-            box-shadow: 0 4px 12px var(--shadow);
-            display: none;
-        }
-
-        .search-result-item {
-            padding: 12px 15px;
-            border-bottom: 1px solid var(--border);
-            cursor: pointer;
-            transition: background 0.2s ease;
-        }
-
-        .search-result-item:hover {
-            background: #f7fafc;
-        }
-
-        .dashboard-header h1 {
-            font-size: 2rem;
-            font-weight: 700;
-            color: var(--text);
-            margin: 0;
-            flex: 1;
-        }
-
-        .header-user-info {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-        }
-
-        .user-avatar {
-            width: 50px;
-            height: 50px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-weight: bold;
-            font-size: 1.2rem;
-            object-fit: cover;
-            overflow: hidden;
-            cursor: pointer;
-        }
-
-        .user-avatar img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-
-        .user-details h3 {
-            margin: 0;
-            color: var(--text);
-            font-size: 1rem;
-        }
-
-        .user-details p {
-            margin: 0;
-            color: var(--text-secondary);
-            font-size: 0.9rem;
-        }
-
-        .logout-btn {
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: 600;
-            transition: all 0.3s ease;
-        }
-
-        .logout-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
-            color: white;
-        }
-
-        .company-logo {
-            height: 50px;
-            width: auto;
-            max-width: 150px;
-            object-fit: contain;
-            margin-right: 15px;
-        }
-
-        .tabs-nav {
-            display: flex;
-            gap: 0;
-            margin-bottom: 30px;
-            border-bottom: 3px solid var(--border);
-            flex-wrap: wrap;
-            background: var(--bg);
-            border-radius: 12px 12px 0 0;
-            padding: 0 20px;
-        }
-
-        .tab-button {
-            padding: 15px 25px;
-            background: none;
-            border: none;
-            cursor: pointer;
-            font-weight: 600;
-            color: var(--text-secondary);
-            border-bottom: 3px solid transparent;
-            transition: all 0.3s ease;
-            font-size: 1rem;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .tab-button:hover {
-            color: #667eea;
-        }
-
-        .tab-button.active {
-            color: var(--primary);
-            border-bottom-color: var(--primary);
-        }
-
-        .tab-content {
-            display: none;
-            background: var(--bg);
-            border-radius: 0 0 16px 16px;
-            padding: 30px;
-            box-shadow: 0 12px 40px var(--shadow);
-        }
-
-        .tab-content.active {
-            display: block;
-        }
-
-        .stat-card {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border-radius: 12px;
-            padding: 25px;
-            color: white;
-            text-align: center;
-            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
-            transition: all 0.3s ease;
-        }
-
-        .stat-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
-        }
-
-        .stat-card h3 {
-            font-size: 2.5rem;
-            font-weight: 700;
-            margin: 10px 0;
-        }
-
-        .stat-card p {
-            margin: 0;
-            opacity: 0.9;
-        }
-
-        .stat-card i {
-            font-size: 2rem;
-            margin-bottom: 10px;
-        }
-
-        .content-card {
-            background: var(--bg-secondary);
-            border-radius: 12px;
-            padding: 20px;
-            margin-bottom: 20px;
-            border-left: 4px solid var(--primary);
-            box-shadow: 0 2px 8px var(--shadow);
-        }
-
-        .content-card h4 {
-            color: var(--text);
-            font-weight: 600;
-            margin-bottom: 15px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .profile-picture-container {
-            text-align: center;
-            cursor: pointer;
-            position: relative;
-            display: inline-block;
-            margin: 0 auto 20px;
-            width: 100%;
-        }
-
-        .profile-picture-container .user-avatar {
-            width: 100px;
-            height: 100px;
-            font-size: 1.5rem;
-            margin: 0 auto 15px;
-            border: 1px solid #111214;
-            position: relative;
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            color: white;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 50%;
-            overflow: hidden;
-            transition: all 0.4s ease;
-            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.2);
-        }
-
-        .picture-overlay {
-            position: absolute;
-            bottom: 10px;
-            right: calc(50% - 75px + 50px);
-            background: linear-gradient(125deg, #764ba2, #667eea);
-            color: white;
-            border-radius: 40%;
-            width: 35px;
-            height: 35px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.2rem;
-            box-shadow: 0 2px 10px rgba(102, 126, 234, 0.4);
-            cursor: pointer;
-            border: 1px solid white;
-            z-index: 5;
-            transition: all 0.3s ease;
-        }
-
-        .picture-overlay:hover {
-            transform: scale(1.1) rotate(10deg);
-            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
-            background: linear-gradient(135deg, #667eea, #764ba2);
-        }
-
-        .profile-picture-container:hover .user-avatar {
-            box-shadow: 0 10px 30px rgba(224, 224, 228, 0.4);
-            transform: scale(1.08);
-            border-color: #764ba2;
-        }
-
-        .profile-picture-container .user-avatar img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-
-        .avatar-input {
-            display: none;
-        }
-
-        .items-list {
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-        }
-
-        .item-card {
-            background: var(--bg);
-            border-radius: 10px;
-            padding: 20px;
-            border-left: 4px solid var(--primary);
-            box-shadow: 0 2px 8px var(--shadow);
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            gap: 20px;
-            transition: all 0.3s ease;
-        }
-
-        .item-card:hover {
-            box-shadow: 0 4px 15px var(--shadow);
-        }
-
-        .item-content {
-            flex: 1;
-        }
-
-        .item-content h5 {
-            color: var(--text);
-            font-weight: 600;
-            margin: 0 0 5px 0;
-        }
-
-        .item-content p {
-            margin: 0 0 10px 0;
-            color: var(--text-secondary);
-            font-size: 0.95rem;
-        }
-
-        .item-meta {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 15px;
-            font-size: 0.85rem;
-            color: var(--text-secondary);
-        }
-
-        .item-actions {
-            display: flex;
-            gap: 8px;
-            flex-wrap: wrap;
-            justify-content: flex-end;
-            min-width: 150px;
-        }
-
-        .badge {
-            display: inline-block;
-            padding: 5px 12px;
-            border-radius: 20px;
-            font-size: 0.8rem;
-            font-weight: 600;
-        }
-
-        .badge-success {
-            background: #c6f6d5;
-            color: #22543d;
-        }
-
-        .badge-warning {
-            background: #feebc8;
-            color: #7c2d12;
-        }
-
-        .badge-danger {
-            background: #fed7d7;
-            color: #742a2a;
-        }
-
-        .badge-info {
-            background: #bee3f8;
-            color: #2c5282;
-        }
-
-        .btn {
-            padding: 8px 16px;
-            border-radius: 8px;
-            border: none;
-            cursor: pointer;
-            font-weight: 600;
-            font-size: 0.9rem;
-            transition: all 0.3s ease;
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-        }
-
-        .btn-primary {
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            color: white;
-        }
-
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
-            color: white;
-        }
-
-        .btn-success {
-            background: #48bb78;
-            color: white;
-        }
-
-        .btn-danger {
-            background: #f56565;
-            color: white;
-        }
-
-        .btn-secondary {
-            background: var(--bg-secondary);
-            color: var(--text);
-        }
-
-        .btn-sm {
-            padding: 6px 12px;
-            font-size: 0.85rem;
-        }
-
-        .form-group {
-            margin-bottom: 20px;
-        }
-
-        .form-group label {
-            display: block;
-            margin-bottom: 8px;
-            color: var(--text);
-            font-weight: 600;
-        }
-
-        .form-group input,
-        .form-group textarea,
-        .form-group select {
-            width: 100%;
-            padding: 10px 15px;
-            border: 2px solid var(--border);
-            border-radius: 8px;
-            font-size: 0.95rem;
-        }
-
-        .form-group input:focus,
-        .form-group textarea:focus,
-        .form-group select:focus {
-            outline: none;
-            border-color: #667eea;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-        }
-
-        .form-group textarea {
-            min-height: 100px;
-            resize: vertical;
-        }
-
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.5);
-            z-index: 1000;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .modal.active {
-            display: flex;
-        }
-
-        .modal-content {
-            background: var(--bg);
-            border-radius: 12px;
-            width: 90%;
-            max-width: 700px;
-            max-height: 90vh;
-            overflow-y: auto;
-            box-shadow: 0 20px 60px var(--shadow);
-        }
-
-        .modal-header {
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            color: white;
-            padding: 25px;
-            border-radius: 12px 12px 0 0;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .modal-header h3 {
-            margin: 0;
-        }
-
-        .modal-close {
-            background: rgba(255, 255, 255, 0.2);
-            border: none;
-            color: white;
-            width: 30px;
-            height: 30px;
-            border-radius: 50%;
-            cursor: pointer;
-            font-size: 1.2rem;
-        }
-
-        .modal-body {
-            padding: 30px;
-        }
-
-        .modal-footer {
-            padding: 20px 30px;
-            border-top: 2px solid var(--border);
-            display: flex;
-            gap: 10px;
-            justify-content: flex-end;
-        }
-
-        .alert {
-            padding: 15px 20px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            border-left: 4px solid;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .alert-success {
-            background: #c6f6d5;
-            color: #22543d;
-            border-color: #48bb78;
-        }
-
-        .alert-error {
-            background: #fed7d7;
-            color: #742a2a;
-            border-color: #f56565;
-        }
-
-        /* Added Cropper modal styles for image cropping interface */
-        .cropper-modal-content {
-            max-width: 800px;
-        }
-
-        .cropper-container-wrapper {
-            background: var(--bg-secondary);
-            border-radius: 8px;
-            overflow: hidden;
-            margin-bottom: 20px;
-            height: 500px;
-        }
-
-        .cropper-img {
-            display: block;
-            max-width: 100%;
-        }
-
-        .cropper-controls {
-            display: flex;
-            gap: 10px;
-            justify-content: center;
-            margin: 20px 0;
-            flex-wrap: wrap;
-        }
-
-        .cropper-control-btn {
-            padding: 8px 16px;
-            border: 2px solid var(--primary);
-            background: var(--bg);
-            color: var(--primary);
-            border-radius: 6px;
-            cursor: pointer;
-            font-weight: 600;
-            transition: all 0.3s ease;
-        }
-
-        .cropper-control-btn:hover {
-            background: #667eea;
-            color: white;
-        }
-
-        .team-members-section {
-            background: var(--bg-secondary);
-            border-radius: 8px;
-            padding: 15px;
-            margin-bottom: 20px;
-        }
-
-        .team-members-section h5 {
-            color: var(--text);
-            font-weight: 600;
-            margin-bottom: 15px;
-        }
-
-        .team-member-list {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-            gap: 12px;
-            max-height: 250px;
-            overflow-y: auto;
-            padding: 10px;
-            background: var(--bg);
-            border: 1px solid var(--border);
-            border-radius: 6px;
-        }
-
-        .team-member-checkbox {
-            display: flex;
-            align-items: center;
-            padding: 10px;
-            background: var(--bg);
-            border-radius: 6px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-
-        .team-member-checkbox:hover {
-            background: var(--hover);
-        }
-
-        .team-member-checkbox input[type="checkbox"] {
-            margin-right: 10px;
-            cursor: pointer;
-        }
-
-        .team-member-info {
-            display: flex;
-            flex-direction: column;
-        }
-
-        .team-member-name {
-            font-weight: 600;
-            color: var(--text);
-            font-size: 0.9rem;
-        }
-
-        .team-member-email {
-            color: var(--text-secondary);
-            font-size: 0.8rem;
-        }
-
-        .permissions-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 20px;
-        }
-
-        .permission-module {
-            background: var(--bg);
-            border-radius: 10px;
-            padding: 20px;
-            border-left: 4px solid var(--primary);
-            box-shadow: 0 2px 8px var(--shadow);
-        }
-
-        .permission-module h5 {
-            color: var(--text);
-            font-weight: 600;
-            margin-bottom: 15px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .permission-actions {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-        }
-
-        .permission-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 6px 12px;
-            border-radius: 20px;
-            font-size: 0.85rem;
-            font-weight: 600;
-        }
-
-        .permission-badge.granted {
-            background: #c6f6d5;
-            color: #22543d;
-        }
-
-        .permission-badge.denied {
-            background: #fed7d7;
-            color: #742a2a;
-            opacity: 0.6;
-        }
-
-        .empty-state {
-            text-align: center;
-            padding: 40px 20px;
-            color: var(--text-secondary);
-        }
-
-        .empty-state i {
-            font-size: 3rem;
-            margin-bottom: 20px;
-            opacity: 0.5;
-        }
-
-        .empty-state h4 {
-            color: var(--text);
-            margin: 20px 0 10px 0;
-        }
-
-        /* Added styles for real-time stats */
-        .real-time-stat {
-            background: var(--bg-secondary);
-            padding: 12px;
-            border-radius: 8px;
-            text-align: center;
-            border-left: 3px solid var(--primary);
-            margin-bottom: 10px;
-        }
-
-        .real-time-stat h6 {
-            color: var(--text);
-            font-size: 0.85rem;
-            margin-bottom: 5px;
-            font-weight: 600;
-        }
-
-        .time-display {
-            font-size: 1.1rem;
-            font-weight: 700;
-            color: #667eea;
-            transition: all 0.3s ease;
-        }
-
-        .countdown {
-            font-family: 'Courier New', monospace;
-        }
-
-        .progress {
-            background: var(--border);
-            border-radius: 10px;
-            overflow: hidden;
-        }
-
-        .progress-bar {
-            transition: width 0.5s ease;
-        }
-
-        .real-time-update {
-            animation: pulse 1.5s infinite;
-        }
-
-        @keyframes pulse {
-            0% {
-                opacity: 1;
-            }
-
-            50% {
-                opacity: 0.7;
-            }
-
-            100% {
-                opacity: 1;
-            }
-        }
-
-        @media (max-width: 768px) {
-            .dashboard-container {
-                padding: 15px;
-            }
-
-            .dashboard-header {
-                flex-direction: column;
-                text-align: center;
-                padding: 20px;
-                margin-bottom: 25px;
-            }
-
-            .header-left {
-                flex: 1 1 100%;
-            }
-
-            .header-user-info {
-                flex: 1 1 100%;
-                justify-content: center;
-                margin-top: 15px;
-            }
-
-            .dashboard-header h1 {
-                font-size: 1.8rem;
-                margin-bottom: 15px;
-            }
-
-            .search-container {
-                max-width: none;
-                margin-bottom: 15px;
-            }
-
-            .tabs-nav {
-                padding: 0 15px;
-                flex-wrap: wrap;
-            }
-
-            .tab-button {
-                padding: 12px 18px;
-                font-size: 13px;
-                flex: 1;
-                min-width: 120px;
-            }
-
-            .tab-content {
-                padding: 25px;
-            }
-
-            .row {
-                margin-bottom: 25px;
-            }
-
-            .stat-card {
-                margin-bottom: 15px;
-                padding: 20px;
-            }
-
-            .stat-card h3 {
-                font-size: 2rem;
-            }
-
-            .content-card {
-                padding: 15px;
-            }
-
-            .content-card h4 {
-                font-size: 1.1rem;
-            }
-
-            .items-list {
-                gap: 12px;
-            }
-
-            .item-card {
-                flex-direction: column;
-                padding: 15px;
-                gap: 15px;
-            }
-
-            .item-content h5 {
-                font-size: 1rem;
-            }
-
-            .item-actions {
-                width: 100%;
-                justify-content: center;
-                gap: 8px;
-            }
-
-            .btn {
-                padding: 8px 14px;
-                font-size: 13px;
-            }
-
-            .modal-content {
-                width: 95%;
-                margin: 5% auto;
-                padding: 25px;
-            }
-
-            .modal-header h3 {
-                font-size: 18px;
-            }
-
-            .team-member-list {
-                grid-template-columns: 1fr;
-                gap: 10px;
-            }
-
-            .team-member-checkbox {
-                padding: 8px;
-            }
-
-            .permissions-grid {
-                grid-template-columns: 1fr;
-                gap: 15px;
-            }
-
-            .permission-module {
-                padding: 15px;
-            }
-
-            .permission-actions {
-                gap: 6px;
-            }
-
-            .permission-badge {
-                padding: 4px 10px;
-                font-size: 0.8rem;
-            }
-
-            .cropper-modal-content {
-                width: 95%;
-            }
-
-            .cropper-container-wrapper {
-                height: 300px;
-            }
-        }
-
-        @media (max-width: 480px) {
-            body {
-                padding: 10px 0;
-            }
-
-            .dashboard-container {
-                padding: 10px;
-            }
-
-            .dashboard-header {
-                padding: 15px;
-                margin-bottom: 20px;
-            }
-
-            .dashboard-header h1 {
-                font-size: 1.5rem;
-            }
-
-            .company-logo {
-                height: 40px;
-                width: auto;
-                max-width: 120px;
-            }
-
-            .search-container input {
-                font-size: 16px;
-                /* Prevents zoom on iOS */
-            }
-
-            .header-user-info {
-                margin-top: 10px;
-            }
-
-            .user-avatar {
-                width: 35px;
-                height: 35px;
-            }
-
-            .user-details h3 {
-                font-size: 13px;
-            }
-
-            .user-details p {
-                font-size: 11px;
-            }
-
-            .logout-btn {
-                padding: 8px 16px;
-                font-size: 13px;
-            }
-
-            .tabs-nav {
-                padding: 0 10px;
-            }
-
-            .tab-button {
-                padding: 10px 12px;
-                font-size: 12px;
-                min-width: 100px;
-            }
-
-            .tab-content {
-                padding: 20px;
-            }
-
-            .stat-card {
-                padding: 15px;
-                min-height: 80px;
-            }
-
-            .stat-card h3 {
-                font-size: 1.5rem;
-            }
-
-            .stat-card p {
-                font-size: 0.9rem;
-            }
-
-            .content-card {
-                padding: 12px;
-            }
-
-            .content-card h4 {
-                font-size: 1rem;
-                margin-bottom: 12px;
-            }
-
-            .item-card {
-                padding: 12px;
-            }
-
-            .item-content h5 {
-                font-size: 0.95rem;
-            }
-
-            .item-meta {
-                gap: 12px;
-                font-size: 0.8rem;
-            }
-
-            .modal-content {
-                width: 98%;
-                margin: 2% auto;
-                padding: 20px;
-            }
-
-            .modal-header {
-                padding-bottom: 15px;
-            }
-
-            .modal-header h3 {
-                font-size: 16px;
-            }
-
-            .modal-close {
-                width: 25px;
-                height: 25px;
-                font-size: 1rem;
-            }
-
-            .modal-body {
-                padding: 20px;
-            }
-
-            .form-group input,
-            .form-group textarea,
-            .form-group select {
-                font-size: 16px;
-                /* Prevents zoom on iOS */
-                padding: 12px 15px;
-            }
-
-            .modal-footer {
-                padding: 15px;
-                gap: 8px;
-            }
-
-            .btn {
-                padding: 10px 16px;
-                font-size: 14px;
-            }
-
-            .team-members-section h5 {
-                font-size: 1rem;
-            }
-
-            .team-member-info {
-                flex-direction: column;
-                align-items: flex-start;
-                gap: 4px;
-            }
-
-            .team-member-name {
-                font-size: 0.85rem;
-            }
-
-            .team-member-email {
-                font-size: 0.8rem;
-            }
-
-            .permissions-grid {
-                gap: 12px;
-            }
-
-            .permission-module h5 {
-                font-size: 1rem;
-                margin-bottom: 12px;
-            }
-
-            .empty-state i {
-                font-size: 2.5rem;
-            }
-
-            .empty-state h4 {
-                font-size: 1.1rem;
-            }
-        }
-
-        /* DARK MODE OVERRIDES - High Specificity */
-        body.dark-mode {
-            background: var(--bg) !important;
-            color: var(--text) !important;
-        }
-
-        body.dark-mode .dashboard-container {
-            background-color: transparent !important;
-        }
-
-        body.dark-mode .dashboard-header {
-            background: var(--bg-secondary) !important;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4) !important;
-            border: 1px solid var(--border);
-        }
-
-        body.dark-mode .dashboard-header h1,
-        body.dark-mode h1,
-        body.dark-mode h2,
-        body.dark-mode h3,
-        body.dark-mode h4,
-        body.dark-mode h5,
-        body.dark-mode h6,
-        body.dark-mode .user-details h3,
-        body.dark-mode .item-content h5,
-        body.dark-mode .permission-module h5,
-        body.dark-mode .team-members-section h5,
-        body.dark-mode .real-time-stat h6,
-        body.dark-mode .modal-header h3,
-        body.dark-mode .form-group label {
-            color: var(--text) !important;
-        }
-
-        body.dark-mode .content-card,
-        body.dark-mode .item-card,
-        body.dark-mode .tab-content,
-        body.dark-mode .modal-content,
-        body.dark-mode .permission-module,
-        body.dark-mode .team-member-list,
-        body.dark-mode .team-member-checkbox,
-        body.dark-mode .stat-card {
-            background: var(--bg-secondary) !important;
-            border: 1px solid var(--border) !important;
-            color: var(--text) !important;
-            box-shadow: none !important;
-        }
-
-        body.dark-mode .tabs-nav {
-            background: var(--bg-secondary) !important;
-            border-bottom: 2px solid var(--border) !important;
-        }
-
-        body.dark-mode .tab-button {
-            color: var(--text-secondary) !important;
-        }
-
-        body.dark-mode .tab-button:hover,
-        body.dark-mode .tab-button.active {
-            color: var(--primary) !important;
-        }
-
-        body.dark-mode .team-members-section,
-        body.dark-mode .real-time-stat,
-        body.dark-mode .cropper-container-wrapper {
-            background: var(--bg) !important;
-            border: 1px solid var(--border);
-        }
-
-        body.dark-mode .search-container input,
-        body.dark-mode .form-group input,
-        body.dark-mode .form-group textarea,
-        body.dark-mode .form-group select {
-            background: var(--bg) !important;
-            color: var(--text) !important;
-            border-color: var(--border) !important;
-        }
-
-        body.dark-mode .search-results {
-            background: var(--bg-secondary) !important;
-            border-color: var(--border) !important;
-        }
-
-        body.dark-mode .search-result-item {
-            color: var(--text);
-            border-bottom-color: var(--border);
-        }
-
-        body.dark-mode .search-result-item:hover {
-            background: var(--hover) !important;
-        }
-
-        body.dark-mode p,
-        body.dark-mode .user-details p,
-        body.dark-mode .item-content p,
-        body.dark-mode .item-meta,
-        body.dark-mode .team-member-email,
-        body.dark-mode .empty-state,
-        body.dark-mode .fa-search {
-            color: var(--text-secondary) !important;
-        }
-
-        body.dark-mode .theme-toggle {
-            background: var(--bg-secondary);
-            border-color: var(--border);
-            color: var(--text);
-        }
-
-        body.dark-mode .logout-btn {
-            color: white !important;
-            /* keep logout button visible */
-        }
-    </style>
-</head>
-
-<body>
-    <div class="dashboard-container">
-        <div class="dashboard-header">
-            <div class="header-left">
-                <img src="../static/lg.png" alt="Company Logo" class="company-logo" />
-                <h1>Employee Dashboard</h1>
-            </div>
-            <div class="search-container">
-                <i class="fas fa-search" style="color: #718096"></i>
-                <input type="text" id="adminSearchInput" placeholder="Search projects, tasks, team members..." />
-                <div id="searchResults" class="search-results"></div>
-            </div>
-            <div class="header-user-info">
-                <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()" title="Toggle Dark Mode">
-                    <i class="fas fa-moon"></i>
-                </button>
-                <div class="user-avatar" id="headerAvatar" onclick="triggerAvatarInput()" style="position: relative;">
-                    <img id="headerAvatarImg" style="display: none; width: 100%; height: 100%; object-fit: cover;"
-                        alt="Profile">
-                    <span id="headerAvatarInitials"
-                        style="display: flex; align-items: center; justify-content: center; width: 100%; height: 100%;">ED</span>
-                </div>
-                <div class="user-details">
-                    <h3 id="userName">Employee Name</h3>
-                    <p id="userRole">Employee</p>
-                </div>
-                <button class="logout-btn" onclick="logout()">
-                    <i class="fas fa-sign-out-alt"></i> Logout
-                </button>
-            </div>
-        </div>
-
-        <div id="alertContainer"></div>
-
-        <div class="tabs-nav">
-            <button class="tab-button active" onclick="selectTab('overview-tab', event)">
-                <i class="fas fa-th-large"></i> Overview
-            </button>
-            <button class="tab-button" id="projectsTabBtn" onclick="selectTab('projects-tab', event)">
-                <i class="fas fa-project-diagram"></i> Projects
-            </button>
-            <button class="tab-button" id="tasksTabBtn" onclick="selectTab('tasks-tab', event)">
-                <i class="fas fa-tasks"></i> Tasks
-            </button>
-            <button class="tab-button" id="milestonesTabBtn" onclick="selectTab('milestones-tab', event)">
-                <i class="fas fa-flag"></i> Milestones
-            </button>
-            <button class="tab-button" id="documentsTabBtn" onclick="selectTab('documents-tab', event)">
-                <i class="fas fa-file-alt"></i> Documents
-            </button>
-            <button class="tab-button" id="activitiesTabBtn" onclick="selectTab('activities-tab', event)">
-                <i class="fas fa-history"></i> Recent Activity
-            </button>
-            <button class="tab-button" id="settingsTabBtn" onclick="selectTab('settings-tab', event)">
-                <i class="fas fa-cog"></i> Settings
-            </button>
-            <button class="tab-button" id="profileTabBtn" onclick="selectTab('profile-tab', event)">
-                <i class="fas fa-user"></i> Profile
-            </button>
-        </div>
-
-        <div id="overview-tab" class="tab-content active">
-            <div class="row" style="margin-bottom: 30px">
-                <div class="col-md-3 col-sm-6 mb-4">
-                    <div class="stat-card">
-                        <i class="fas fa-folder"></i>
-                        <h3 id="statProjects">0</h3>
-                        <p>Total Projects</p>
-                    </div>
-                </div>
-                <div class="col-md-3 col-sm-6 mb-4">
-                    <div class="stat-card">
-                        <i class="fas fa-tasks"></i>
-                        <h3 id="statTasks">0</h3>
-                        <p>Total Tasks</p>
-                    </div>
-                </div>
-                <div class="col-md-3 col-sm-6 mb-4">
-                    <div class="stat-card">
-                        <i class="fas fa-check-circle"></i>
-                        <h3 id="statCompleted">0</h3>
-                        <p>Completed Tasks</p>
-                    </div>
-                </div>
-                <div class="col-md-3 col-sm-6 mb-4">
-                    <div class="stat-card">
-                        <i class="fas fa-flag"></i>
-                        <h3 id="statMilestones">0</h3>
-                        <p>Total Milestones</p>
-                    </div>
-                </div>
-            </div>
-            <div class="content-card">
-                <h4><i class="fas fa-list-check"></i> Quick Actions</h4>
-                <div style="display: flex; gap: 10px; flex-wrap: wrap">
-                    <button class="btn btn-primary" id="quickCreateProject" onclick="openCreateProjectModal()"
-                        style="display: none">
-                        <i class="fas fa-plus"></i> Create Project
-                    </button>
-                    <button class="btn btn-primary" id="quickCreateTask" onclick="openCreateTaskModal()"
-                        style="display: none">
-                        <i class="fas fa-plus"></i> Create Task
-                    </button>
-                    <button class="btn btn-primary" id="quickCreateMilestone" onclick="openCreateMilestoneModal()"
-                        style="display: none">
-                        <i class="fas fa-plus"></i> Create Milestone
-                    </button>
-                    <button class="btn btn-primary" id="quickUploadDocument" onclick="openUploadDocumentModal()"
-                        style="display: none">
-                        <i class="fas fa-upload"></i> Upload Document
-                    </button>
-                </div>
-            </div>
-
-            <!-- Add this in the overview tab after "Quick Actions" section -->
-            <div class="content-card">
-                <h4><i class="fas fa-chart-line"></i> Real-Time Project Progress</h4>
-                <div id="realTimeProjects" class="items-list">
-                    <div class="empty-state" id="noActiveProjects">
-                        <i class="fas fa-folder-open"></i>
-                        <h4>No active projects</h4>
-                        <p>Create your first project to see real-time updates</p>
-                    </div>
-                </div>
-            </div>
-
-            <div class="content-card">
-                <h4>
-                    <i class="fas fa-project-diagram"></i> Recent Projects
-                </h4>
-                <div id="recentActivity" class="items-list"></div>
-                <div id="noActivity" class="empty-state">
-                    <i class="fas fa-folder-open"></i>
-                    <h4>No recent projects</h4>
-                    <p>Create your first project to get started!</p>
-                </div>
-            </div>
-        </div>
-
-        <div id="projects-tab" class="tab-content">
-            <div style="margin-bottom: 20px">
-                <button class="btn btn-primary" id="createProjectBtn" onclick="openCreateProjectModal()"
-                    style="display: none">
-                    <i class="fas fa-plus"></i> Create Project
-                </button>
-            </div>
-            <div id="projectsList" class="items-list"></div>
-            <div id="noProjects" class="empty-state" style="display: none">
-                <i class="fas fa-folder-open"></i>
-                <h4>No projects assigned</h4>
-                <p>You don't have any projects assigned yet.</p>
-            </div>
-        </div>
-
-        <div id="tasks-tab" class="tab-content">
-            <div style="margin-bottom: 20px">
-                <button class="btn btn-primary" id="createTaskBtn" onclick="openCreateTaskModal()"
-                    style="display: none">
-                    <i class="fas fa-plus"></i> Create Task
-                </button>
-            </div>
-            <div id="tasksList" class="items-list"></div>
-            <div id="noTasks" class="empty-state" style="display: none">
-                <i class="fas fa-tasks"></i>
-                <h4>No tasks assigned</h4>
-                <p>You don't have any tasks assigned yet.</p>
-            </div>
-        </div>
-
-        <div id="milestones-tab" class="tab-content">
-            <div style="margin-bottom: 20px">
-                <button class="btn btn-primary" id="createMilestoneBtn" onclick="openCreateMilestoneModal()"
-                    style="display: none">
-                    <i class="fas fa-plus"></i> Create Milestone
-                </button>
-            </div>
-            <div id="milestonesList" class="items-list"></div>
-            <div id="noMilestones" class="empty-state" style="display: none">
-                <i class="fas fa-flag"></i>
-                <h4>No milestones</h4>
-                <p>No milestones have been created yet.</p>
-            </div>
-        </div>
-
-        <div id="documents-tab" class="tab-content">
-            <div style="margin-bottom: 20px">
-                <button class="btn btn-primary" id="uploadDocumentBtn" onclick="openUploadDocumentModal()"
-                    style="display: none">
-                    <i class="fas fa-upload"></i> Upload Document
-                </button>
-            </div>
-            <div id="documentsList" class="items-list"></div>
-            <div id="noDocuments" class="empty-state" style="display: none">
-                <i class="fas fa-file-alt"></i>
-                <h4>No documents</h4>
-                <p>No documents have been uploaded yet.</p>
-            </div>
-        </div>
-
-        <div id="activities-tab" class="tab-content">
-            <h4 style="color: #2d3748; margin-bottom: 20px">
-                <i class="fas fa-history"></i> Recent Activities
-            </h4>
-            <div id="activitiesList" class="items-list"></div>
-            <div id="noActivities" class="empty-state" style="display: none">
-                <i class="fas fa-history"></i>
-                <h4>No recent activities</h4>
-                <p>Your recent activities will appear here.</p>
-            </div>
-        </div>
-
-        <div id="permissions-tab" class="tab-content">
-            <h4 style="color: #2d3748; margin-bottom: 20px">
-                <i class="fas fa-shield-alt"></i> Your Module Permissions
-            </h4>
-            <div id="permissionsGrid" class="permissions-grid"></div>
-            <div id="noPermissions" class="empty-state" style="display: none">
-                <i class="fas fa-lock"></i>
-                <h4>No permissions assigned</h4>
-                <p>Contact your administrator to get permissions.</p>
-            </div>
-        </div>
-
-        <div id="settings-tab" class="tab-content">
-            <div class="row">
-                <div class="col-md-8">
-                    <div class="content-card" style="margin-bottom: 20px">
-                        <h4 style="color: #667eea; margin-bottom: 10px">
-                            <i class="fas fa-cog"></i> General Settings
-                        </h4>
-                        <p style="color: #718096; margin-bottom: 0">
-                            Manage system settings and configurations
-                        </p>
-                    </div>
-
-                    <div class="content-card" style="
-                                margin-bottom: 20px;
-                                border-left-color: #ffc107;
-                            ">
-                        <div style="
-                                    display: flex;
-                                    justify-content: space-between;
-                                    align-items: center;
-                                    flex-wrap: wrap;
-                                    gap: 15px;
-                                ">
-                            <div>
-                                <h4 style="
-                                            color: #ffc107;
-                                            margin-bottom: 5px;
-                                        ">
-                                    <i class="fas fa-star"></i> Your Skills
-                                </h4>
-                                <p style="color: #718096; margin-bottom: 0">
-                                    Manage your professional skills for
-                                    better task matching
-                                </p>
-                            </div>
-                            <button class="btn btn-primary" onclick="openManageSkillsModal()">
-                                <i class="fas fa-plus"></i> Manage Skills
-                            </button>
-                        </div>
-                    </div>
-
-                    <div class="content-card" style="border-left-color: #9c27b0">
-                        <h4 style="color: #9c27b0; margin-bottom: 10px">
-                            <i class="fas fa-shield-alt"></i> Your
-                            Permissions
-                        </h4>
-                        <p style="color: #718096; margin-bottom: 15px">
-                            View your assigned module permissions
-                        </p>
-                        <button class="btn" onclick="selectTab('permissions-tab', event)"
-                            style="background: #9c27b0; color: white">
-                            <i class="fas fa-eye"></i> View Permissions
-                        </button>
-                    </div>
-                </div>
-
-                <div class="col-md-4">
-                    <div class="content-card" style="border-left-color: #17a2b8">
-                        <h4 style="color: #17a2b8; margin-bottom: 15px">
-                            <i class="fas fa-users"></i> Current User Types
-                        </h4>
-                        <div id="userTypesDisplay">
-                            <div class="empty-state" style="padding: 20px">
-                                <i class="fas fa-users" style="font-size: 2rem; opacity: 0.5"></i>
-                                <p style="margin-top: 10px">
-                                    No custom user types created yet
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-
-        <div id="profile-tab" class="tab-content">
-            <div class="row">
-                <div class="col-md-4">
-                    <div class="content-card" style="text-align: center; padding: 30px">
-
-                        <div class="profile-picture-container" onclick="triggerAvatarInput()">
-                            <img id="profileAvatarImg" class="user-avatar"
-                                src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgdmlld0JveD0iMCAwIDEwMCAxMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CiAgPGNpcmNsZSBjeD0iNTAiIGN5PSI1MCIgcj0iNTAiIGZpbGw9IiNlMmU4ZjAiLz4KICA8Y2lyY2xlIGN4PSI1MCIgY3k9IjM1IiByPSIxNSIgZmlsbD0iI2EwYWVjMCIvPgogIDxwYXRoIGQ9Ik0yMCA8NTAgTDIwIDY1IFE2NSA2NSAzNSA8NTAgTDM1IDY1IFE2NSA2NSA8NTAgT20wIDUwWiIgc3Ryb2tlPSJibGFjayIgc3Ryb2tlLXdpZHRoPSIyIi8+Cjwvc3ZnPg=="
-                                alt="Profile Picture" style="display: none;">
-                            <div class="user-avatar" id="profileAvatar" style="
-                            width: 100px;
-                            height: 100px;
-                            font-size: 2.5rem;
-                            margin: 0 auto 10px;
-                        "></div>
-
-                        </div>
-                        <input type="file" id="avatarInput" class="avatar-input" accept="image/*"
-                            onchange="handleAvatarSelect(event)">
-
-                        <h3 id="profileName" style="color: #2d3748; margin-bottom: 5px">
-                            Loading...
-                        </h3>
-                        <p id="profileRole" style="
-                        color: #667eea;
-                        font-weight: 600;
-                        margin-bottom: 10px;
-                    ">
-                            Employee
-                        </p>
-                        <p id="profileEmail" style="color: #718096; font-size: 0.9rem">
-                            -
-                        </p>
-                        <p id="profileDepartment" style="
-                        color: #718096;
-                        font-size: 0.9rem;
-                        margin-top: 5px;
-                    ">
-                            -
-                        </p>
-
-                        <div style="margin-top: 15px;">
-                            <button class="btn btn-sm btn-danger" onclick="deleteProfilePicture()">
-                                <i class="fas fa-trash"></i> Remove Picture
-                            </button>
-                        </div>
-                    </div>
-
-                    <div class="content-card" style="margin-top: 20px">
-                        <h4 style="color: #2d3748; margin-bottom: 15px">
-                            <i class="fas fa-star" style="color: #ffc107"></i>
-                            Your Skills
-                        </h4>
-                        <div id="profileSkillsList" style="display: flex; flex-wrap: wrap; gap: 8px">
-                            <span style="color: #718096">No skills added yet</span>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-8">
-                    <div class="content-card">
-                        <h4 style="color: #2d3748; margin-bottom: 20px">
-                            <i class="fas fa-edit"></i> Edit Profile
-                        </h4>
-                        <form id="profileForm" onsubmit="updateProfile(event)">
-                            <div class="form-group">
-                                <label>Phone Number</label>
-                                <input type="tel" id="profilePhone" placeholder="Enter phone number" />
-                            </div>
-                            <div class="form-group">
-                                <label>Department</label>
-                                <input type="text" id="profileDeptInput" placeholder="Enter department" />
-                            </div>
-                            <div class="form-group">
-                                <label>Bio</label>
-                                <textarea id="profileBio" placeholder="Tell us about yourself..." rows="4"></textarea>
-                            </div>
-                            <button type="submit" class="btn btn-primary">
-                                <i class="fas fa-save"></i> Save Changes
-                            </button>
-                        </form>
-                    </div>
-
-                    <div class="content-card" style="margin-top: 20px">
-                        <h4 style="color: #2d3748; margin-bottom: 15px">
-                            <i class="fas fa-chart-bar"></i> Activity
-                            Statistics
-                        </h4>
-                        <div class="row">
-                            <div class="col-6 col-md-3 mb-3">
-                                <div style="
-                                            background: #1238a0;
-                                            padding: 15px;
-                                            border-radius: 10px;
-                                            text-align: center;
-                                            cursor: pointer;
-                                            transition: all 0.3s ease;
-                                        " onclick="showProjectsDetails()"
-                                    onmouseover="this.style.transform='scale(1.05)'"
-                                    onmouseout="this.style.transform='scale(1)'">
-                                    <h3 id="profileStatProjects" style="color: #667eea; margin: 0">
-                                        0
-                                    </h3>
-                                    <small style="color: #050c16">Projects</small>
-                                </div>
-                            </div>
-                            <div class="col-6 col-md-3 mb-3">
-                                <div style="
-                                            background: #15771d;
-                                            padding: 15px;
-                                            border-radius: 10px;
-                                            text-align: center;
-                                            cursor: pointer;
-                                            transition: all 0.3s ease;
-                                        " onclick="showCompletedTasksDetails()"
-                                    onmouseover="this.style.transform='scale(1.05)'"
-                                    onmouseout="this.style.transform='scale(1)'">
-                                    <h3 id="profileStatCompleted" style="color: #28a745; margin: 0">
-                                        0
-                                    </h3>
-                                    <small style="color: #060e07">Completed</small>
-                                </div>
-                            </div>
-                            <div class="col-6 col-md-3 mb-3">
-                                <div style="
-                                            background: #e2df21;
-                                            padding: 15px;
-                                            border-radius: 10px;
-                                            text-align: center;
-                                            cursor: pointer;
-                                            transition: all 0.3s ease;
-                                        " onclick="showPendingTasksDetails()"
-                                    onmouseover="this.style.transform='scale(1.05)'"
-                                    onmouseout="this.style.transform='scale(1)'">
-                                    <h3 id="profileStatPending" style="color: #97b60c; margin: 0">
-                                        0
-                                    </h3>
-                                    <small style="color: #0a0a07">Pending</small>
-                                </div>
-                            </div>
-                            <div class="col-6 col-md-3 mb-3">
-                                <div style="
-                                            background: #b14b6d;
-                                            padding: 15px;
-                                            border-radius: 10px;
-                                            text-align: center;
-                                            cursor: pointer;
-                                            transition: all 0.3s ease;
-                                        " onclick="showMilestonesDetails()"
-                                    onmouseover="this.style.transform='scale(1.05)'"
-                                    onmouseout="this.style.transform='scale(1)'">
-                                    <h3 id="profileStatMilestones" style="color: #661b34; margin: 0">
-                                        0
-                                    </h3>
-                                    <small style="color: #070507">Milestones</small>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-        </div>
-    </div>
-
-    <!-- Replace the createProjectModal section with this enhanced version -->
-    <div id="createProjectModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3><i class="fas fa-folder-plus"></i> Create New Project</h3>
-                <button class="modal-close" onclick="closeModal('createProjectModal')">&times;</button>
-            </div>
-            <form id="createProjectForm" onsubmit="createProject(event)">
-                <div class="modal-body">
-                    <div class="form-group">
-                        <label>Project Title *</label>
-                        <input type="text" id="projectTitle" required placeholder="Enter project title" />
-                    </div>
-                    <div class="form-group">
-                        <label>Description</label>
-                        <textarea id="projectDescription" placeholder="Enter project description"></textarea>
-                    </div>
-
-                    <!-- New Fields: Creation Date, Deadline, and Reporting Time -->
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="form-group">
-                                <label>Creation Date</label>
-                                <input type="date" id="projectCreationDate" value="" readonly />
-                                <small class="form-text text-muted">Auto-filled with today's date</small>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="form-group">
-                                <label>Deadline *</label>
-                                <input type="date" id="projectDeadline" required />
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="form-group">
-                        <label>Daily Reporting Time *</label>
-                        <input type="time" id="projectReportingTime" required value="09:00" />
-                        <small class="form-text text-muted">Time when daily progress reports are expected</small>
-                    </div>
-
-                    <div class="team-members-section">
-                        <button type="button" class="btn btn-primary" style="width: 100%; margin-bottom: 15px"
-                            onclick="openAddTeamMemberModal()">
-                            <i class="fas fa-user-plus"></i> Add New Team Member
-                        </button>
-                    </div>
-
-                    <div class="team-members-section">
-                        <h5><i class="fas fa-users"></i> Assign Existing Team Members</h5>
-                        <div id="teamMembersList"></div>
-                        <div id="newTeamMembersDisplay" style="margin-top: 15px; display: none;">
-                            <h6>New Members Added:</h6>
-                            <ul id="newTeamMembersList"></ul>
-                        </div>
-                    </div>
-
-                    <!-- Real-time status display for the new project -->
-                    <div id="newProjectStatus" class="alert alert-info" style="display: none; margin-top: 15px;">
-                        <i class="fas fa-sync fa-spin"></i>
-                        <span id="statusMessage">Creating project...</span>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn" onclick="closeModal('createProjectModal')"
-                        style="background: #e2e8f0; color: #2d3748">Cancel</button>
-                    <button type="submit" class="btn btn-primary">
-                        <i class="fas fa-plus-circle"></i> Create Project
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <div id="createTaskModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3><i class="fas fa-plus-circle"></i> Create New Task</h3>
-                <button class="modal-close" onclick="closeModal('createTaskModal')">&times;</button>
-            </div>
-            <form onsubmit="createTask(event)">
-                <div class="modal-body">
-                    <div class="form-group">
-                        <label>Task Title *</label><input type="text" id="taskTitle" required
-                            placeholder="Enter task title" />
-                    </div>
-                    <div class="form-group">
-                        <label>Description</label><textarea id="taskDescription"
-                            placeholder="Enter task description"></textarea>
-                    </div>
-                    <div class="form-group">
-                        <label>Project *</label><select id="taskProject" required>
-                            <option value="">Select a project</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Assign To</label><select id="taskAssignee">
-                            <option value="">Unassigned</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Priority</label><select id="taskPriority">
-                            <option value="Medium">Medium</option>
-                            <option value="High">High</option>
-                            <option value="Low">Low</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Deadline</label><input type="date" id="taskDeadline" />
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn" onclick="closeModal('createTaskModal')"
-                        style="background: #e2e8f0; color: #2d3748">
-                        Cancel</button><button type="submit" class="btn btn-primary">
-                        Create Task
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <div id="createMilestoneModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3><i class="fas fa-flag"></i> Create New Milestone</h3>
-                <button class="modal-close" onclick="closeModal('createMilestoneModal')">&times;</button>
-            </div>
-            <form onsubmit="createMilestone(event)">
-                <div class="modal-body">
-                    <div class="form-group">
-                        <label>Milestone Title *</label><input type="text" id="milestoneTitle" required
-                            placeholder="Enter milestone title" />
-                    </div>
-                    <div class="form-group">
-                        <label>Description</label><textarea id="milestoneDescription"
-                            placeholder="Enter milestone description"></textarea>
-                    </div>
-                    <div class="form-group">
-                        <label>Project *</label><select id="milestoneProject" required>
-                            <option value="">Select a project</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Due Date</label><input type="date" id="milestoneDueDate" />
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn" onclick="closeModal('createMilestoneModal')"
-                        style="background: #e2e8f0; color: #2d3748">
-                        Cancel</button><button type="submit" class="btn btn-primary">
-                        Create Milestone
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <div id="uploadDocumentModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3><i class="fas fa-upload"></i> Upload Document</h3>
-                <button class="modal-close" onclick="closeModal('uploadDocumentModal')">&times;</button>
-            </div>
-            <form onsubmit="uploadDocument(event)" enctype="multipart/form-data">
-                <div class="modal-body">
-                    <div class="form-group">
-                        <label>Select File *</label><input type="file" id="documentFile" required />
-                    </div>
-                    <div class="form-group">
-                        <label>Project *</label><select id="documentProject" required>
-                            <option value="">Select a project</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn" onclick="closeModal('uploadDocumentModal')"
-                        style="background: #e2e8f0; color: #2d3748">
-                        Cancel</button><button type="submit" class="btn btn-primary">
-                        Upload Document
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <div id="manageSkillsModal" class="modal">
-        <div class="modal-content" style="max-width: 800px">
-            <div class="modal-header">
-                <h3>
-                    <i class="fas fa-star"></i> Your Professional Skills
-                </h3>
-                <button class="modal-close" onclick="closeModal('manageSkillsModal')">&times;</button>
-            </div>
-            <div class="modal-body">
-                <p style="color: #718096; margin-bottom: 20px">
-                    Add skills to help with task matching and assignment
-                    optimization
-                </p>
-
-                <div class="row">
-                    <div class="col-md-8">
-                        <div class="content-card" style="margin-bottom: 20px">
-                            <h5 style="color: #2d3748; margin-bottom: 15px">
-                                Add New Skill
-                            </h5>
-                            <div style="display: flex; gap: 10px">
-                                <input type="text" id="newSkillInput" class="form-control"
-                                    placeholder="e.g., JavaScript, Project Management, Design" style="
-                                            flex: 1;
-                                            padding: 10px 15px;
-                                            border: 2px solid #e2e8f0;
-                                            border-radius: 8px;
-                                        "
-                                    onkeypress="if(event.key === 'Enter') { event.preventDefault(); addSkill(); }" />
-                                <button class="btn btn-primary" onclick="addSkill()">
-                                    <i class="fas fa-plus"></i> Add
-                                </button>
-                            </div>
-                        </div>
-
-                        <div class="content-card">
-                            <h5 style="color: #2d3748; margin-bottom: 15px">
-                                Current Skills
-                            </h5>
-                            <div id="currentSkillsList" style="min-height: 150px">
-                                <div class="empty-state" style="padding: 30px">
-                                    <i class="fas fa-star" style="
-                                                font-size: 2rem;
-                                                color: #ffc107;
-                                                opacity: 0.5;
-                                            "></i>
-                                    <p style="
-                                                margin-top: 10px;
-                                                color: #718096;
-                                            ">
-                                        No skills added yet. Add your first
-                                        skill above!
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="col-md-4">
-                        <div class="content-card" style="
-                                    background: #f0f4ff;
-                                    border-left-color: #667eea;
-                                ">
-                            <h5 style="color: #667eea; margin-bottom: 15px">
-                                <i class="fas fa-lightbulb"></i> Skill
-                                Matching
-                            </h5>
-
-                            <div style="margin-bottom: 15px">
-                                <div style="
-                                            display: flex;
-                                            align-items: flex-start;
-                                            gap: 10px;
-                                            margin-bottom: 10px;
-                                        ">
-                                    <i class="fas fa-lightbulb" style="
-                                                color: #ffc107;
-                                                margin-top: 3px;
-                                            "></i>
-                                    <div>
-                                        <strong style="color: #2d3748">Better Task Assignment</strong>
-                                        <p style="
-                                                    color: #718096;
-                                                    font-size: 0.85rem;
-                                                    margin: 3px 0 0 0;
-                                                ">
-                                            Skills help managers assign
-                                            tasks that match your expertise
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div style="margin-bottom: 15px">
-                                <div style="
-                                            display: flex;
-                                            align-items: flex-start;
-                                            gap: 10px;
-                                            margin-bottom: 10px;
-                                        ">
-                                    <i class="fas fa-chart-line" style="
-                                                color: #28a745;
-                                                margin-top: 3px;
-                                            "></i>
-                                    <div>
-                                        <strong style="color: #2d3748">Performance Tracking</strong>
-                                        <p style="
-                                                    color: #718096;
-                                                    font-size: 0.85rem;
-                                                    margin: 3px 0 0 0;
-                                                ">
-                                            Track how well your skills align
-                                            with completed tasks
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div>
-                                <div style="
-                                            display: flex;
-                                            align-items: flex-start;
-                                            gap: 10px;
-                                        ">
-                                    <i class="fas fa-users" style="
-                                                color: #17a2b8;
-                                                margin-top: 3px;
-                                            "></i>
-                                    <div>
-                                        <strong style="color: #2d3748">Team Collaboration</strong>
-                                        <p style="
-                                                    color: #718096;
-                                                    font-size: 0.85rem;
-                                                    margin: 3px 0 0 0;
-                                                ">
-                                            Help teammates find expertise
-                                            within the team
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button class="btn" onclick="closeModal('manageSkillsModal')"
-                    style="background: #e2e8f0; color: #2d3748">
-                    Cancel
-                </button>
-                <button class="btn btn-primary" onclick="closeModal('manageSkillsModal')">
-                    <i class="fas fa-save"></i> Save Skills
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <div id="addTeamMemberModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>
-                    <i class="fas fa-user-plus"></i> Add New Team Member
-                </h3>
-                <button class="modal-close" onclick="closeModal('addTeamMemberModal')">&times;</button>
-            </div>
-            <form onsubmit="addTeamMemberToProject(event)">
-                <div class="modal-body">
-                    <div class="form-group">
-                        <label>Username *</label><input type="text" id="addMemberUsername" required
-                            placeholder="Enter username" />
-                    </div>
-                    <div class="form-group">
-                        <label>Email *</label><input type="email" id="addMemberEmail" required
-                            placeholder="Enter email" />
-                    </div>
-                    <div class="form-group">
-                        <label>Password *</label><input type="password" id="addMemberPassword" required
-                            placeholder="Enter password (8+ chars, 2+ special chars)" />
-                    </div>
-                    <div class="form-group">
-                        <label>Confirm Password *</label><input type="password" id="addMemberConfirmPassword" required
-                            placeholder="Confirm password" />
-                    </div>
-                    <div class="form-group">
-                        <label>User Type *</label><select id="addMemberUserType" required>
-                            <option value="">Select user type</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn" onclick="closeModal('addTeamMemberModal')"
-                        style="background: #e2e8f0; color: #2d3748">
-                        Cancel</button><button type="submit" class="btn btn-primary">
-                        Create & Add Member
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- Avatar Upload Modal -->
-    <div id="avatarUploadModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3><i class="fas fa-image"></i> Upload Profile Picture</h3>
-                <button class="modal-close" onclick="closeAvatarModal()">&times;</button>
-            </div>
-            <div class="modal-body">
-                <div id="dragDropArea"
-                    style="border: 2px dashed #667eea; border-radius: 8px; padding: 40px; text-align: center; margin-bottom: 20px; background: #f7fafc; cursor: pointer; transition: all 0.3s ease;"
-                    ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)"
-                    ondrop="handleDropZone(event)">
-                    <i class="fas fa-cloud-upload-alt"
-                        style="font-size: 3rem; color: #667eea; margin-bottom: 15px; display: block;"></i>
-                    <p style="color: #2d3748; font-weight: 600; margin: 10px 0;">Drag and drop your image here</p>
-                    <p style="color: #718096; font-size: 0.9rem;">or click to select a file</p>
-                </div>
-                <input type="file" id="avatarInput" class="avatar-input" accept="image/*"
-                    onchange="handleAvatarSelect(event)">
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-secondary" onclick="closeAvatarModal()">Cancel</button>
-                <button class="btn btn-primary" onclick="uploadAvatarFile()">Upload</button>
-            </div>
-        </div>
-    </div>
-
-
-    <!-- Image Cropper Modal -->
-    <div id="cropperModal" class="modal">
-        <div class="modal-content cropper-modal-content">
-            <div class="modal-header">
-                <h3><i class="fas fa-crop-alt"></i> Crop Your Profile Picture</h3>
-                <button onclick="closeCropperModal()" class="modal-close">&times;</button>
-            </div>
-            <div class="modal-body">
-                <div class="cropper-container">
-                    <img id="cropperImage"
-                        src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Crect fill='%23e2e8f0' width='200' height='200'/%3E%3C/svg%3E"
-                        alt="Image for cropping">
-                </div>
-                <div class="cropper-controls">
-                    <button class="cropper-control-btn" onclick="rotateCropper(-90)"><i class="fas fa-redo"></i> Rotate
-                        Left</button>
-                    <button class="cropper-control-btn" onclick="rotateCropper(90)"><i class="fas fa-undo"></i> Rotate
-                        Right</button>
-                    <button class="cropper-control-btn" onclick="flipCropperX()"><i class="fas fa-arrows-alt-h"></i>
-                        Flip H</button>
-                    <button class="cropper-control-btn" onclick="flipCropperY()"><i class="fas fa-arrows-alt-v"></i>
-                        Flip V</button>
-                    <button class="cropper-control-btn" onclick="resetCropper()"><i class="fas fa-undo"></i>
-                        Reset</button>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-secondary" onclick="closeCropperModal()">Cancel</button>
-                <button class="btn btn-primary" onclick="saveCroppedImage()"><i class="fas fa-check"></i> Save
-                    Picture</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Activity Details Modal -->
-    <div id="activityDetailsModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3 id="activityDetailsTitle"><i class="fas fa-chart-bar"></i> Activity Details</h3>
-                <button class="modal-close" onclick="closeActivityDetailsModal()">&times;</button>
-            </div>
-            <div class="modal-body">
-                <div id="activityDetailsContent">
-                    <div class="empty-state">
-                        <i class="fas fa-spinner fa-spin" style="font-size: 2rem; color: #667eea;"></i>
-                        <h4>Loading...</h4>
-                        <p>Please wait while we fetch the details.</p>
-                    </div>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-secondary" onclick="closeActivityDetailsModal()">Close</button>
-            </div>
-        </div>
-    </div>
-
-    <script>
-        const API_BASE = window.location.origin + "/api";
-        let currentUser = {};
-        let userPermissions = {};
-        let allEmployees = [];
-        let userRoles = [];
-        let selectedTeamMembers = [];
-        let newTeamMembers = [];
-        let projects = [];
-        let tasks = [];
-        let milestones = [];
-        let documents = [];
-        let cropper = null; // Added cropper instance variable
-        let selectedAvatarFile = null; // Added to store the selected file for cropping
-
-        function checkAuthentication() {
-            const employeeData = localStorage.getItem("employee_user");
-            const token = localStorage.getItem("employee_token");
-
-            if (!employeeData || !token) {
-                console.warn("[v0] No authentication found, redirecting to login");
-                window.location.href = "/login";
-                return false;
-            }
-
-            try {
-                currentUser = JSON.parse(employeeData); // Use currentUser variable directly
-                userPermissions = currentUser.permissions || {};
-                return true;
-            } catch (error) {
-                console.error("[v0] Invalid employee data, redirecting to login");
-                localStorage.removeItem("employee_user");
-                localStorage.removeItem("employee_token");
-                window.location.href = "/login";
-                return false;
-            }
-        }
-
-        window.addEventListener('DOMContentLoaded', () => {
-            if (!checkAuthentication()) {
-                return;
-            }
-
-            // Load all dashboard data
-            updateUserInfo();
-            updateHeaderAvatar(); // Add this call
-            loadDashboardData();
-            loadRecentActivities();
-            loadTeamMembers();
-            loadUserTypes();
-            loadProfileStats();
-            loadProfile();
-            loadSkills();
-            displayPermissions();
-            updatePermissionVisibility();
-
-            // Set up event listeners
-            setupEventListeners();
-
-            // Start real-time updates
-            startEmployeeLiveUpdates();
-        });
-
-        function setupEventListeners() {
-            const searchInput = document.getElementById("adminSearchInput");
-            if (searchInput) {
-                searchInput.addEventListener("keyup", performAdminSearch);
-            }
-
-            // Close search results when clicking outside
-            document.addEventListener('click', function (event) {
-                const searchContainer = document.querySelector('.search-container');
-                if (searchContainer && !searchContainer.contains(event.target)) {
-                    hideSearchResults();
-                }
-            });
-        }
-
-
-        function updateUserInfo() {
-            document.getElementById("userName").textContent =
-                currentUser.username || "Employee";
-            document.getElementById("userRole").textContent =
-                currentUser.user_role || "Employee";
-            document.getElementById("headerAvatarInitials").textContent = (
-                currentUser.username || "E"
-            )
-                .substring(0, 2)
-                .toUpperCase();
-
-            // Update profile section as well
-            if (document.getElementById("profileName")) {
-                document.getElementById("profileName").textContent = currentUser.username || "Employee";
-                document.getElementById("profileRole").textContent = currentUser.user_role || "Employee";
-                document.getElementById("profileEmail").textContent = currentUser.email || "-";
-                document.getElementById("profileDepartment").textContent = currentUser.department ? `Department: ${currentUser.department}` : "-";
-                document.getElementById("profilePhone").value = currentUser.phone || "";
-                document.getElementById("profileDeptInput").value = currentUser.department || "";
-                document.getElementById("profileBio").value = currentUser.bio || "";
-            }
-        }
-
-        function displayPermissions() {
-            const container = document.getElementById("permissionsGrid");
-            if (!container) return;
-
-            const modules = {
-                Proj: "Projects",
-                Proj_team: "Project Team",
-                Proj_doc: "Project Documents",
-                Proj_Dis_: "Project Discussion",
-                task: "Tasks",
-            };
-            if (
-                !userPermissions ||
-                Object.keys(userPermissions).length === 0
-            ) {
-                if (document.getElementById("noPermissions")) {
-                    document.getElementById("noPermissions").style.display = "block";
-                }
-                container.innerHTML = "";
-                return;
-            }
-
-            if (document.getElementById("noPermissions")) {
-                document.getElementById("noPermissions").style.display = "none";
-            }
-
-            container.innerHTML = Object.entries(modules)
-                .map(([module, label]) => {
-                    const actions = userPermissions[module] || {};
-                    return `<div class="permission-module"><h5><i class="fas fa-check-circle"></i> ${label}</h5><div class="permission-actions">${[
-                        "View",
-                        "Add",
-                        "Edit",
-                        "Delete",
-                        "Download",
-                    ]
-                        .map((action) => {
-                            const has = actions[action] || false;
-                            return `<span class="permission-badge ${has ? "granted" : "denied"}"><i class="fas fa-${has ? "check" : "times"}"></i> ${action}</span>`;
-                        })
-                        .join("")}</div></div>`;
-                })
-                .join("");
-        }
-
-        function updatePermissionVisibility() {
-            function setElementDisplay(elementId, displayValue) {
-                const element = document.getElementById(elementId);
-                if (element) {
-                    element.style.display = displayValue;
-                }
-            }
-
-            const canViewProjects = userPermissions["Proj"]?.["View"];
-            const canCreateProjects = userPermissions["Proj"]?.["Add"];
-            setElementDisplay("projectsTabBtn", canViewProjects ? "flex" : "none");
-            setElementDisplay("createProjectBtn", canCreateProjects ? "inline-flex" : "none");
-            setElementDisplay("quickCreateProject", canCreateProjects ? "inline-flex" : "none");
-
-            const canViewTasks = userPermissions["task"]?.["View"];
-            const canCreateTasks = userPermissions["task"]?.["Add"];
-            setElementDisplay("tasksTabBtn", canViewTasks ? "flex" : "none");
-            setElementDisplay("createTaskBtn", canCreateTasks ? "inline-flex" : "none");
-            setElementDisplay("quickCreateTask", canCreateTasks ? "inline-flex" : "none");
-
-            const canViewMilestones = userPermissions["Proj"]?.["View"];
-            const canCreateMilestones = userPermissions["Proj"]?.["Add"];
-            setElementDisplay("milestonesTabBtn", canViewMilestones ? "flex" : "none");
-            setElementDisplay("createMilestoneBtn", canCreateMilestones ? "inline-flex" : "none");
-            setElementDisplay("quickCreateMilestone", canCreateMilestones ? "inline-flex" : "none");
-
-            const canViewDocuments = userPermissions["Proj_doc"]?.["View"];
-            const canUploadDocuments = userPermissions["Proj_doc"]?.["Add"];
-            setElementDisplay("documentsTabBtn", canViewDocuments ? "flex" : "none");
-            setElementDisplay("uploadDocumentBtn", canUploadDocuments ? "inline-flex" : "none");
-            setElementDisplay("quickUploadDocument", canUploadDocuments ? "inline-flex" : "none");
-
-            setElementDisplay("activitiesTabBtn", "flex");
-            setElementDisplay("settingsTabBtn", "flex");
-            setElementDisplay("profileTabBtn", "flex");
-        }
-
-        function selectTab(tabName, event) {
-            document
-                .querySelectorAll(".tab-content")
-                .forEach((tab) => tab.classList.remove("active"));
-            document
-                .querySelectorAll(".tab-button")
-                .forEach((btn) => btn.classList.remove("active"));
-
-            const tabElement = document.getElementById(tabName);
-            if (tabElement) {
-                tabElement.classList.add("active");
-            }
-
-            if (event && event.target) {
-                const tabBtn = event.target.closest(".tab-button");
-                if (tabBtn) {
-                    tabBtn.classList.add("active");
-                } else {
-                    const targetBtn = document.querySelector(
-                        `[onclick*="${tabName}"].tab-button`,
-                    );
-                    if (targetBtn) targetBtn.classList.add("active");
-                }
-            }
-
-            const token = localStorage.getItem("employee_token");
-            if (!token) return;
-
-            if (tabName === "settings-tab") {
-                loadUserTypes();
-            }
-            if (tabName === "profile-tab") {
-                loadProfile();
-                loadProfileStats();
-            }
-            if (tabName === "permissions-tab") {
-                displayPermissions();
-            }
-        }
-
-        async function loadUserTypes() {
-            try {
-                const token = localStorage.getItem("employee_token");
-                const response = await fetch(`${API_BASE}/usertypes`, {
-                    headers: {
-                        'Authorization': `Bearer ${token}`
-                    }
-                });
-
-                if (!response.ok) {
-                    console.error('Failed to load user types:', response.status);
-                    return;
-                }
-
-                const usertypes = await response.json();
-
-                if (!Array.isArray(usertypes)) {
-                    console.error('Invalid user types response:', usertypes);
-                    return;
-                }
-
-                userRoles = usertypes;
-                const select = document.getElementById("addMemberUserType");
-                if (select) {
-                    select.innerHTML = '<option value="">Select user type</option>' +
-                        usertypes.map(ut => `<option value="${ut.id}">${ut.user_role}</option>`).join('');
-                }
-
-                // Display user types in settings tab
-                const display = document.getElementById("userTypesDisplay");
-                if (display) {
-                    if (userRoles.length > 0) {
-                        display.innerHTML = userRoles.map(role =>
-                            `<div style="padding: 10px; background: white; border-radius: 8px; margin-bottom: 10px;">
-                                <strong>${role.user_role}</strong>
-                                <div style="color: #718096; font-size: 0.85rem;">ID: ${role.id} | Created: ${role.created_at ? new Date(role.created_at).toLocaleDateString() : 'N/A'}</div>
-                            </div>`
-                        ).join('');
-                    } else {
-                        display.innerHTML = '<div class="empty-state" style="padding: 20px"><i class="fas fa-users" style="font-size: 2rem; opacity: 0.5"></i><p style="margin-top: 10px">No custom user types created yet</p></div>';
-                    }
-                }
-            } catch (error) {
-                console.error("[v0] Error loading user types:", error);
-            }
-        }
-
-        async function loadTeamMembers() {
-            try {
-                const token = localStorage.getItem("employee_token");
-                const response = await fetch(`${API_BASE}/users`, {
-                    headers: {
-                        'Authorization': `Bearer ${token}`
-                    }
-                });
-
-                if (!response.ok) {
-                    console.error('Failed to load team members:', response.status);
-                    return;
-                }
-
-                const users = await response.json();
-
-                if (!Array.isArray(users)) {
-                    console.error('Invalid users response:', users);
-                    return;
-                }
-
-                allEmployees = users;
-                renderTeamMembersList();
-            } catch (error) {
-                console.error("[v0] Error loading team members:", error);
-            }
-        }
-
-        function renderTeamMembersList() {
-            const container = document.getElementById("teamMembersList");
-            if (!container) return;
-            container.innerHTML = "";
-            const memberList = document.createElement("div");
-            memberList.className = "team-member-list";
-            allEmployees.forEach((emp) => {
-                const checkboxDiv = document.createElement("div");
-                checkboxDiv.className = "team-member-checkbox";
-                checkboxDiv.innerHTML = `<input type="checkbox" id="member-${emp.id}" value="${emp.id}" onchange="updateTeamMemberSelection()"><div class="team-member-info"><div class="team-member-name">${emp.username}</div><div class="team-member-email">${emp.user_role || "N/A"}</div></div>`;
-                memberList.appendChild(checkboxDiv);
-            });
-            container.appendChild(memberList);
-        }
-
-        function updateTeamMemberSelection() {
-            selectedTeamMembers = [];
-            document
-                .querySelectorAll(
-                    '.team-member-checkbox input[type="checkbox"]:checked',
-                )
-                .forEach((checkbox) => {
-                    selectedTeamMembers.push(parseInt(checkbox.value));
-                });
-        }
-
-        async function loadDashboardData() {
-            const token = localStorage.getItem("employee_token");
-            const headers = { Authorization: `Bearer ${token}` };
-            try {
-                const [
-                    statsRes,
-                    projectsRes,
-                    tasksRes,
-                    milestonesRes,
-                    docsRes,
-                ] = await Promise.all([
-                    fetch(`${API_BASE}/employee/dashboard/stats`, {
-                        method: "GET",
-                        headers,
-                    }),
-                    fetch(`${API_BASE}/employee/projects`, {
-                        method: "GET",
-                        headers,
-                    }),
-                    fetch(`${API_BASE}/employee/tasks`, {
-                        method: "GET",
-                        headers,
-                    }),
-                    fetch(`${API_BASE}/employee/milestones`, {
-                        method: "GET",
-                        headers,
-                    }),
-                    fetch(`${API_BASE}/employee/documents`, {
-                        method: "GET",
-                        headers,
-                    }),
-                ]);
-                if (statsRes.ok) {
-                    const stats = await statsRes.json();
-                    document.getElementById("statProjects").textContent =
-                        stats.total_projects || 0;
-                    document.getElementById("statTasks").textContent =
-                        stats.total_tasks || 0;
-                    document.getElementById("statCompleted").textContent =
-                        stats.completed_tasks || 0;
-                    document.getElementById("statMilestones").textContent =
-                        stats.total_milestones || 0;
-                }
-                if (projectsRes.ok) {
-                    projects = await projectsRes.json();
-                    renderProjects(projects);
-                    renderRecentProjects(projects);
-                    populateProjectDropdowns(projects);
-                } else {
-                    document.getElementById("noProjects").style.display =
-                        "block";
-                }
-                if (tasksRes.ok) {
-                    tasks = await tasksRes.json();
-                    renderTasks(tasks);
-                }
-                if (milestonesRes.ok) {
-                    milestones = await milestonesRes.json();
-                    renderMilestones(milestones);
-                }
-                if (docsRes.ok) {
-                    documents = await docsRes.json();
-                    renderDocuments(documents);
-                }
-            } catch (error) {
-                console.error("[v0] Error loading dashboard data:", error);
-                showAlert("Error loading dashboard data", "error");
-            }
-        }
-
-        async function loadProfileStats() {
-            try {
-                const token = localStorage.getItem('employee_token');
-                const response = await fetch(`${API_BASE}/employee/profile/stats`, {
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                    },
-                });
-
-                if (response.ok) {
-                    const stats = await response.json();
-
-                    // Update profile stats
-                    document.getElementById('profileStatProjects').textContent = stats.total_projects || 0;
-                    document.getElementById('profileStatCompleted').textContent = stats.completed_tasks || 0;
-                    document.getElementById('profileStatPending').textContent = stats.pending_tasks || 0;
-                    document.getElementById('profileStatMilestones').textContent = stats.total_milestones || 0;
-
-                    // Also update overview stats if needed
-                    document.getElementById('statProjects').textContent = stats.total_projects || 0;
-                    document.getElementById('statTasks').textContent = (stats.completed_tasks || 0) + (stats.pending_tasks || 0);
-                    document.getElementById('statCompleted').textContent = stats.completed_tasks || 0;
-                    document.getElementById('statMilestones').textContent = stats.total_milestones || 0;
-                }
-            } catch (error) {
-                console.error('Error loading profile stats:', error);
-            }
-        }
-
-        async function loadRecentActivities() {
-            const token = localStorage.getItem("employee_token");
-            const headers = { Authorization: `Bearer ${token}` };
-            try {
-                const res = await fetch(`${API_BASE}/employee/activities`, {
-                    method: "GET",
-                    headers,
-                });
-                if (res.ok) {
-                    const activities = await res.json();
-                    renderActivities(activities);
-                }
-            } catch (error) {
-                console.error("[v0] Error loading activities:", error);
-            }
-        }
-
-        function renderActivities(activities) {
-            const container = document.getElementById("activitiesList");
-            const noActivity = document.getElementById("noActivities");
-            if (!activities || activities.length === 0) {
-                if (container) container.innerHTML = "";
-                if (noActivity) noActivity.style.display = "block";
-                return;
-            }
-            if (noActivity) noActivity.style.display = "none";
-            if (!container) return;
-            container.innerHTML = activities
-                .map((activity) => {
-                    let content = `<div class="item-card"><div class="item-content"><h5><i class="fas fa-history"></i> ${activity.description}</h5><p><strong>Activity:</strong> ${activity.activity_type.replace(/_/g, " ").toUpperCase()}</p>`;
-                    if (
-                        activity.activity_type === "project_created" &&
-                        activity.project_title
-                    ) {
-                        content += `<div style="margin-top: 15px; padding: 15px; background: #f8f9fa; border-radius: 8px; border-left: 4px solid #667eea;"><h6 style="color: #2d3748; margin-bottom: 10px;"><i class="fas fa-project-diagram"></i> Project Details</h6><p><strong>Title:</strong> ${activity.project_title}</p>${activity.project_description ? `<p><strong>Description:</strong> ${activity.project_description}</p>` : ""}${activity.project_deadline ? `<p><strong>Deadline:</strong> ${new Date(activity.project_deadline).toLocaleDateString()}</p>` : ""}</div>`;
-                    }
-                    content += `<div class="item-meta"><span><i class="fas fa-user"></i> ${activity.username || "Unknown"}</span><span><i class="fas fa-calendar"></i> ${new Date(activity.created_at).toLocaleDateString()}</span></div></div></div>`;
-                    return content;
-                })
-                .join("");
-        }
-
-        function renderProjects(projects) {
-            const container = document.getElementById("projectsList");
-            if (!container) return;
-
-            container.innerHTML = "";
-            if (projects.length === 0) {
-                document.getElementById("noProjects").style.display =
-                    "block";
-                return;
-            }
-            document.getElementById("noProjects").style.display = "none";
-            projects.forEach((project) => {
-                const card = document.createElement("div");
-                card.className = "item-card";
-                const statusBadge =
-                    project.status === "Completed"
-                        ? "badge-success"
-                        : project.status === "In Progress"
-                            ? "badge-info"
-                            : "badge-warning";
-                const isCompleted = project.status === "Completed";
-                card.innerHTML = `<div class="item-content"><h5>${project.title}</h5><p>${project.description || "No description"}</p><div class="item-meta"><span><i class="fas fa-user"></i> ${project.creator_name || "Unknown"}</span><span><i class="fas fa-calendar"></i> ${new Date(project.created_at).toLocaleDateString()}</span><span class="badge ${statusBadge}">${project.status}</span></div></div><div class="item-actions">${!isCompleted ? `<button class="btn btn-success btn-sm" onclick="completeProject(${project.id})"><i class="fas fa-check"></i> Complete</button>` : `<span style="color: #48bb78; font-weight: 600"><i class="fas fa-check-circle"></i> Completed</span>`}</div>`;
-                container.appendChild(card);
-            });
-        }
-
-        function renderRecentProjects(projects) {
-            const container = document.getElementById("recentActivity");
-            const noActivity = document.getElementById("noActivity");
-            if (!projects || projects.length === 0) {
-                if (container) container.innerHTML = "";
-                if (noActivity) noActivity.style.display = "block";
-                return;
-            }
-            if (noActivity) noActivity.style.display = "none";
-            if (!container) return;
-            container.innerHTML = projects
-                .slice(0, 3)
-                .map(
-                    (project) =>
-                        `<div class="item-card"><div class="item-content"><h5>${project.title}</h5><p>${project.description || "No description"}</p><div class="item-meta"><span><i class="fas fa-user"></i> ${project.creator_name || "Unknown"}</span><span><i class="fas fa-calendar"></i> ${new Date(project.created_at).toLocaleDateString()}</span></div></div></div>`,
-                )
-                .join("");
-        }
-
-        function renderTasks(tasks) {
-            const container = document.getElementById("tasksList");
-            if (!container) return;
-
-            container.innerHTML = "";
-            if (tasks.length === 0) {
-                document.getElementById("noTasks").style.display = "block";
-                return;
-            }
-            document.getElementById("noTasks").style.display = "none";
-            tasks.forEach((task) => {
-                const card = document.createElement("div");
-                card.className = "item-card";
-                const statusBadge =
-                    task.status === "Completed"
-                        ? "badge-success"
-                        : task.status === "In Progress"
-                            ? "badge-info"
-                            : "badge-warning";
-                const priorityBadge =
-                    task.priority === "High"
-                        ? "badge-danger"
-                        : task.priority === "Medium"
-                            ? "badge-warning"
-                            : "badge-info";
-                card.innerHTML = `<div class="item-content"><h5>${task.title}</h5><p>${task.description || "No description"}</p><div class="item-meta"><span><i class="fas fa-folder"></i> ${task.project_name || "No Project"}</span><span class="badge ${statusBadge}">${task.status}</span><span class="badge ${priorityBadge}">${task.priority}</span></div></div><div class="item-actions"><button class="btn btn-success btn-sm" onclick="completeTask(${task.id})" ${userPermissions["task"]?.["Edit"] ? "" : "disabled"}><i class="fas fa-check"></i> Complete</button></div>`;
-                container.appendChild(card);
-            });
-        }
-
-        function renderMilestones(milestones) {
-            const container = document.getElementById("milestonesList");
-            if (!container) return;
-
-            container.innerHTML = "";
-            if (milestones.length === 0) {
-                document.getElementById("noMilestones").style.display =
-                    "block";
-                return;
-            }
-            document.getElementById("noMilestones").style.display = "none";
-            milestones.forEach((milestone) => {
-                const card = document.createElement("div");
-                card.className = "item-card";
-                const statusBadge =
-                    milestone.status === "Completed"
-                        ? "badge-success"
-                        : "badge-warning";
-                card.innerHTML = `<div class="item-content"><h5>${milestone.title}</h5><p>${milestone.description || "No description"}</p><div class="item-meta"><span><i class="fas fa-folder"></i> ${milestone.project_title || "No Project"}</span><span><i class="fas fa-calendar"></i> ${milestone.due_date ? new Date(milestone.due_date).toLocaleDateString() : "No deadline"}</span><span class="badge ${statusBadge}">${milestone.status}</span></div></div><div class="item-actions"><button class="btn btn-success btn-sm" onclick="completeMilestone(${milestone.id})" ${userPermissions["Proj"]?.["Edit"] ? "" : "disabled"}><i class="fas fa-check"></i> Complete</button></div>`;
-                container.appendChild(card);
-            });
-        }
-
-        function renderDocuments(docs) {
-            const container = document.getElementById("documentsList");
-            if (!container) return;
-
-            container.innerHTML = "";
-            if (docs.length === 0) {
-                document.getElementById("noDocuments").style.display = "block";
-                return;
-            }
-            document.getElementById("noDocuments").style.display = "none";
-
-            docs.forEach((doc) => {
-                const card = document.createElement("div");
-                card.className = "item-card";
-
-                const canDownload = userPermissions["Proj_doc"]?.["Download"] === true;
-                const canDelete = userPermissions["Proj_doc"]?.["Delete"] === true;
-
-                card.innerHTML = `
-                    <div class="item-content">
-                        <h5><i class="fas fa-file"></i> ${doc.original_filename}</h5>
-                        <div class="item-meta">
-                            <span><i class="fas fa-user"></i> ${doc.uploaded_by || "Unknown"}</span>
-                            <span><i class="fas fa-calendar"></i> ${new Date(doc.uploaded_at).toLocaleDateString()}</span>
-                        </div>
-                    </div>
-                    <div class="item-actions">
-                        <button class="btn btn-secondary btn-sm download-doc-btn" data-doc-id="${doc.id}" ${!canDownload ? "disabled title='You do not have permission to download documents'" : "title='Download document'"}><i class="fas fa-download"></i> Download</button>
-                        <button class="btn btn-danger btn-sm delete-doc-btn" data-doc-id="${doc.id}" ${!canDelete ? "disabled title='You do not have permission to delete documents'" : "title='Delete document'"}><i class="fas fa-trash"></i> Delete</button>
-                    </div>
-                `;
-                container.appendChild(card);
-            });
-
-            setupDocumentButtonListeners();
-        }
-
-        function setupDocumentButtonListeners() {
-            const container = document.getElementById("documentsList");
-            if (!container) return;
-
-            // Event delegation for download buttons
-            container.addEventListener("click", (e) => {
-                if (e.target.closest(".download-doc-btn")) {
-                    const btn = e.target.closest(".download-doc-btn");
-                    if (btn.disabled) {
-                        console.log("[v0] Download button is disabled due to insufficient permissions");
-                        showAlert("You do not have permission to download documents.", "error");
-                        return;
-                    }
-                    const docId = parseInt(btn.getAttribute("data-doc-id"), 10);
-                    if (!isNaN(docId)) {
-                        downloadDocument(docId);
-                    }
-                }
-            });
-
-            // Event delegation for delete buttons
-            container.addEventListener("click", (e) => {
-                if (e.target.closest(".delete-doc-btn")) {
-                    const btn = e.target.closest(".delete-doc-btn");
-                    if (btn.disabled) {
-                        console.log("[v0] Delete button is disabled due to insufficient permissions");
-                        showAlert("You do not have permission to delete documents.", "error");
-                        return;
-                    }
-                    const docId = parseInt(btn.getAttribute("data-doc-id"), 10);
-                    if (!isNaN(docId)) {
-                        deleteDocument(docId);
-                    }
-                }
-            });
-        }
-
-
-        function populateProjectDropdowns(projects) {
-            const selects = [
-                document.getElementById("taskProject"),
-                document.getElementById("milestoneProject"),
-                document.getElementById("documentProject"),
-            ];
-            selects.forEach((select) => {
-                if (select) {
-                    select.innerHTML =
-                        '<option value="">Select a project</option>' +
-                        projects
-                            .map(
-                                (p) =>
-                                    `<option value="${p.id}">${p.title}</option>`,
-                            )
-                            .join("");
-                }
-            });
-            const assigneeSelect = document.getElementById("taskAssignee");
-            if (assigneeSelect) {
-                assigneeSelect.innerHTML =
-                    '<option value="">Unassigned</option>' +
-                    allEmployees
-                        .map(
-                            (e) =>
-                                `<option value="${e.id}">${e.username}</option>`,
-                        )
-                        .join("");
-            }
-        }
-
-        function closeModal(modalId) {
-            const modal = document.getElementById(modalId);
-            if (modal) {
-                modal.classList.remove("active");
-            }
-            if (modalId === "createProjectModal") {
-                newTeamMembers = [];
-                const display = document.getElementById(
-                    "newTeamMembersDisplay",
-                );
-                if (display) display.style.display = "none";
-            }
-        }
-
-        function openCreateProjectModal() {
-            if (
-                !userPermissions["Proj"] ||
-                !userPermissions["Proj"]["Add"]
-            ) {
-                showAlert(
-                    "You do not have permission to create projects",
-                    "error",
-                );
-                return;
-            }
-            newTeamMembers = [];
-            selectedTeamMembers = [];
-            const display = document.getElementById(
-                "newTeamMembersDisplay",
+from flask import Flask, jsonify, request, render_template, session, g, send_from_directory
+from flask_cors import CORS
+from functools import wraps
+from werkzeug.security import generate_password_hash, check_password_hash
+from werkzeug.utils import secure_filename
+from PIL import Image
+import secrets
+import json
+import re
+import os
+import io
+from datetime import datetime, timezone, timedelta
+import logging
+import psycopg2
+from psycopg2.extras import RealDictCursor
+from urllib.parse import urlparse
+from psycopg2 import errors
+
+# Setup logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+app = Flask(__name__)
+CORS(app)
+app.secret_key = secrets.token_hex(32)
+
+
+
+valid_tokens = {}
+
+ADMIN_EMAIL = os.environ.get('ADMIN_EMAIL', 'anubha@gmail.com').lower()
+ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', 'Anubha@#46')
+ADMIN_PIN = os.environ.get('ADMIN_PIN', '468101')
+ADMIN_OTP = os.environ.get('ADMIN_OTP', '654321')
+
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+MAX_CONTENT_LENGTH = 10 * 1024 * 1024  # 10MB max
+UPLOAD_FOLDER = os.path.join(os.path.dirname(__file__), 'uploads', 'profiles')
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+app.config['MAX_CONTENT_LENGTH'] = MAX_CONTENT_LENGTH
+
+def get_db_connection():
+    return psycopg2.connect(
+        host=os.getenv("PGHOST"),
+        database=os.getenv("PGDATABASE"),
+        user=os.getenv("PGUSER"),
+        password=os.getenv("PGPASSWORD"),
+        port=int(os.getenv("PGPORT", 5432)),
+        cursor_factory=RealDictCursor
+    )
+
+def init_db():
+    conn = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        # Drop existing tables if they exist
+        cursor.execute("DROP TABLE IF EXISTS documents CASCADE")
+        cursor.execute("DROP TABLE IF EXISTS document_versions CASCADE")
+        cursor.execute("DROP TABLE IF EXISTS document_comments CASCADE")
+        cursor.execute("DROP TABLE IF EXISTS comments CASCADE")
+        cursor.execute("DROP TABLE IF EXISTS tasks CASCADE")
+        cursor.execute("DROP TABLE IF EXISTS milestones CASCADE")
+        cursor.execute("DROP TABLE IF EXISTS project_assignments CASCADE")
+        cursor.execute("DROP TABLE IF EXISTS projects CASCADE")
+        cursor.execute("DROP TABLE IF EXISTS user_permissions CASCADE")
+        cursor.execute("DROP TABLE IF EXISTS users CASCADE")
+        cursor.execute("DROP TABLE IF EXISTS usertypes CASCADE")
+        cursor.execute("DROP TABLE IF EXISTS activities CASCADE")
+        cursor.execute("DROP TABLE IF EXISTS progress_history CASCADE")
+        cursor.execute("DROP TABLE IF EXISTS user_skills CASCADE")
+
+    
+        cursor.execute('''
+            CREATE TABLE usertypes (
+               id SERIAL PRIMARY KEY,
+                user_role TEXT NOT NULL UNIQUE,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+        ''')
+
+        cursor.execute('''
+            CREATE TABLE users (
+                id SERIAL PRIMARY KEY,
+                username TEXT NOT NULL UNIQUE,
+                email TEXT NOT NULL UNIQUE,
+                password TEXT NOT NULL,
+                user_type_id INTEGER NOT NULL,
+                granted BOOLEAN DEFAULT FALSE,
+                phone TEXT,
+                department TEXT,
+                bio TEXT,
+                avatar_url TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_type_id) REFERENCES usertypes(id)
             );
-            if (display) display.style.display = "none";
-            document
-                .querySelectorAll(
-                    '.team-member-checkbox input[type="checkbox"]',
+        ''')
+
+
+        cursor.execute('''
+            CREATE TABLE user_permissions (
+             id SERIAL PRIMARY KEY,
+                user_id INTEGER NOT NULL,
+                module TEXT NOT NULL,
+                action TEXT NOT NULL,
+                granted BOOLEAN DEFAULT FALSE,
+                FOREIGN KEY (user_id) REFERENCES users(id),
+                UNIQUE(user_id, module, action)
+            )
+        ''')
+
+        cursor.execute('''CREATE TABLE projects (
+            id SERIAL PRIMARY KEY,
+            title TEXT NOT NULL,
+            description TEXT,
+            status TEXT DEFAULT 'In Progress',
+            progress INTEGER DEFAULT 0,
+            deadline DATE,
+            reporting_time TIME DEFAULT '09:00',
+            created_by_id INTEGER NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            completed_at TIMESTAMP,
+            FOREIGN KEY (created_by_id) REFERENCES users(id)
+        );''')
+
+        cursor.execute('''CREATE TABLE tasks (
+            id SERIAL PRIMARY KEY,
+            title TEXT NOT NULL,
+            description TEXT,
+            status TEXT DEFAULT 'Pending',
+            priority TEXT DEFAULT 'Medium',
+            deadline DATE,
+            project_id INTEGER NOT NULL,
+            created_by_id INTEGER NOT NULL,
+            assigned_to_id INTEGER,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            completed_at TIMESTAMP,
+            approval_status TEXT DEFAULT 'pending',
+            weightage INTEGER DEFAULT 1,
+            FOREIGN KEY (project_id) REFERENCES projects(id),
+            FOREIGN KEY (created_by_id) REFERENCES users(id),
+            FOREIGN KEY (assigned_to_id) REFERENCES users(id)
+        )''')
+
+        cursor.execute('''CREATE TABLE comments (
+            id SERIAL PRIMARY KEY,
+            content TEXT NOT NULL,
+            author_id INTEGER NOT NULL,
+            project_id INTEGER,
+            task_id INTEGER,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (author_id) REFERENCES users(id),
+            FOREIGN KEY (project_id) REFERENCES projects(id),
+            FOREIGN KEY (task_id) REFERENCES tasks(id)
+        )''')
+
+        cursor.execute('''CREATE TABLE documents (
+           id SERIAL PRIMARY KEY,
+            filename TEXT NOT NULL,
+            original_filename TEXT NOT NULL,
+            file_size INTEGER,
+            uploaded_by_id INTEGER NOT NULL,
+            project_id INTEGER,
+            task_id INTEGER,
+            uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (uploaded_by_id) REFERENCES users(id),
+            FOREIGN KEY (project_id) REFERENCES projects(id),
+            FOREIGN KEY (task_id) REFERENCES tasks(id)
+        )''')
+
+        cursor.execute('''CREATE TABLE milestones (
+           id SERIAL PRIMARY KEY,
+            title TEXT NOT NULL,
+            description TEXT,
+            due_date DATE,
+            status TEXT DEFAULT 'Pending',
+            project_id INTEGER NOT NULL,
+            weightage INTEGER DEFAULT 1,
+            created_by_id INTEGER NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (project_id) REFERENCES projects(id),
+            FOREIGN KEY (created_by_id) REFERENCES users(id)
+        )''')
+
+        cursor.execute('''CREATE TABLE project_assignments (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL,
+        project_id INTEGER NOT NULL,
+        FOREIGN KEY (user_id) REFERENCES users(id),
+        FOREIGN KEY (project_id) REFERENCES projects(id),
+        UNIQUE(user_id, project_id)
+    )''')
+
+        cursor.execute('''
+        CREATE TABLE IF NOT EXISTS progress_history (
+             id SERIAL PRIMARY KEY,
+            project_id INTEGER NOT NULL,
+            progress_percentage INTEGER,
+            tasks_completed INTEGER,
+            total_tasks INTEGER,
+            milestones_completed INTEGER,
+            total_milestones INTEGER,
+            recorded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (project_id) REFERENCES projects(id)
+        )
+    ''')
+
+        cursor.execute('''
+        CREATE INDEX IF NOT EXISTS idx_progress_project_date 
+        ON progress_history(project_id, recorded_at)
+    ''')
+
+        cursor.execute('''CREATE TABLE activities (
+             id SERIAL PRIMARY KEY,
+            user_id INTEGER NOT NULL,
+            activity_type TEXT NOT NULL,
+            description TEXT NOT NULL,
+            project_id INTEGER,
+            task_id INTEGER,
+            milestone_id INTEGER,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id),
+            FOREIGN KEY (project_id) REFERENCES projects(id),
+            FOREIGN KEY (task_id) REFERENCES tasks(id),
+            FOREIGN KEY (milestone_id) REFERENCES milestones(id)
+        )''')
+
+        cursor.execute('''CREATE TABLE user_skills (
+            id SERIAL PRIMARY KEY,
+            user_id INTEGER NOT NULL,
+            skill_name TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id),
+            UNIQUE(user_id, skill_name)
+        )''')
+
+        # Insert default user types
+        cursor.execute("INSERT INTO usertypes (user_role) VALUES ('Administrator')")
+        cursor.execute("INSERT INTO usertypes (user_role) VALUES ('Employee')")
+
+        conn.commit()
+        print("[OK] Database initialized successfully!")
+
+    except Exception as e:
+        print(f"[ERROR] Database initialization failed: {e}")
+        if conn:
+            conn.rollback()
+    finally:
+        if conn:
+            conn.close()
+    
+
+def migrate_db():
+    """Add new columns without wiping existing data"""
+
+    # Safety check for Railway
+    if os.getenv("RUN_DB_MIGRATION", "false").lower() != "true":
+        print("DB migration skipped (RUN_DB_MIGRATION != true)")
+        return
+
+    conn = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        # List of columns to add
+        columns_to_add = [
+            ("users", "phone", "TEXT"),
+            ("users", "department", "TEXT"),
+            ("users", "bio", "TEXT"),
+            ("users", "avatar_url", "TEXT"),
+            ("projects", "completed_at", "TIMESTAMP"),
+            ("projects", "reporting_time", "TIME"),
+        ]
+
+        for table, column, col_type in columns_to_add:
+            try:
+                cursor.execute(
+                    f"ALTER TABLE {table} ADD COLUMN {column} {col_type}"
                 )
-                .forEach((checkbox) => {
-                    checkbox.checked = false;
-                });
-
-            // Set today's date for creation date and min for deadline
-            const today = new Date().toISOString().split('T')[0];
-            document.getElementById('projectCreationDate').value = today;
-            document.getElementById('projectDeadline').min = today;
-
-            const modal = document.getElementById("createProjectModal");
-            if (modal) modal.classList.add("active");
-        }
-
-        function openCreateTaskModal() {
-            document
-                .getElementById("createTaskModal")
-                .classList.add("active");
-        }
-        function openCreateMilestoneModal() {
-            document
-                .getElementById("createMilestoneModal")
-                .classList.add("active");
-        }
-        function openUploadDocumentModal() {
-            document
-                .getElementById("uploadDocumentModal")
-                .classList.add("active");
-        }
-
-        function openAddTeamMemberModal() {
-            const modal = document.getElementById("addTeamMemberModal");
-            const select = document.getElementById("addMemberUserType");
-            if (select) {
-                select.innerHTML =
-                    '<option value="">Select user type</option>' +
-                    userRoles
-                        .map(
-                            (role) =>
-                                `<option value="${role.id}">${role.user_role}</option>`,
-                        )
-                        .join("");
-            }
-            if (modal) modal.classList.add("active");
-        }
-
-        async function addTeamMemberToProject(event) {
-            event.preventDefault();
-            const username = document
-                .getElementById("addMemberUsername")
-                .value.trim();
-            const email = document
-                .getElementById("addMemberEmail")
-                .value.trim();
-            const password =
-                document.getElementById("addMemberPassword").value;
-            const confirmPassword = document.getElementById(
-                "addMemberConfirmPassword",
-            ).value;
-            const userTypeId =
-                document.getElementById("addMemberUserType").value;
-
-            if (
-                !username ||
-                !email ||
-                !password ||
-                !confirmPassword ||
-                !userTypeId
-            ) {
-                showAlert("All fields are required", "error");
-                return;
-            }
-
-            if (
-                !/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(email)
-            ) {
-                showAlert("Invalid email format", "error");
-                return;
-            }
-
-            if (password !== confirmPassword) {
-                showAlert("Passwords do not match", "error");
-                return;
-            }
-
-            if (password.length < 8) {
-                showAlert(
-                    "Password must be at least 8 characters",
-                    "error",
-                );
-                return;
-            }
-
-            const specialChars = (password.match(/[!@#$%^&*]/g) || [])
-                .length;
-            if (specialChars < 2) {
-                showAlert(
-                    "Password must contain at least 2 special characters (!@#$%^&*)",
-                    "error",
-                );
-                return;
-            }
-
-            try {
-                const response = await fetch(`${API_BASE}/users`, {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        Authorization: `Bearer ${localStorage.getItem("employee_token")}`,
-                    },
-                    body: JSON.stringify({
-                        username,
-                        email,
-                        password,
-                        confirm_password: confirmPassword,
-                        user_type_id: parseInt(userTypeId),
-                    }),
-                });
-
-                const data = await response.json();
-                if (!response.ok) {
-                    showAlert(
-                        data.error || "Failed to create team member",
-                        "error",
-                    );
-                    return;
-                }
-
-                const newMember = data;
-                selectedTeamMembers.push(newMember.id);
-                await loadTeamMembers();
-                showAlert("Team member created successfully!", "success");
-                closeModal("addTeamMemberModal");
-                document.getElementById("addMemberUsername").value = "";
-                document.getElementById("addMemberEmail").value = "";
-                document.getElementById("addMemberPassword").value = "";
-                document.getElementById("addMemberConfirmPassword").value =
-                    "";
-                document.getElementById("addMemberUserType").value = "";
-            } catch (error) {
-                console.error("Error adding team member:", error);
-                showAlert("Error creating team member", "error");
-            }
-        }
-
-        function showAlert(message, type) {
-            const container = document.getElementById("alertContainer");
-            const alertDiv = document.createElement("div");
-            alertDiv.className = `alert alert-${type}`;
-            alertDiv.innerHTML = `${message}<button onclick="this.parentElement.remove()" style="background:none;border:none;cursor:pointer;font-size:1.2rem;color:inherit">&times;</button>`;
-            container.appendChild(alertDiv);
-            setTimeout(() => {
-                if (alertDiv.parentElement) {
-                    alertDiv.remove();
-                }
-            }, 5000);
-        }
-
-        async function createProject(event) {
-            event.preventDefault();
-
-            const title = document.getElementById('projectTitle').value.trim();
-            const description = document.getElementById('projectDescription').value.trim();
-            const deadline = document.getElementById('projectDeadline').value;
-            const reportingTime = document.getElementById('projectReportingTime').value;
-
-            if (!title || !deadline || !reportingTime) {
-                showAlert('Project title, deadline, and reporting time are required', 'error');
-                return;
-            }
-
-            // Show status indicator
-            const statusDiv = document.getElementById('newProjectStatus');
-            const statusMsg = document.getElementById('statusMessage');
-            statusDiv.style.display = 'block';
-            statusMsg.textContent = 'Creating project...';
-
-            try {
-                const token = localStorage.getItem('employee_token');
-                const response = await fetch(`${API_BASE}/employee/projects`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                    },
-                    body: JSON.stringify({
-                        title,
-                        description,
-                        deadline,
-                        reporting_time: reportingTime,
-                        team_members: selectedTeamMembers
-                    })
-                });
-
-                const data = await response.json();
-
-                if (!response.ok) {
-                    statusMsg.textContent = 'Failed to create project';
-                    statusDiv.className = 'alert alert-error';
-                    setTimeout(() => statusDiv.style.display = 'none', 3000);
-                    showAlert(data.error || 'Failed to create project', 'error');
-                    return;
-                }
-
-                statusMsg.textContent = 'Project created successfully!';
-                statusDiv.className = 'alert alert-success';
-
-                // Close modal after success
-                setTimeout(() => {
-                    closeModal('createProjectModal');
-                    statusDiv.style.display = 'none';
-                    statusDiv.className = 'alert alert-info';
-
-                    // Reset form
-                    document.getElementById('projectTitle').value = '';
-                    document.getElementById('projectDescription').value = '';
-                    document.getElementById('projectDeadline').value = '';
-                    document.getElementById('projectReportingTime').value = '09:00';
-
-                    // Refresh data
-                    loadDashboardData();
-                    updateRealTimeProjectStatus();
-
-                    showAlert('Project created successfully!', 'success');
-                }, 1500);
-
-            } catch (error) {
-                statusMsg.textContent = 'Error creating project';
-                statusDiv.className = 'alert alert-error';
-                setTimeout(() => statusDiv.style.display = 'none', 3000);
-                showAlert('Error creating project', 'error');
-            }
-        }
-
-        async function createTask(event) {
-            event.preventDefault();
-            const title = document.getElementById("taskTitle").value.trim();
-            const description = document
-                .getElementById("taskDescription")
-                .value.trim();
-            const projectId = document.getElementById("taskProject").value;
-            const assigneeId =
-                document.getElementById("taskAssignee").value;
-            const priority = document.getElementById("taskPriority").value;
-            const deadline = document.getElementById("taskDeadline").value;
-            if (!title || !projectId) {
-                showAlert("Task title and project are required", "error");
-                return;
-            }
-            try {
-                const response = await fetch(`${API_BASE}/employee/tasks`, {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        Authorization: `Bearer ${localStorage.getItem("employee_token")}`,
-                    },
-                    body: JSON.stringify({
-                        title,
-                        description,
-                        project_id: parseInt(projectId),
-                        assigned_to_id: assigneeId
-                            ? parseInt(assigneeId)
-                            : null,
-                        priority,
-                        deadline: deadline || null,
-                    }),
-                });
-                const data = await response.json();
-                if (!response.ok) {
-                    showAlert(
-                        data.error || "Failed to create task",
-                        "error",
-                    );
-                    return;
-                }
-                showAlert("Task created successfully!", "success");
-                closeModal("createTaskModal");
-                loadDashboardData();
-            } catch (error) {
-                showAlert("Error creating task", "error");
-            }
-        }
-
-        async function createMilestone(event) {
-            event.preventDefault();
-            const title = document
-                .getElementById("milestoneTitle")
-                .value.trim();
-            const description = document
-                .getElementById("milestoneDescription")
-                .value.trim();
-            const projectId =
-                document.getElementById("milestoneProject").value;
-            const dueDate =
-                document.getElementById("milestoneDueDate").value;
-            if (!title || !projectId) {
-                showAlert(
-                    "Milestone title and project are required",
-                    "error",
-                );
-                return;
-            }
-            try {
-                const response = await fetch(
-                    `${API_BASE}/employee/milestones`,
-                    {
-                        method: "POST",
-                        headers: {
-                            "Content-Type": "application/json",
-                            Authorization: `Bearer ${localStorage.getItem("employee_token")}`,
-                        },
-                        body: JSON.stringify({
-                            title,
-                            description,
-                            project_id: parseInt(projectId),
-                            due_date: dueDate || null,
-                        }),
-                    },
-                );
-                const data = await response.json();
-                if (!response.ok) {
-                    showAlert(
-                        data.error || "Failed to create milestone",
-                        "error",
-                    );
-                    return;
-                }
-                showAlert("Milestone created successfully!", "success");
-                closeModal("createMilestoneModal");
-                loadDashboardData();
-            } catch (error) {
-                showAlert("Error creating milestone", "error");
-            }
-        }
-
-        async function uploadDocument(event) {
-            event.preventDefault();
-            const fileInput = document.getElementById("documentFile");
-            const projectId =
-                document.getElementById("documentProject").value;
-            if (!fileInput.files[0] || !projectId) {
-                showAlert("File and project are required", "error");
-                return;
-            }
-            const formData = new FormData();
-            formData.append("file", fileInput.files[0]);
-            formData.append("project_id", projectId);
-            try {
-                const response = await fetch(
-                    `${API_BASE}/employee/documents/upload`,
-                    {
-                        method: "POST",
-                        headers: {
-                            Authorization: `Bearer ${localStorage.getItem("employee_token")}`,
-                        },
-                        body: formData,
-                    },
-                );
-                const data = await response.json();
-                if (!response.ok) {
-                    showAlert(
-                        data.error || "Failed to upload document",
-                        "error",
-                    );
-                    return;
-                }
-                showAlert("Document uploaded successfully!", "success");
-                closeModal("uploadDocumentModal");
-                loadDashboardData();
-            } catch (error) {
-                showAlert("Error uploading document", "error");
-            }
-        }
-
-        async function downloadDocument(docId) {
-            // Input validation - ensure docId is a valid number
-            if (!docId) {
-                console.error("[v0] downloadDocument: docId is missing");
-                showAlert("Invalid document ID. Please refresh and try again.", "error");
-                return;
-            }
-
-            // Convert string to number if needed
-            const numId = parseInt(docId, 10);
-            if (isNaN(numId) || numId <= 0) {
-                console.error("[v0] downloadDocument: Invalid docId - not a valid positive number", docId);
-                showAlert("Invalid document ID. Please refresh and try again.", "error");
-                return;
-            }
-            docId = numId;
-
-            if (!confirm("Download this document?")) {
-                console.log("[v0] Download cancelled by user");
-                return;
-            }
-
-            try {
-                const token = localStorage.getItem("employee_token");
-                if (!token) {
-                    console.error("[v0] downloadDocument: No authentication token found");
-                    showAlert("Authentication required. Please log in.", "error");
-                    return;
-                }
-
-                console.log("[v0] Starting document download for ID:", docId);
-
-                const response = await fetch(`${API_BASE}/employee/documents/${docId}/download`, {
-                    method: "GET",
-                    headers: {
-                        "Authorization": `Bearer ${token}`
-                    }
-                });
-
-                console.log("[v0] Download response status:", response.status);
-
-                if (!response.ok) {
-                    let errorMessage = "Failed to download document";
-
-                    if (response.status === 404) {
-                        errorMessage = "Document not found. It may have been deleted.";
-                    } else if (response.status === 403) {
-                        errorMessage = "You don't have permission to download this document.";
-                    } else if (response.status === 401) {
-                        errorMessage = "Your session has expired. Please log in again.";
-                    } else if (response.status === 500) {
-                        errorMessage = "Server error. Please try again later.";
-                    } else {
-                        errorMessage = `Failed to download document (HTTP ${response.status})`;
-                    }
-
-                    console.error("[v0] Download failed:", errorMessage, response.status);
-                    showAlert(errorMessage, "error");
-                    return;
-                }
-
-                const contentType = response.headers.get("content-type");
-                console.log("[v0] Content-Type header:", contentType);
-
-                if (contentType && contentType.includes("application/json")) {
-                    console.error("[v0] Received JSON response instead of file - likely an error response");
-                    try {
-                        const errorData = await response.json();
-                        showAlert(errorData.error || "Failed to download document", "error");
-                    } catch (e) {
-                        showAlert("Failed to download document", "error");
-                    }
-                    return;
-                }
-
-                const blob = await response.blob();
-                console.log("[v0] Blob received - size:", blob.size, "bytes, type:", blob.type);
-
-                if (blob.size === 0) {
-                    console.error("[v0] Received empty blob - document may be corrupted");
-                    showAlert("Downloaded file is empty. Document may be corrupted.", "error");
-                    return;
-                }
-
-                let filename = "document";
-                const contentDisposition = response.headers.get("content-disposition");
-
-                if (contentDisposition) {
-                    console.log("[v0] Content-Disposition header:", contentDisposition);
-
-                    // Try RFC 5987 encoding first (filename*=UTF-8''...)
-                    let matches = contentDisposition.match(/filename\*=(?:UTF-8'')?(.+?)(?:;|$)/);
-                    if (matches && matches[1]) {
-                        try {
-                            filename = decodeURIComponent(matches[1]);
-                            console.log("[v0] Extracted filename (RFC 5987):", filename);
-                        } catch (e) {
-                            console.warn("[v0] Failed to decode RFC 5987 filename, trying fallback");
-                        }
-                    }
-
-                    // Fallback to simple filename="..." format
-                    if (filename === "document") {
-                        matches = contentDisposition.match(/filename="?([^";]+)"?/);
-                        if (matches && matches[1]) {
-                            filename = matches[1];
-                            console.log("[v0] Extracted filename (simple):", filename);
-                        }
-                    }
-                }
-
-                console.log("[v0] Final filename for download:", filename);
-
-                const url = window.URL.createObjectURL(blob);
-                const link = document.createElement("a");
-                link.href = url;
-                link.download = filename;
-
-                document.body.appendChild(link);
-                console.log("[v0] Triggering download for file:", filename);
-
-                link.click();
-
-                document.body.removeChild(link);
-                window.URL.revokeObjectURL(url);
-
-                console.log("[v0] Document download completed successfully");
-                showAlert(`Document "${filename}" downloaded successfully!`, "success");
-
-            } catch (error) {
-                console.error("[v0] Download document error:", error.message, error.stack);
-                showAlert(`Error downloading document: ${error.message}`, "error");
-            }
-        }
-
-        async function deleteDocument(docId) {
-            // Input validation - ensure docId is a valid number
-            if (!docId) {
-                console.error("[v0] deleteDocument: docId is missing");
-                showAlert("Invalid document ID. Please refresh and try again.", "error");
-                return;
-            }
-
-            // Convert string to number if needed
-            const numId = parseInt(docId, 10);
-            if (isNaN(numId) || numId <= 0) {
-                console.error("[v0] deleteDocument: Invalid docId - not a valid positive number", docId);
-                showAlert("Invalid document ID. Please refresh and try again.", "error");
-                return;
-            }
-            docId = numId;
-
-            if (!confirm("Are you sure you want to delete this document? This action cannot be undone.")) {
-                console.log("[v0] Delete cancelled by user");
-                return;
-            }
-
-            try {
-                const token = localStorage.getItem("employee_token");
-                if (!token) {
-                    console.error("[v0] deleteDocument: No authentication token found");
-                    showAlert("Authentication required. Please log in.", "error");
-                    return;
-                }
-
-                console.log("[v0] Deleting document with ID:", docId);
-
-                const deleteBtn = document.querySelector(`button[data-doc-id="${docId}"].delete-doc-btn`);
-                if (deleteBtn) {
-                    deleteBtn.disabled = true;
-                    deleteBtn.style.opacity = "0.5";
-                    deleteBtn.style.cursor = "not-allowed";
-                    console.log("[v0] Delete button disabled to prevent duplicate requests");
-                }
-
-                const response = await fetch(`${API_BASE}/employee/documents/${docId}/delete`, {
-                    method: "DELETE",
-                    headers: {
-                        "Authorization": `Bearer ${token}`,
-                        "Content-Type": "application/json"
-                    }
-                });
-
-                console.log("[v0] Delete response status:", response.status);
-
-                if (response.ok) {
-                    try {
-                        const data = await response.json();
-                        console.log("[v0] Document deleted successfully:", data);
-                    } catch (e) {
-                        console.warn("[v0] Could not parse success response body");
-                    }
-
-                    showAlert("Document deleted successfully!", "success");
-
-                    console.log("[v0] Waiting 500ms before reloading documents...");
-                    setTimeout(() => {
-                        console.log("[v0] Reloading dashboard data after delete");
-                        if (typeof loadDashboardData === 'function') {
-                            loadDashboardData();
-                        } else {
-                            console.error("[v0] loadDashboardData function not available");
-                            location.reload();
-                        }
-                    }, 500);
-                } else {
-                    let errorMessage = "Failed to delete document";
-
-                    if (response.status === 404) {
-                        errorMessage = "Document not found. It may have already been deleted.";
-                    } else if (response.status === 403) {
-                        errorMessage = "You don't have permission to delete this document.";
-                    } else if (response.status === 401) {
-                        errorMessage = "Your session has expired. Please log in again.";
-                    } else if (response.status === 500) {
-                        errorMessage = "Server error. Please try again later.";
-                    }
-
-                    try {
-                        const errorData = await response.json();
-                        if (errorData.error) {
-                            errorMessage = errorData.error;
-                        }
-                    } catch (e) {
-                        console.warn("[v0] Could not parse error response body");
-                    }
-
-                    console.error("[v0] Delete failed:", errorMessage, response.status);
-                    showAlert(errorMessage, "error");
-
-                    if (deleteBtn) {
-                        deleteBtn.disabled = false;
-                        deleteBtn.style.opacity = "1";
-                        deleteBtn.style.cursor = "pointer";
-                        console.log("[v0] Delete button re-enabled after error");
-                    }
-                }
-            } catch (error) {
-                console.error("[v0] Delete document error:", error.message, error.stack);
-                showAlert(`Error deleting document: ${error.message}`, "error");
-
-                const deleteBtn = document.querySelector(`button[data-doc-id="${docId}"].delete-doc-btn`);
-                if (deleteBtn) {
-                    deleteBtn.disabled = false;
-                    deleteBtn.style.opacity = "1";
-                    deleteBtn.style.cursor = "pointer";
-                    console.log("[v0] Delete button re-enabled after exception");
-                }
-            }
-        }
-
-
-        function openManageSkillsModal() {
-            const token = localStorage.getItem("employee_token");
-            if (!token) {
-                showAlert("Please log in first", "error");
-                return;
-            }
-            document
-                .getElementById("manageSkillsModal")
-                .classList.add("active");
-            loadSkills();
-        }
-
-        async function loadSkills() {
-            const token = localStorage.getItem("employee_token");
-            if (!token) return;
-
-            try {
-                const response = await fetch(
-                    `${API_BASE}/employee/skills`,
-                    {
-                        method: "GET",
-                        headers: {
-                            Authorization: `Bearer ${token}`,
-                            "Content-Type": "application/json",
-                        },
-                    },
-                );
-
-                if (response.ok) {
-                    const skills = await response.json();
-                    renderSkills(skills);
-
-                    // Also update profile skills display
-                    updateProfileSkills(skills);
-                }
-            } catch (error) {
-                console.error("Error loading skills:", error);
-            }
-        }
-
-        function updateProfileSkills(skills) {
-            const profileSkillsList = document.getElementById("profileSkillsList");
-            if (!profileSkillsList) return;
-
-            if (!skills || skills.length === 0) {
-                profileSkillsList.innerHTML = '<span style="color: #718096">No skills added yet</span>';
-                return;
-            }
-
-            profileSkillsList.innerHTML = skills
-                .map(skill => `<span class="badge" style="background: linear-gradient(135deg, #667eea, #764ba2); color: white;">${skill.skill_name}</span>`)
-                .join('');
-        }
-
-        function renderSkills(skills) {
-            const container = document.getElementById("currentSkillsList");
-            if (!container) return;
-
-            if (!skills || skills.length === 0) {
-                container.innerHTML = `
-                        <div class="empty-state" style="padding: 30px">
-                            <i class="fas fa-star" style="font-size: 2rem; color: #ffc107; opacity: 0.5"></i>
-                            <p style="margin-top: 10px; color: #718096">No skills added yet. Add your first skill above!</p>
-                        </div>
-                    `;
-                return;
-            }
-
-            container.innerHTML = `
-                    <div style="display: flex; flex-wrap: wrap; gap: 10px">
-                        ${skills
-                    .map(
-                        (skill) => `
-                            <div class="badge" style="background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 8px 15px; display: flex; align-items: center; gap: 8px">
-                                <span>${skill.skill_name}</span>
-                                <button onclick="deleteSkill(${skill.id})" style="background: none; border: none; color: white; cursor: pointer; padding: 0; font-size: 0.9rem">
-                                    <i class="fas fa-times"></i>
-                                </button>
-                            </div>
-                        `,
-                    )
-                    .join("")}
-                    </div>
-                `;
-        }
-
-        async function addSkill() {
-            const token = localStorage.getItem("employee_token");
-            if (!token) {
-                showAlert("Please log in first", "error");
-                return;
-            }
-
-            const input = document.getElementById("newSkillInput");
-            const skillName = input.value.trim();
-
-            if (!skillName) {
-                showAlert("Please enter a skill name", "error");
-                return;
-            }
-
-            try {
-                const response = await fetch(
-                    `${API_BASE}/employee/skills`,
-                    {
-                        method: "POST",
-                        headers: {
-                            Authorization: `Bearer ${token}`,
-                            "Content-Type": "application/json",
-                        },
-                        body: JSON.stringify({ skill_name: skillName }),
-                    },
-                );
-
-                const data = await response.json();
-
-                if (response.ok) {
-                    input.value = "";
-                    showAlert("Skill added successfully!", "success");
-                    loadSkills();
-                    loadProfile();
-                } else {
-                    showAlert(data.error || "Failed to add skill", "error");
-                }
-            } catch (error) {
-                showAlert("Error adding skill", "error");
-            }
-        }
-
-        async function deleteSkill(skillId) {
-            const token = localStorage.getItem("employee_token");
-            if (!token) {
-                showAlert("Please log in first", "error");
-                return;
-            }
-
-            try {
-                const response = await fetch(
-                    `${API_BASE}/employee/skills/${skillId}`,
-                    {
-                        method: "DELETE",
-                        headers: {
-                            Authorization: `Bearer ${token}`,
-                            "Content-Type": "application/json",
-                        },
-                    },
-                );
-
-                if (response.ok) {
-                    showAlert("Skill deleted!", "success");
-                    loadSkills();
-                    loadProfile();
-                } else {
-                    showAlert("Failed to delete skill", "error");
-                }
-            } catch (error) {
-                showAlert("Error deleting skill", "error");
-            }
-        }
-
-        async function loadProfile() {
-            try {
-                const token = localStorage.getItem('employee_token');
-                if (!token) {
-                    return;
-                }
-
-                const response = await fetch(`${API_BASE}/employee/profile`, {
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                    },
-                });
-
-                if (!response.ok) throw new Error('Failed to load profile');
-
-                const profile = await response.json();
-                currentUser = { ...currentUser, ...profile };
-
-                // Update localStorage
-                localStorage.setItem('employee_user', JSON.stringify(currentUser));
-
-                // Display profile information
-                document.getElementById('profileName').textContent = profile.username || 'Unknown';
-                document.getElementById('profileRole').textContent = profile.user_role || 'Employee';
-                document.getElementById('profileEmail').textContent = profile.email || '-';
-                document.getElementById('profileDepartment').textContent = profile.department
-                    ? `Department: ${profile.department}`
-                    : '';
-
-                document.getElementById('profilePhone').value = profile.phone || '';
-                document.getElementById('profileDeptInput').value = profile.department || '';
-                document.getElementById('profileBio').value = profile.bio || '';
-
-                // Update profile avatar
-                updateProfileAvatar(profile);
-
-                // Update header avatar too
-                updateHeaderAvatar();
-
-                // Load skills for profile
-                const skillsResponse = await fetch(`${API_BASE}/employee/skills`, {
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                    },
-                });
-
-                if (skillsResponse.ok) {
-                    const skills = await skillsResponse.json();
-                    updateProfileSkills(skills);
-                }
-            } catch (error) {
-                console.error('Error loading profile:', error);
-                showAlert('Failed to load profile', 'error');
-            }
-        }
-
-
-        function updateProfileAvatar(profile) {
-            const avatarDiv = document.getElementById('profileAvatar');
-            const avatarImg = document.getElementById('profileAvatarImg');
-
-            if (profile.avatar_url) {
-                avatarImg.src = profile.avatar_url;
-                avatarImg.style.display = 'block';
-                avatarDiv.style.display = 'none';
-            } else {
-                const initials = profile.username ? profile.username.substring(0, 2).toUpperCase() : 'ED';
-                avatarDiv.textContent = initials;
-                avatarDiv.style.display = 'flex';
-                avatarImg.style.display = 'none';
-            }
-        }
-
-        function updateHeaderAvatar() {
-            const headerAvatarImg = document.getElementById('headerAvatarImg');
-            const headerAvatarInitials = document.getElementById('headerAvatarInitials');
-
-            if (currentUser.avatar_url) {
-                headerAvatarImg.src = currentUser.avatar_url;
-                headerAvatarImg.style.display = 'block';
-                headerAvatarInitials.style.display = 'none';
-            } else {
-                const initials = currentUser.username ? currentUser.username.substring(0, 2).toUpperCase() : 'ED';
-                headerAvatarInitials.textContent = initials;
-                headerAvatarInitials.style.display = 'flex';
-                headerAvatarImg.style.display = 'none';
-            }
-
-            document.getElementById('userName').textContent = currentUser.username || 'Employee';
-            document.getElementById('userRole').textContent = currentUser.user_role || 'Employee';
-        }
-
-        function triggerAvatarInput() {
-            document.getElementById('avatarInput').click();
-        }
-
-        function handleAvatarSelect(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-
-            if (!file.type.startsWith('image/')) {
-                showAlert('Please select a valid image file', 'error');
-                return;
-            }
-
-            if (file.size > 5 * 1024 * 1024) { // 5MB limit
-                showAlert('Image size must be less than 5MB', 'error');
-                return;
-            }
-
-            selectedAvatarFile = file;
-            openCropperModal(file);
-        }
-
-        function openCropperModal(file) {
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                const cropperImage = document.getElementById('cropperImage');
-                cropperImage.src = e.target.result;
-
-                // Initialize cropper after image loads
-                setTimeout(() => {
-                    if (cropper) cropper.destroy();
-                    cropper = new Cropper(cropperImage, {
-                        aspectRatio: 1, // Force square aspect ratio
-                        viewMode: 1, // Prevent the cropper from moving outside the image
-                        autoCropArea: 1, // Automatically use the entire image as the initial crop area
-                        responsive: true,
-                        restore: true,
-                        guides: true,
-                        center: true,
-                        highlight: true,
-                        cropBoxMovable: true,
-                        cropBoxResizable: true,
-                        toggleDragModeOnDblclick: true // Enable double click to toggle drag mode
-                    });
-                    document.getElementById('cropperModal').classList.add('active');
-                }, 100);
-            };
-            reader.readAsDataURL(file);
-        }
-
-        function rotateCropper(degree) {
-            if (cropper) cropper.rotate(degree);
-        }
-
-        function flipCropperX() {
-            if (cropper) cropper.scaleX(-(cropper.getData().scaleX || -1));
-        }
-
-        function flipCropperY() {
-            if (cropper) cropper.scaleY(-(cropper.getData().scaleY || -1));
-        }
-
-        function resetCropper() {
-            if (cropper) cropper.reset();
-        }
-
-        function closeCropperModal() {
-            document.getElementById('cropperModal').classList.remove('active');
-            if (cropper) {
-                cropper.destroy();
-                cropper = null;
-            }
-            document.getElementById('avatarInput').value = '';
-            selectedAvatarFile = null;
-        }
-
-        async function saveCroppedImage() {
-            if (!cropper || !selectedAvatarFile) {
-                showAlert('Please crop an image first', 'error');
-                return;
-            }
-
-            try {
-                // Get cropped canvas
-                const canvas = cropper.getCroppedCanvas({
-                    width: 400,
-                    height: 400,
-                    fillColor: '#fff',
-                    imageSmoothingEnabled: true,
-                    imageSmoothingQuality: 'high'
-                });
-
-                // Convert canvas to blob and upload
-                canvas.toBlob(async (blob) => {
-                    const formData = new FormData();
-                    formData.append('avatar', blob, 'profile-picture.png');
-
-                    try {
-                        const token = localStorage.getItem('employee_token');
-                        const response = await fetch(`${API_BASE}/employee/profile/upload-avatar`, {
-                            method: 'POST',
-                            headers: { 'Authorization': `Bearer ${token}` },
-                            body: formData
-                        });
-
-                        if (response.ok) {
-                            const data = await response.json();
-                            showAlert('Profile picture updated successfully!', 'success');
-                            closeCropperModal();
-
-                            // Update local user data with new avatar URL
-                            currentUser.avatar_url = data.avatar_url;
-                            localStorage.setItem('employee_user', JSON.stringify(currentUser));
-
-                            loadProfile(); // Reload profile to reflect changes
-                            updateHeaderAvatar(); // Update header avatar as well
-                        } else {
-                            const error = await response.json();
-                            showAlert(error.error || 'Failed to upload image', 'error');
-                        }
-                    } catch (error) {
-                        console.error('[v0] Upload error:', error);
-                        showAlert('Failed to upload image', 'error');
-                    }
-                }, 'image/png', 0.95);
-            } catch (error) {
-                console.error('[v0] Cropper error:', error);
-                showAlert('Failed to process image', 'error');
-            }
-        }
-
-        async function deleteProfilePicture() {
-            if (!confirm('Are you sure you want to remove your profile picture?')) return;
-
-            try {
-                const token = localStorage.getItem('employee_token');
-                const response = await fetch(`${API_BASE}/employee/profile/avatar`, {
-                    method: 'DELETE',
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-
-                if (response.ok) {
-                    showAlert('Profile picture removed', 'success');
-                    currentUser.avatar_url = null;
-                    localStorage.setItem('employee_user', JSON.stringify(currentUser));
-                    loadProfile();
-                    updateHeaderAvatar();
-                } else {
-                    const error = await response.json();
-                    showAlert(error.error || 'Failed to delete picture', 'error');
-                }
-            } catch (error) {
-                console.error('[v0] Delete error:', error);
-                showAlert('Failed to delete picture', 'error');
-            }
-        }
-
-        async function updateProfile(event) {
-            event.preventDefault();
-
-            const phone = document.getElementById('profilePhone').value;
-            const department = document.getElementById('profileDeptInput').value;
-            const bio = document.getElementById('profileBio').value;
-
-            try {
-                const token = localStorage.getItem('employee_token');
-                const response = await fetch(`${API_BASE}/employee/profile`, {
-                    method: 'PUT',
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        phone,
-                        department,
-                        bio
-                    })
-                });
-
-                if (response.ok) {
-                    const data = await response.json();
-                    showAlert('Profile updated successfully!', 'success');
-
-                    // Update current user data
-                    currentUser.phone = phone;
-                    currentUser.department = department;
-                    currentUser.bio = bio;
-                    localStorage.setItem('employee_user', JSON.stringify(currentUser));
-
-                    // Update displayed info
-                    updateUserInfo();
-                } else {
-                    const error = await response.json();
-                    showAlert(error.error || 'Failed to update profile', 'error');
-                }
-            } catch (error) {
-                console.error('Error updating profile:', error);
-                showAlert('Failed to update profile', 'error');
-            }
-        }
-
-        function logout() {
-            localStorage.removeItem('employee_token');
-            localStorage.removeItem('employee_user');
-            window.location.href = '/login';
-        }
-
-        async function performAdminSearch(event) {
-            const query = event.target.value.trim();
-            const searchResultsDiv = document.getElementById("searchResults");
-
-            if (query.length >= 2) {
-                try {
-                    const token = localStorage.getItem("employee_token");
-                    const response = await fetch(
-                        `${API_BASE}/search?q=${encodeURIComponent(query)}`,
-                        {
-                            method: "GET",
-                            headers: {
-                                Authorization: `Bearer ${token}`,
-                                "Content-Type": "application/json",
-                            },
-                        },
-                    );
-
-                    if (response.ok) {
-                        const data = await response.json();
-                        displaySearchResults(data.results || []);
-                    } else {
-                        console.error("Search failed");
-                        searchResultsDiv.innerHTML = '<div class="search-result-item">Error searching</div>';
-                        searchResultsDiv.style.display = "block";
-                    }
-                } catch (error) {
-                    console.error("Search error:", error);
-                    searchResultsDiv.innerHTML = '<div class="search-result-item">Error searching</div>';
-                    searchResultsDiv.style.display = "block";
-                }
-            } else {
-                hideSearchResults();
-            }
-        }
-
-        function displaySearchResults(results) {
-            const searchContainer = document.querySelector(".search-container");
-            let resultsDiv = document.getElementById("searchResults");
-
-            if (!resultsDiv) {
-                resultsDiv = document.createElement("div");
-                resultsDiv.id = "searchResults";
-                resultsDiv.className = "search-results";
-                searchContainer.appendChild(resultsDiv);
-            }
-
-            if (results.length === 0) {
-                resultsDiv.innerHTML =
-                    '<div class="search-result-item">No results found</div>';
-                resultsDiv.style.display = "block";
-                return;
-            }
-
-            resultsDiv.innerHTML = results
-                .map((result) => {
-                    let icon = "fas fa-folder";
-                    let color = "#667eea";
-
-                    switch (result.type) {
-                        case "project":
-                            icon = "fas fa-folder";
-                            color = "#667eea";
-                            break;
-                        case "task":
-                            icon = "fas fa-tasks";
-                            color = "#28a745";
-                            break;
-                        case "milestone":
-                            icon = "fas fa-flag";
-                            color = "#17a2b8";
-                            break;
-                        case "document":
-                            icon = "fas fa-file";
-                            color = "#6c757d";
-                            break;
-                    }
-
-                    let subtitle = "";
-                    if (result.project_name) {
-                        subtitle = `Project: ${result.project_name}`;
-                    } else if (result.status) {
-                        subtitle = `Status: ${result.status}`;
-                    }
-
-                    return `
-                    <div class="search-result-item" onclick="navigateToResult('${result.type}', ${result.id}, '${result.tab || ""}')">
-                        <div style="display: flex; align-items: center; gap: 10px;">
-                            <i class="${icon}" style="color: ${color}; width: 16px;"></i>
-                            <div style="flex: 1;">
-                                <div style="font-weight: 600; color: #2d3748;">${result.name}</div>
-                                <div style="font-size: 12px; color: #718096;">
-                                    ${result.type.charAt(0).toUpperCase() + result.type.slice(1)}
-                                    ${subtitle ? " • " + subtitle : ""}
-                                </div>
-                                ${result.description ? `<div style="font-size: 12px; color: #718096; margin-top: 2px;">${result.description.substring(0, 100)}${result.description.length > 100 ? '...' : ''}</div>` : ""}
-                            </div>
-                        </div>
-                    </div>
-                `;
-                })
-                .join("");
-
-            resultsDiv.style.display = "block";
-        }
-
-        function hideSearchResults() {
-            const resultsDiv = document.getElementById("searchResults");
-            if (resultsDiv) {
-                resultsDiv.style.display = "none";
-            }
-        }
-
-        function navigateToResult(type, id, tab) {
-            hideSearchResults();
-            document.getElementById("adminSearchInput").value = "";
-
-            if (tab) {
-                selectTab(tab, {
-                    target: {
-                        closest: () => ({ classList: { add: () => { } } }),
-                    },
-                });
-            }
-
-            // Scroll to the specific item if needed
-            setTimeout(() => {
-                const element = document.querySelector(`[data-id="${id}"]`);
-                if (element) {
-                    element.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-                    element.style.backgroundColor = '#f0f4ff';
-                    setTimeout(() => {
-                        element.style.backgroundColor = '';
-                    }, 2000);
-                }
-            }, 300);
-        }
-
-        // Additional helper functions for drag and drop
-        function handleDragOver(event) {
-            event.preventDefault();
-            event.stopPropagation();
-            const dragDropArea = document.getElementById('dragDropArea');
-            dragDropArea.style.borderColor = '#667eea';
-            dragDropArea.style.background = '#e6e9ff';
-        }
-
-        function handleDragLeave(event) {
-            event.preventDefault();
-            event.stopPropagation();
-            const dragDropArea = document.getElementById('dragDropArea');
-            dragDropArea.style.borderColor = '#667eea';
-            dragDropArea.style.background = '#f7fafc';
-        }
-
-        function handleDropZone(event) {
-            event.preventDefault();
-            event.stopPropagation();
-
-            const dragDropArea = document.getElementById('dragDropArea');
-            dragDropArea.style.borderColor = '#667eea';
-            dragDropArea.style.background = '#f7fafc';
-
-            const files = event.dataTransfer.files;
-            if (files.length > 0) {
-                handleAvatarSelect({ target: { files: files } });
-            }
-        }
-
-        function closeAvatarModal() {
-            document.getElementById('avatarUploadModal').classList.remove('active');
-        }
-
-        function uploadAvatarFile() {
-            // This function would handle direct upload without cropping
-            // For now, we'll use the cropper approach
-            triggerAvatarInput();
-            closeAvatarModal();
-        }
-
-        function startEmployeeLiveUpdates() {
-            const token = localStorage.getItem('employee_token');
-            if (!token) return;
-
-            // Initial load
-            updateRealTimeProjectStatus();
-
-            setInterval(() => {
-                updateRealTimeProjectStatus();
-            }, 5000);  // Changed from presumably longer interval for real-time
-        }
-
-
-        function updateRealTimeProjectStatus() {
-            const token = localStorage.getItem('employee_token');
-            if (!token) return;
-
-            fetch(`${API_BASE}/employee/projects/realtime`, {
-                headers: { 'Authorization': `Bearer ${token}` }
+            except psycopg2.Error:
+                if conn:
+                    conn.rollback() # Rollback if adding column fails, though typically we just ignore if exists.
+                pass  # Column likely already exists or other non-critical error
+
+        conn.commit()
+        print("[OK] Database migration completed!")
+
+    except Exception as e:
+        print(f"[ERROR] Database migration failed: {e}")
+        if conn:
+            conn.rollback()
+    finally:
+        if conn:
+            conn.close()
+
+def validate_password_complexity(password):
+    if len(password) < 8:
+        return False, "Password must be at least 8 characters."
+    if not re.search(r'[a-zA-Z]', password):
+        return False, "Password must contain at least one letter."
+    special_chars = len(
+        re.findall(r'[!@#$%^&*()_+\-=\[\]{};\':"\\|,.<>\/?]', password))
+    if special_chars < 2:
+        return False, "Password must contain at least two special characters."
+    return True, "Password is valid."
+
+
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        auth_header = request.headers.get('Authorization')
+        if auth_header and auth_header.startswith('Bearer '):
+            token = auth_header.split(' ')[1]
+            if token in valid_tokens:
+                g.current_user_id = valid_tokens[token]['user_id']
+                g.current_user_type = valid_tokens[token].get('user_type', 'employee')
+                return f(*args, **kwargs)
+        
+        if 'user_id' in session:
+            g.current_user_id = session.get('user_id')
+            g.current_user_type = session.get('user_type', 'employee')
+            return f(*args, **kwargs)
+
+        return jsonify({"error": "Authentication required"}), 401
+
+    return decorated_function
+
+
+def admin_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        auth_header = request.headers.get('Authorization')
+        is_admin = False
+        
+        # Check Bearer token
+        if auth_header and auth_header.startswith('Bearer '):
+            token = auth_header.split(' ')[1]
+            if token in valid_tokens and valid_tokens[token].get('user_type') == 'admin':
+                is_admin = True
+        
+        # Check session
+        if session.get('user_type') == 'admin' or session.get('admin'):
+            is_admin = True
+        
+        if not is_admin:
+            return jsonify({"error": "Admin access required"}), 403
+        return f(*args, **kwargs)
+    return decorated_function
+
+
+def get_current_user_id():
+    return getattr(g, 'current_user_id', None) or session.get('user_id')
+
+
+@app.route("/")
+def index():
+    return render_template("login.html")
+
+
+@app.route("/login")
+def login_page():
+    return render_template("login.html")
+
+
+@app.route("/admin-dashboard")
+def admin_dashboard():
+    return render_template("admin-dashboard.html")
+
+
+@app.route("/employee-dashboard")
+def employee_dashboard():
+    return render_template("employee-dashboard.html")
+
+
+@app.route("/api/admin/login/step1", methods=["POST"])
+def login_step1():
+    data = request.get_json() or {}
+    email = (data.get("email") or "").strip().lower()
+    password = data.get("password") or ""
+    confirm_password = data.get("confirm_password") or ""
+    admin_pin = (data.get("admin_pin") or "").strip()
+
+    if not email or not password or not confirm_password or not admin_pin:
+        return jsonify({"error": "All fields are required."}), 400
+
+    if "@" not in email or "." not in email.split("@")[-1]:
+        return jsonify({"error": "Invalid email format."}), 400
+
+    if password != confirm_password:
+        return jsonify({"error": "Passwords do not match."}), 400
+
+    if not admin_pin.isdigit() or len(admin_pin) != 6:
+        return jsonify({"error": "Admin PIN must be exactly 6 digits."}), 400
+
+    if email != ADMIN_EMAIL:
+        return jsonify({"error": "Email not found."}), 400
+
+    if password != ADMIN_PASSWORD:
+        return jsonify({"error": "Incorrect password."}), 400
+
+    if admin_pin != ADMIN_PIN:
+        return jsonify({"error": "Invalid Admin PIN."}), 400
+
+    return jsonify(
+        {"message":
+         "OTP has been sent to your registered email (simulated)."}), 200
+
+
+@app.route("/api/admin/login/step2", methods=["POST"])
+def login_step2():
+    data = request.get_json() or {}
+    otp = data.get("otp") or ""
+
+    if not otp:
+        return jsonify({"error": "OTP is required."}), 400
+
+    if otp != ADMIN_OTP:
+        return jsonify({"error": "Invalid OTP provided."}), 400
+
+    session_token = secrets.token_urlsafe(32)
+    session['admin'] = True
+    session['admin_token'] = session_token
+    session['user_type'] = 'admin'
+
+    valid_tokens[session_token] = {
+        'user_id': 0,  # Admin has ID 0
+        'username': 'admin',
+        'user_type': 'admin',
+        'created_at': datetime.now(timezone.utc)
+    }
+
+    return jsonify({
+        "session_token": session_token,
+        "admin_name": "Super Admin",
+        "success": True,
+        "message": "Login successful"
+    }), 200
+
+
+@app.route("/api/admin/dashboard/overdue-items", methods=["GET"])
+@admin_required
+def get_overdue_items():
+    """Get all overdue items for admin"""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # Overdue tasks
+        cursor.execute('''
+            SELECT t.id, t.title, t.description, t.status, t.priority, 
+                   t.deadline, t.project_id, p.title as project_name,
+                   t.assigned_to_id, u.username as assigned_to_name,
+                   t.created_by_id, uc.username as created_by_name,
+                   t.created_at, t.approval_status,
+                   CURRENT_DATE - t.deadline as days_overdue
+            FROM tasks t
+            LEFT JOIN projects p ON t.project_id = p.id
+            LEFT JOIN users u ON t.assigned_to_id = u.id
+            LEFT JOIN users uc ON t.created_by_id = uc.id
+            WHERE t.deadline < CURRENT_DATE 
+            AND t.status != 'Completed'
+            AND t.status != 'Overdue'
+            ORDER BY t.deadline ASC
+        ''')
+        overdue_tasks = cursor.fetchall()
+        
+        # Overdue projects
+        cursor.execute('''
+            SELECT p.id, p.title, p.description, p.status, p.progress, 
+                   p.deadline, p.created_by_id, u.username as creator_name,
+                   p.created_at,
+                   CURRENT_DATE - p.deadline as days_overdue
+            FROM projects p
+            LEFT JOIN users u ON p.created_by_id = u.id
+            WHERE p.deadline < CURRENT_DATE 
+            AND p.status != 'Completed'
+            ORDER BY p.deadline ASC
+        ''')
+        overdue_projects = cursor.fetchall()
+        
+        conn.close()
+        
+        return jsonify({
+            "overdue_tasks": [dict(row) for row in overdue_tasks],
+            "overdue_projects": [dict(row) for row in overdue_projects],
+            "total_overdue_tasks": len(overdue_tasks),
+            "total_overdue_projects": len(overdue_projects)
+        }), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/admin/dashboard/completed-outcomes", methods=["GET"])
+@admin_required
+def get_completed_outcomes():
+    """Get all completed projects (outcomes)"""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            SELECT p.id, p.title, p.description, p.status, p.progress, 
+                   p.deadline, p.created_by_id, u.username as creator_name,
+                   p.created_at, p.completed_at,
+                   COUNT(DISTINCT t.id) as total_tasks,
+                   COUNT(DISTINCT CASE WHEN t.status = 'Completed' THEN t.id END) as completed_tasks,
+                   COUNT(DISTINCT m.id) as total_milestones,
+                   COUNT(DISTINCT CASE WHEN m.status = 'Completed' THEN m.id END) as completed_milestones
+            FROM projects p
+            LEFT JOIN users u ON p.created_by_id = u.id
+            LEFT JOIN tasks t ON p.id = t.project_id
+            LEFT JOIN milestones m ON p.id = m.project_id
+            WHERE p.status = 'Completed'
+            GROUP BY p.id, u.username
+            ORDER BY p.completed_at DESC
+        ''')
+        
+        completed_projects = cursor.fetchall()
+        conn.close()
+        
+        return jsonify([dict(row) for row in completed_projects]), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/admin/dashboard/recent-actions", methods=["GET"])
+@admin_required
+def get_recent_actions():
+    """Get recent actions from all employees"""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            SELECT a.id, a.activity_type, a.description, a.created_at,
+                   u.username, u.email, u.user_type_id, ut.user_role,
+                   p.title as project_title, t.title as task_title,
+                   m.title as milestone_title,
+                   CASE 
+                     WHEN a.activity_type = 'project_created' THEN 'fas fa-folder-plus'
+                     WHEN a.activity_type = 'task_created' THEN 'fas fa-tasks'
+                     WHEN a.activity_type = 'task_completed' THEN 'fas fa-check-circle'
+                     WHEN a.activity_type = 'milestone_created' THEN 'fas fa-flag'
+                     WHEN a.activity_type = 'milestone_completed' THEN 'fas fa-flag-checkered'
+                     WHEN a.activity_type = 'document_uploaded' THEN 'fas fa-file-upload'
+                     WHEN a.activity_type = 'document_deleted' THEN 'fas fa-file-times'
+                     ELSE 'fas fa-history'
+                   END as icon_class
+            FROM activities a
+            LEFT JOIN users u ON a.user_id = u.id
+            LEFT JOIN usertypes ut ON u.user_type_id = ut.id
+            LEFT JOIN projects p ON a.project_id = p.id
+            LEFT JOIN tasks t ON a.task_id = t.id
+            LEFT JOIN milestones m ON a.milestone_id = m.id
+            ORDER BY a.created_at DESC
+            LIMIT 50
+        ''')
+        
+        activities = cursor.fetchall()
+        conn.close()
+        
+        return jsonify([dict(row) for row in activities]), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/admin/dashboard/activities", methods=["GET"])
+@admin_required
+def get_admin_activities():
+    """Get all activities for admin dashboard"""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            SELECT a.id, a.activity_type, a.description, a.created_at,
+                   u.username, u.email, p.title as project_title,
+                   t.title as task_title, m.title as milestone_title
+            FROM activities a
+            LEFT JOIN users u ON a.user_id = u.id
+            LEFT JOIN projects p ON a.project_id = p.id
+            LEFT JOIN tasks t ON a.task_id = t.id
+            LEFT JOIN milestones m ON a.milestone_id = m.id
+            ORDER BY a.created_at DESC
+            LIMIT 100
+        ''')
+        
+        activities = cursor.fetchall()
+        conn.close()
+        
+        return jsonify([dict(row) for row in activities]), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/admin/dashboard/stats", methods=["GET"])
+@admin_required
+def get_admin_dashboard_stats():
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        cursor.execute(
+            'SELECT COUNT(*) as count FROM projects WHERE status = %s',
+            ('In Progress', ))
+        active_projects = cursor.fetchone()['count']
+
+        cursor.execute('SELECT COUNT(*) as count FROM tasks WHERE status = %s',
+                       ('Completed', ))
+        completed_tasks = cursor.fetchone()['count']
+
+        cursor.execute('SELECT COUNT(*) as count FROM tasks WHERE status = %s',
+                       ('In Progress', ))
+        active_tasks = cursor.fetchone()['count']
+
+        cursor.execute(
+            '''
+            SELECT COUNT(*) as count FROM tasks 
+            WHERE deadline < CURRENT_DATE AND status != %s AND status != %s
+        ''', ('Completed', 'Overdue'))
+        overdue_tasks = cursor.fetchone()['count']
+
+        cursor.execute(
+            '''
+            SELECT COUNT(*) as count FROM tasks 
+            WHERE approval_status = %s OR approval_status IS NULL
+        ''', ('pending', ))
+        pending_approvals = cursor.fetchone()['count']
+
+        cursor.execute('SELECT COUNT(*) as count FROM users')
+        total_users = cursor.fetchone()['count']
+
+        cursor.execute('SELECT COUNT(*) as count FROM usertypes')
+        total_user_types = cursor.fetchone()['count']
+
+        # Add total outcomes (completed projects)
+        cursor.execute('SELECT COUNT(*) as count FROM projects WHERE status = %s',
+                       ('Completed', ))
+        total_outcomes = cursor.fetchone()['count']
+
+        conn.close()
+
+        return jsonify({
+            "active_projects": active_projects,
+            "completed_tasks": completed_tasks,
+            "active_tasks": active_tasks,
+            "overdue_tasks": overdue_tasks,
+            "pending_approvals": pending_approvals,
+            "total_users": total_users,
+            "total_user_types": total_user_types,
+            "total_outcomes": total_outcomes
+        }), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/projects/<int:project_id>/calculate-progress", methods=["GET"])
+@login_required
+def calculate_project_progress(project_id):
+    """
+    Calculate project progress based on: 
+    - 70% weight:  Task completion rate
+    - 30% weight: Milestone completion rate
+    """
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # Get task progress data
+        cursor.execute('''
+            SELECT 
+                COUNT(*) as total_tasks,
+                SUM(CASE WHEN status = 'Completed' THEN 1 ELSE 0 END) as completed_tasks,
+                COALESCE(SUM(weightage), 0) as total_weightage,
+                COALESCE(SUM(CASE WHEN status = 'Completed' THEN weightage ELSE 0 END), 0) as completed_weightage
+            FROM tasks 
+            WHERE project_id = %s
+        ''', (project_id,))
+        task_data = cursor.fetchone()
+        
+        # Get milestone progress data
+        cursor.execute('''
+            SELECT 
+                COUNT(*) as total_milestones,
+                SUM(CASE WHEN status = 'Completed' THEN 1 ELSE 0 END) as completed_milestones,
+                COALESCE(SUM(weightage), 0) as total_m_weightage,
+                COALESCE(SUM(CASE WHEN status = 'Completed' THEN weightage ELSE 0 END), 0) as completed_m_weightage
+            FROM milestones 
+            WHERE project_id = %s
+        ''', (project_id,))
+        milestone_data = cursor.fetchone()
+        
+        # Calculate weighted progress
+        task_progress = 0
+        if task_data['total_weightage'] and task_data['total_weightage'] > 0:
+            task_progress = (task_data['completed_weightage'] / task_data['total_weightage']) * 100
+        
+        milestone_progress = 0
+        if milestone_data['total_m_weightage'] and milestone_data['total_m_weightage'] > 0:
+            milestone_progress = (milestone_data['completed_m_weightage'] / milestone_data['total_m_weightage']) * 100
+        
+        # Overall progress:  70% tasks + 30% milestones
+        overall_progress = int((task_progress * 0.7) + (milestone_progress * 0.3))
+        
+        # Update project progress in database
+        cursor.execute('''
+            UPDATE projects 
+            SET progress = %s, updated_at = CURRENT_TIMESTAMP 
+            WHERE id = %s
+        ''', (overall_progress, project_id))
+        
+        # Record progress history
+        cursor.execute('''
+            INSERT INTO progress_history (
+                project_id, progress_percentage, 
+                tasks_completed, total_tasks,
+                milestones_completed, total_milestones
+            ) VALUES (%s, %s, %s, %s, %s, %s)
+        ''', (
+            project_id, overall_progress,
+            task_data['completed_tasks'] or 0, task_data['total_tasks'] or 0,
+            milestone_data['completed_milestones'] or 0, milestone_data['total_milestones'] or 0
+        ))
+        
+        conn.commit()
+        conn.close()
+        
+        return jsonify({
+            "project_id": project_id,
+            "progress":  overall_progress,
+            "task_progress": round(task_progress, 2),
+            "milestone_progress": round(milestone_progress, 2),
+            "tasks_completed": task_data['completed_tasks'] or 0,
+            "total_tasks": task_data['total_tasks'] or 0,
+            "milestones_completed":  milestone_data['completed_milestones'] or 0,
+            "total_milestones": milestone_data['total_milestones'] or 0,
+            "message": "Progress calculated successfully"
+        }), 200
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/projects/<int:project_id>/progress-history", methods=["GET"])
+@login_required
+def get_project_progress_history(project_id):
+    """
+    Retrieve historical progress data for charts/graphs
+    """
+    try: 
+        conn = get_db_connection()
+        cursor = conn. cursor()
+        
+        cursor.execute('''
+            SELECT 
+                progress_percentage,
+                tasks_completed,
+                total_tasks,
+                milestones_completed,
+                total_milestones,
+                recorded_at
+            FROM progress_history 
+            WHERE project_id = %s
+            ORDER BY recorded_at DESC
+            LIMIT 30
+        ''', (project_id,))
+        
+        history = cursor.fetchall()
+        conn.close()
+        
+        return jsonify([dict(row) for row in history]), 200
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/dashboard/live-progress", methods=["GET"])
+@login_required
+def get_live_dashboard_progress():
+    """
+    Get real-time progress for all active projects
+    Differentiates between admin and employee views
+    """
+    try:
+        user_id = get_current_user_id()
+        is_admin = session.get('admin') or session.get('user_type') == 'admin'
+        
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        if is_admin:
+            # Admin sees all active projects
+            cursor.execute('''
+                SELECT 
+                    p.id,
+                    p. title,
+                    p.description,
+                    p.status,
+                    p.progress,
+                    p.deadline,
+                    p.reporting_time,
+                    p.created_at,
+                    p.updated_at,
+                    u.username as creator_name,
+                    COUNT(DISTINCT t.id) as total_tasks,
+                    SUM(CASE WHEN t. status = 'Completed' THEN 1 ELSE 0 END) as completed_tasks,
+                    COUNT(DISTINCT m.id) as total_milestones,
+                    SUM(CASE WHEN m.status = 'Completed' THEN 1 ELSE 0 END) as completed_milestones,
+                    COUNT(DISTINCT pa.user_id) as team_size
+                FROM projects p
+                LEFT JOIN users u ON p.created_by_id = u.id
+                LEFT JOIN tasks t ON p.id = t.project_id
+                LEFT JOIN milestones m ON p. id = m.project_id
+                LEFT JOIN project_assignments pa ON p.id = pa.project_id
+                WHERE p.status != 'Completed'
+                GROUP BY p.id, u.username
+                ORDER BY p.updated_at DESC
+            ''')
+        else:
+            # Employees see only assigned projects
+            cursor.execute('''
+                SELECT DISTINCT
+                    p.id,
+                    p.title,
+                    p.description,
+                    p.status,
+                    p. progress,
+                    p.deadline,
+                    p.reporting_time,
+                    p.created_at,
+                    p. updated_at,
+                    u.username as creator_name,
+                    COUNT(DISTINCT t. id) as total_tasks,
+                    SUM(CASE WHEN t.status = 'Completed' THEN 1 ELSE 0 END) as completed_tasks,
+                    COUNT(DISTINCT m.id) as total_milestones,
+                    SUM(CASE WHEN m.status = 'Completed' THEN 1 ELSE 0 END) as completed_milestones,
+                    COUNT(DISTINCT pa.user_id) as team_size
+                FROM projects p
+                LEFT JOIN users u ON p.created_by_id = u.id
+                LEFT JOIN tasks t ON p.id = t. project_id
+                LEFT JOIN milestones m ON p.id = m.project_id
+                LEFT JOIN project_assignments pa ON p. id = pa.project_id
+                WHERE (p.created_by_id = %s OR p.id IN (
+                    SELECT project_id FROM project_assignments WHERE user_id = %s
+                ))
+                AND p.status != 'Completed'
+                GROUP BY p.id, u.username
+                ORDER BY p.updated_at DESC
+            ''', (user_id, user_id))
+        
+        projects = cursor.fetchall()
+        conn.close()
+        
+        formatted_projects = []
+        for project in projects:
+            project_dict = dict(project)
+            
+            # Calculate additional metrics
+            try:
+                created_at = datetime.strptime(project_dict['created_at'], '%Y-%m-%d %H:%M:%S')
+            except:
+                created_at = datetime.now()
+            
+            now = datetime.now()
+            days_active = max(1, (now - created_at).days)
+            progress_per_day = project_dict['progress'] / days_active if days_active > 0 else 0
+            
+            # Estimate completion date
+            estimated_completion_str = None
+            if project_dict['progress'] > 0 and progress_per_day > 0:
+                days_remaining = (100 - project_dict['progress']) / progress_per_day
+                estimated_completion = now + timedelta(days=days_remaining)
+                estimated_completion_str = estimated_completion.strftime('%Y-%m-%d')
+            
+            # Calculate sub-progress metrics
+            tasks_progress = int((project_dict['completed_tasks'] / project_dict['total_tasks'] * 100)) if project_dict['total_tasks'] > 0 else 0
+            milestones_progress = int((project_dict['completed_milestones'] / project_dict['total_milestones'] * 100)) if project_dict['total_milestones'] > 0 else 0
+            
+            # Health status
+            health_status = 'good' if project_dict['progress'] >= 70 else 'warning' if project_dict['progress'] >= 40 else 'danger'
+            
+            project_dict. update({
+                'days_active': days_active,
+                'progress_per_day':  round(progress_per_day, 2),
+                'estimated_completion': estimated_completion_str,
+                'tasks_progress': tasks_progress,
+                'milestones_progress': milestones_progress,
+                'health_status':  health_status
             })
-                .then(response => {
-                    if (!response.ok) {
-                        if (response.status === 401) {
-                            // Token expired, redirect to login
-                            localStorage.removeItem('employee_token');
-                            localStorage.removeItem('employee_user');
-                            window.location.href = '/';
-                        }
-                        throw new Error(`HTTP ${response.status}`);
-                    }
-                    return response.json();
+            
+            formatted_projects.append(project_dict)
+        
+        # Calculate average progress
+        avg_progress = 0
+        if formatted_projects: 
+            avg_progress = round(sum(p['progress'] for p in formatted_projects) / len(formatted_projects), 2)
+        
+        return jsonify({
+            "timestamp": datetime.now().isoformat(),
+            "total_projects":  len(formatted_projects),
+            "average_progress": avg_progress,
+            "projects": formatted_projects
+        }), 200
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/users/<int:user_id>/permissions", methods=["GET"])
+@admin_required
+def get_user_permissions(user_id):
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            '''
+            SELECT module, action, granted FROM user_permissions 
+            WHERE user_id = %s ORDER BY module, action
+        ''', (user_id, ))
+        permissions = cursor.fetchall()
+        conn.close()
+
+        result = {}
+        for perm in permissions:
+            module = perm['module']
+            if module not in result:
+                result[module] = {}
+            result[module][perm['action']] = bool(perm['granted'])
+
+        return jsonify(result), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/users/<int:user_id>/permissions", methods=["POST"])
+@admin_required
+def set_user_permissions(user_id):
+    try:
+        data = request.get_json() or {}
+        permissions_data = data.get("permissions")
+
+        if isinstance(permissions_data, str):
+            permissions = json.loads(permissions_data)
+        else:
+            permissions = permissions_data or {}
+
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        cursor.execute('DELETE FROM user_permissions WHERE user_id = %s',
+                       (user_id, ))
+
+        for module, actions in permissions.items():
+            if isinstance(actions, dict):
+                for action, granted in actions.items():
+                    cursor.execute(
+                        '''
+                        INSERT INTO user_permissions (user_id, module, action, granted)
+                        VALUES (%s,%s,%s,%s)
+                        
+                    ''', (user_id, module, action, 1 if granted else 0))
+
+        conn.commit()
+        conn.close()
+
+        return jsonify({"message": "Permissions updated successfully!"}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/usertypes", methods=["GET"])
+@login_required
+def get_user_types():
+    conn = None
+    cursor = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        cursor.execute("SELECT id, user_role, created_at FROM usertypes ORDER BY created_at DESC")
+        rows = cursor.fetchall()
+
+        usertypes = []
+        for row in rows:
+            usertypes.append({
+                "id": row['id'],
+                "user_role": row['user_role'],
+                "created_at": row['created_at'].isoformat() if row['created_at'] else None
+            })
+
+        return jsonify(usertypes), 200
+
+    except Exception as e:
+        print("DB error:", e)
+        return jsonify({"error": str(e)}), 500
+
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+
+
+@app.route("/api/usertypes", methods=["POST"])
+@admin_required
+def create_usertype():
+    data = request.get_json() or {}
+    user_role = (data.get("user_role") or "").strip()
+
+    if not user_role:
+        return jsonify({"error": "User role is required"}), 400
+
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        cursor.execute(
+            "INSERT INTO usertypes (user_role) VALUES (%s) RETURNING id, created_at",
+            (user_role,)
+        )
+        row = cursor.fetchone()
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+        return jsonify({
+            "id": row['id'],
+            "user_role": user_role,
+            "created_at": row['created_at'].isoformat() if row['created_at'] else None,
+            "message": "User type created successfully"
+        }), 201
+
+    except psycopg2.errors.UniqueViolation:
+        return jsonify({"error": "User role already exists"}), 409
+
+
+
+@app.route("/api/usertypes/<int:id>", methods=["PUT"])
+@admin_required
+def update_user_type(id):
+    try:
+        data = request.get_json() or {}
+        user_role = (data.get("user_role") or "").strip()
+
+        if not user_role:
+            return jsonify({"error": "User role is required."}), 400
+
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        cursor.execute('SELECT id FROM usertypes WHERE id = %s', (id, ))
+        if not cursor.fetchone():
+            conn.close()
+            return jsonify({"error": "User type not found."}), 404
+
+        try:
+            cursor.execute('UPDATE usertypes SET user_role = %s WHERE id = %s',
+                           (user_role, id))
+            conn.commit()
+            conn.close()
+
+            return jsonify({
+                "id": id,
+                "user_role": user_role,
+                "message": "User type updated successfully!"
+            }), 200
+
+        except psycopg2.IntegrityError:
+            conn.close()
+            return jsonify({"error": "User role already exists."}), 409
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/usertypes/<int:id>", methods=["DELETE"])
+@admin_required
+def delete_user_type(id):
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        cursor.execute('SELECT id FROM usertypes WHERE id = %s', (id, ))
+        if not cursor.fetchone():
+            conn.close()
+            return jsonify({"error": "User type not found."}), 404
+
+        cursor.execute(
+            'SELECT COUNT(*) as count FROM users WHERE user_type_id = %s',
+            (id, ))
+        if cursor.fetchone()['count'] > 0:
+            conn.close()
+            return jsonify({
+                "error":
+                "Cannot delete user type that has associated users."
+            }), 400
+
+        cursor.execute('DELETE FROM usertypes WHERE id = %s', (id, ))
+        conn.commit()
+        conn.close()
+
+        return jsonify({"message": "User type deleted successfully!"}), 200
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/users", methods=["GET"])
+@login_required
+def get_users():
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute('''
+            SELECT u.id, u.username, u.email, u.user_type_id, ut.user_role, u.created_at
+            FROM users u 
+            LEFT JOIN usertypes ut ON u.user_type_id = ut.id 
+            ORDER BY u.created_at DESC
+        ''')
+        users = cursor.fetchall()
+        conn.close()
+
+        return jsonify([{
+            "id": row['id'],
+            "username": row['username'],
+            "email": row['email'],
+            "user_type_id": row['user_type_id'],
+            "user_role": row['user_role'],
+            "created_at": row['created_at'].isoformat() if row['created_at'] else None
+        } for row in users]), 200
+    except Exception as e:
+        print(f"[ERROR] /api/users GET failed: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/users", methods=["POST"])
+@admin_required
+def create_user():
+    try:
+        data = request.get_json()
+        username = (data.get("username") or "").strip()
+        email = (data.get("email") or "").strip().lower()
+        password = data.get("password") or ""
+        confirm_password = data.get("confirm_password") or ""
+        user_type_id = data.get("user_type_id")
+        permissions_data = data.get("permissions")
+
+        if isinstance(permissions_data, str):
+            try:
+                permissions = json.loads(permissions_data)
+            except json.JSONDecodeError:
+                permissions = {}
+        else:
+            permissions = permissions_data or {}
+
+        if not all([username, email, password, confirm_password, user_type_id
+                    ]):
+            return jsonify({"error":
+                            "All mandatory fields are required."}), 400
+
+        if len(username) < 3:
+            return jsonify(
+                {"error": "Username must be at least 3 characters."}), 400
+
+        if "@" not in email or "." not in email.split("@")[-1]:
+            return jsonify({"error": "Invalid email format."}), 400
+
+        is_valid, validation_message = validate_password_complexity(password)
+        if not is_valid:
+            return jsonify({"error": validation_message}), 400
+
+        if password != confirm_password:
+            return jsonify({"error": "Passwords do not match."}), 400
+
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        cursor.execute('SELECT id FROM usertypes WHERE id = %s',
+                       (user_type_id, ))
+        if not cursor.fetchone():
+            conn.close()
+            return jsonify({"error": "Invalid user type selected."}), 400
+
+        try:
+            hashed_password = generate_password_hash(password,
+                                                     method='pbkdf2:sha256')
+            cursor.execute(
+                '''
+                INSERT INTO users (username, email, password, user_type_id) 
+                VALUES (%s,%s,%s,%s) RETURNING id
+            ''', (username, email, hashed_password, user_type_id))
+            user_id = cursor.fetchone()['id']
+            conn.commit()
+
+            for module, actions in permissions.items():
+                if isinstance(actions, dict):
+                    for action, granted in actions.items():
+                        try:
+                            cursor.execute(
+                                '''
+                                INSERT INTO user_permissions (user_id, module, action, granted)
+                                VALUES (%s,%s,%s,%s)
+                            ''', (user_id, module, action, 1 if granted else 0))
+                        except psycopg2.IntegrityError:
+                            pass
+
+            conn.commit()
+            conn.close()
+
+            return jsonify({
+                "id": user_id,
+                "username": username,
+                "email": email,
+                "user_type_id": user_type_id,
+                "permissions": permissions,
+                "created_at": datetime.now().isoformat(),
+                "message": "User created successfully!"
+            }), 201
+
+        except psycopg2.IntegrityError:
+            conn.close()
+            return jsonify({"error": "Username or email already exists."}), 409
+
+    except Exception as e:
+        print(f"[ERROR] /api/users POST failed: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/users/<int:id>", methods=["GET"])
+@admin_required
+def get_user(id):
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            '''
+            SELECT u.id, u.username, u.email, u.user_type_id, ut.user_role, u.created_at
+            FROM users u 
+            LEFT JOIN usertypes ut ON u.user_type_id = ut.id 
+            WHERE u.id = %s
+        ''', (id, ))
+        user = cursor.fetchone()
+
+        if not user:
+            conn.close()
+            return jsonify({"error": "User not found."}), 404
+
+        cursor.execute(
+            '''
+            SELECT module, action, granted FROM user_permissions 
+            WHERE user_id = %s ORDER BY module, action
+        ''', (id, ))
+        permissions_rows = cursor.fetchall()
+        conn.close()
+
+        permissions = {}
+        for perm in permissions_rows:
+            module = perm['module']
+            if module not in permissions:
+                permissions[module] = {}
+            permissions[module][perm['action']] = bool(perm['granted'])
+
+        user_dict = dict(user)
+        user_dict['permissions'] = permissions
+        if user_dict['created_at']:
+            user_dict['created_at'] = user_dict['created_at'].isoformat()
+
+        return jsonify(user_dict), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/users/<int:id>", methods=["PUT"])
+@admin_required
+def update_user(id):
+    try:
+        data = request.get_json() or {}
+        username = (data.get("username") or "").strip()
+        email = (data.get("email") or "").strip().lower()
+        password = data.get("password")
+        user_type_id = data.get("user_type_id")
+        permissions_data = data.get("permissions")
+
+        if isinstance(permissions_data, str):
+            try:
+                permissions = json.loads(permissions_data)
+            except json.JSONDecodeError:
+                permissions = {}
+        else:
+            permissions = permissions_data or {}
+
+        if not username or not email or not user_type_id:
+            return jsonify(
+                {"error": "Username, email, and user type are required."}), 400
+
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        cursor.execute('SELECT id FROM users WHERE id = %s', (id, ))
+        if not cursor.fetchone():
+            conn.close()
+            return jsonify({"error": "User not found."}), 404
+
+        try:
+            if password:
+                is_valid, validation_message = validate_password_complexity(
+                    password)
+                if not is_valid:
+                    conn.close()
+                    return jsonify({"error": validation_message}), 400
+                hashed_password = generate_password_hash(
+                    password, method='pbkdf2:sha256')
+                cursor.execute(
+                    '''
+                    UPDATE users SET username = %s, email = %s, password = %s, user_type_id = %s
+                    WHERE id = %s
+                ''', (username, email, hashed_password, user_type_id, id))
+            else:
+                cursor.execute(
+                    '''
+                    UPDATE users SET username = %s, email = %s, user_type_id = %s
+                    WHERE id = %s
+                ''', (username, email, user_type_id, id))
+
+            cursor.execute('DELETE FROM user_permissions WHERE user_id = %s',
+                           (id, ))
+
+            for module, actions in permissions.items():
+                if isinstance(actions, dict):
+                    for action, granted in actions.items():
+                        try:
+                            cursor.execute(
+                                '''
+                                INSERT INTO user_permissions (user_id, module, action, granted)
+                                VALUES (%s,%s,%s,%s)
+                            ''', (id, module, action, 1 if granted else 0))
+                        except mysql.connector.IntegrityError:
+                            pass
+
+            conn.commit()
+            conn.close()
+
+            return jsonify({
+                "id": id,
+                "username": username,
+                "email": email,
+                "user_type_id": user_type_id,
+                "permissions": permissions,
+                "message": "User updated successfully!"
+            }), 200
+
+        except mysql.connector.IntegrityError:
+            conn.close()
+            return jsonify({"error": "Username or email already exists."}), 409
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/users/<int:id>", methods=["DELETE"])
+@admin_required
+def delete_user(id):
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        cursor.execute('SELECT id FROM users WHERE id = %s', (id, ))
+        if not cursor.fetchone():
+            conn.close()
+            return jsonify({"error": "User not found."}), 404
+
+        cursor.execute('DELETE FROM user_permissions WHERE user_id = %s',
+                       (id, ))
+        cursor.execute('DELETE FROM users WHERE id = %s', (id, ))
+        conn.commit()
+        conn.close()
+
+        return jsonify({"message": "User deleted successfully!"}), 200
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/user/login", methods=["POST"])
+def user_login():
+    data = request.get_json() or {}
+    email = (data.get("email") or "").strip().lower()
+    password = data.get("password") or ""
+
+    if not email or not password:
+        return jsonify({"error": "Email and password are required."}), 400
+
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            '''
+            SELECT u.id, u.username, u.email, u.password, ut.user_role
+            FROM users u
+            LEFT JOIN usertypes ut ON u.user_type_id = ut.id
+            WHERE u.email = %s
+        ''', (email, ))
+        user = cursor.fetchone()
+
+        if not user:
+            conn.close()
+            return jsonify({"error": "Invalid email or password."}), 401
+
+        if not check_password_hash(user['password'], password):
+            conn.close()
+            return jsonify({"error": "Invalid email or password."}), 401
+
+        cursor.execute(
+            '''
+            SELECT module, action, granted FROM user_permissions
+            WHERE user_id = %s ORDER BY module, action
+        ''', (user['id'], ))
+        permissions_rows = cursor.fetchall()
+        conn.close()
+
+        permissions = {}
+        for perm in permissions_rows:
+            module = perm['module']
+            if module not in permissions:
+                permissions[module] = {}
+            permissions[module][perm['action']] = bool(perm['granted'])
+
+        # Store authentication info in session
+        session['user_id'] = user['id']
+        session['user_type'] = 'employee'
+        session['username'] = user['username']
+        session['permissions'] = permissions
+        session['authenticated'] = True
+
+        auth_token = secrets.token_urlsafe(32)
+        # Store token in both session and global dict for API authentication
+        session['auth_token'] = auth_token
+        valid_tokens[auth_token] = {
+            'user_id': user['id'],
+            'username': user['username'],
+            'user_type': 'employee',
+            'created_at': datetime.now(timezone.utc)
+        }
+
+        return jsonify({
+            "user_id": user['id'],
+            "username": user['username'],
+            "email": user['email'],
+            "user_role": user['user_role'],
+            "permissions": permissions,
+            "token": auth_token,
+            "message": "Login successful!"
+        }), 200
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/user/logout", methods=["POST"])
+def user_logout():
+    auth_header = request.headers.get('Authorization')
+    if auth_header and auth_header.startswith('Bearer '):
+        token = auth_header.split(' ')[1]
+        if token in valid_tokens:
+            del valid_tokens[token]
+    # Clear session data
+    session.clear()
+    return jsonify({"message": "Logout successful!"}), 200
+
+
+@app.route("/api/employee/projects", methods=["GET"])
+@login_required
+def get_employee_projects():
+    try:
+        user_id = get_current_user_id()
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        cursor.execute(
+            '''
+            SELECT DISTINCT p.id, p.title, p.description, p.status, p.progress, 
+                   p.deadline, p.created_by_id, u.username as creator_name, p.created_at
+            FROM projects p 
+            LEFT JOIN users u ON p.created_by_id = u.id
+            WHERE p.created_by_id = %s OR p.id IN (
+                SELECT project_id FROM project_assignments WHERE user_id = %s
+            )
+            ORDER BY p.created_at DESC
+        ''', (user_id, user_id))
+
+        projects = cursor.fetchall()
+        conn.close()
+
+        return jsonify([dict(row) for row in projects]), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/employee/projects", methods=["POST"])
+@login_required
+def create_employee_project():
+    try:
+        data = request.get_json() or {}
+        title = (data.get("title") or "").strip()
+        description = data.get("description") or ""
+        deadline = data.get("deadline")
+        reporting_time = data.get("reporting_time", "09:00")
+        team_members = data.get("team_members") or []
+
+        if not title:
+            return jsonify({"error": "Project title is required"}), 400
+
+        user_id = get_current_user_id()
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        cursor.execute(
+            '''
+            SELECT granted FROM user_permissions 
+            WHERE user_id = %s AND module = %s AND action = %s
+        ''', (user_id, 'Proj', 'Add'))
+        perm = cursor.fetchone()
+
+        if not perm or not perm['granted']:
+            conn.close()
+            return jsonify({"error": "Permission denied"}), 403
+        cursor.execute(
+            '''
+            INSERT INTO projects (title, description, deadline, reporting_time, created_by_id)
+            VALUES (%s,%s,%s,%s,%s) RETURNING id
+        ''', (title, description, deadline or None, reporting_time, user_id))
+
+        project_id = cursor.fetchone()['id']
+
+        for member_id in team_members:
+            try:
+                cursor.execute(
+                    '''
+                    INSERT INTO project_assignments (user_id, project_id)
+                    VALUES (%s,%s)
+                ''', (member_id, project_id))
+            except psycopg2.IntegrityError:
+                pass
+
+        conn.commit()
+        conn.close()
+
+        log_activity(user_id,
+                     'project_created',
+                     f'Created project: {title} with reporting time {reporting_time}',
+                     project_id=project_id)
+
+        # Calculate initial progress
+        try:
+            calculate_project_progress(project_id)
+        except:
+            pass
+
+        return jsonify({
+            "id": project_id,
+            "title": title,
+            "message": "Project created successfully!",
+            "reporting_time": reporting_time
+        }), 201
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/employee/tasks", methods=["GET"])
+@login_required
+def get_employee_tasks():
+    try:
+        user_id = get_current_user_id()
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        cursor.execute(
+            '''
+            SELECT t.id, t.title, t.description, t.status, t.priority, t.deadline,
+                   t.project_id, p.title as project_name, t.assigned_to_id,
+                   u.username as assigned_to_name, t.created_at, t.approval_status
+            FROM tasks t
+            LEFT JOIN projects p ON t.project_id = p.id
+            LEFT JOIN users u ON t.assigned_to_id = u.id
+            WHERE t.assigned_to_id = %s OR t.created_by_id = %s
+            ORDER BY t.created_at DESC
+        ''', (user_id, user_id))
+
+        tasks = cursor.fetchall()
+        conn.close()
+
+        return jsonify([dict(row) for row in tasks]), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/employee/tasks", methods=["POST"])
+@login_required
+def create_employee_task():
+    try:
+        data = request.get_json() or {}
+        title = (data.get("title") or "").strip()
+        description = data.get("description") or ""
+        project_id = data.get("project_id")
+        assigned_to_id = data.get("assigned_to_id")
+        priority = data.get("priority") or "Medium"
+        deadline = data.get("deadline")
+
+        if not title or not project_id:
+            return jsonify({"error": "Title and project are required"}), 400
+
+        user_id = get_current_user_id()
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        # Check permission
+        cursor.execute(
+            '''
+            SELECT granted FROM user_permissions 
+            WHERE user_id = %s AND module = %s AND action = %s
+            ''', (user_id, 'task', 'Add'))
+        perm = cursor.fetchone()
+
+        if not perm or not perm['granted']:
+            conn.close()
+            return jsonify({"error": "Permission denied"}), 403
+
+        # Decide status based on whether assigned at creation
+        status_to_set = 'Pending'
+        if assigned_to_id:
+            # Task was assigned immediately — treat as active
+            status_to_set = 'In Progress'
+
+        cursor.execute(
+            '''
+            INSERT INTO tasks (title, description, project_id, created_by_id, assigned_to_id, priority, deadline, status)
+            VALUES (%s,%s,%s,%s,%s,%s,%s,%s) RETURNING id
+            ''',
+            (title, description, project_id, user_id, assigned_to_id, priority, deadline or None, status_to_set)
+        )
+
+        task_id = cursor.fetchone()['id']
+        conn.commit()
+        conn.close()
+
+        # Log activity
+        log_activity(user_id,
+                     'task_created',
+                     f'Created task: {title}',
+                     project_id=project_id,
+                     task_id=task_id)
+
+        # Update project progress after adding the task
+        try:
+            calculate_project_progress(project_id)
+        except Exception:
+            # don't crash on progress calc errors
+            pass
+
+        return jsonify({
+            "id": task_id,
+            "title": title,
+            "message": "Task created successfully!"
+        }), 201
+    
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/employee/tasks/<int:task_id>/complete", methods=["POST"])
+@login_required
+def complete_employee_task(task_id):
+    try:
+        user_id = get_current_user_id()
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        # Get task and project details
+        cursor.execute('''
+            SELECT status, project_id FROM tasks WHERE id = %s  AND (assigned_to_id = %s OR created_by_id = %s)
+        ''', (task_id, user_id, user_id))
+        task = cursor.fetchone()
+
+        if not task:
+            conn.close()
+            return jsonify({"error": "Task not found or permission denied"}), 404
+
+        if task['status'] == 'Completed': 
+            conn.close()
+            return jsonify({"message": "Task is already completed. "}), 200
+
+        # Update task status
+        cursor.execute('''
+            UPDATE tasks SET status = %s, completed_at = CURRENT_TIMESTAMP
+            WHERE id = %s
+        ''', ('Completed', task_id))
+
+        conn.commit()
+        conn.close()
+
+        # Log activity
+        log_activity(user_id, 'task_completed', f'Completed task ID: {task_id}', task_id=task_id)
+
+        # ⭐ IMPORTANT:  Recalculate project progress
+        try:
+            progress_response = calculate_project_progress(task['project_id'])
+            if progress_response[1] == 200:
+                progress_data = progress_response[0]. get_json()
+                return jsonify({
+                    "message": "Task completed successfully! ",
+                    "project_progress": progress_data
+                }), 200
+        except Exception as progress_error:
+            print(f"[WARNING] Progress calculation failed: {progress_error}")
+            # Don't fail the task completion if progress calc fails
+            return jsonify({"message": "Task completed successfully! "}), 200
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/employee/milestones", methods=["GET"])
+@login_required
+def get_employee_milestones():
+    try:
+        user_id = get_current_user_id()
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        cursor.execute(
+            '''
+            SELECT m.id, m.title, m.description, m.status, m.due_date, m.project_id,
+                   p.title as project_title, m.created_at
+            FROM milestones m
+            LEFT JOIN projects p ON m.project_id = p.id
+            WHERE p.created_by_id = %s OR m.project_id IN (
+                SELECT project_id FROM project_assignments WHERE user_id = %s
+            )
+            ORDER BY m.created_at DESC
+        ''', (user_id, user_id))
+
+        milestones = cursor.fetchall()
+        conn.close()
+
+        return jsonify([dict(row) for row in milestones]), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/employee/milestones", methods=["POST"])
+@login_required
+def create_employee_milestone():
+    """Create a new milestone for a project with validation"""
+    try:
+        data = request.get_json() or {}
+        title = data.get("title", "").strip()
+        description = data.get("description", "").strip()
+        project_id = data.get("project_id")
+        due_date = data.get("due_date")
+
+        if not title or not project_id:
+            return jsonify({"error": "Title and project_id are required"}), 400
+
+        user_id = get_current_user_id()
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        # Verify user has access to this project
+        cursor.execute('''
+            SELECT id FROM projects 
+            WHERE id = %s AND (
+                created_by_id = %s OR id IN (
+                    SELECT project_id FROM project_assignments WHERE user_id = %s
+                )
+            )
+        ''', (project_id, user_id, user_id))
+        
+        project = cursor.fetchone()
+        if not project:
+            conn.close()
+            return jsonify({"error": "Project not found or access denied"}), 404
+
+        try:
+            cursor.execute('''
+                INSERT INTO milestones (title, description, project_id, due_date, status, created_by_id)
+                VALUES (%s,%s,%s,%s, 'Pending', %s) RETURNING id
+            ''', (title, description, project_id, due_date, user_id))
+
+            milestone_id = cursor.fetchone()['id']
+            conn.commit()
+        except psycopg2.ProgrammingError as e:
+            conn.close()
+            print(f"[ERROR] Database schema error: {str(e)}")
+            return jsonify({"error": "Database configuration error. Please contact administrator."}), 500
+
+        conn.close()
+
+        log_activity(user_id, 'milestone_created', 
+                    f'Created milestone: {title}',
+                    project_id=project_id, milestone_id=milestone_id)
+
+        return jsonify({
+            "id": milestone_id,
+            "title": title,
+            "message": "Milestone created successfully!"
+        }), 201
+    except Exception as e:
+        print(f"[ERROR] Milestone creation failed: {str(e)}")
+        return jsonify({"error": f"Milestone creation failed: {str(e)}"}), 500
+
+
+@app.route("/api/employee/milestones/<int:milestone_id>/complete",methods=["POST"])
+@login_required
+def complete_employee_milestone(milestone_id):
+    try:
+        user_id = get_current_user_id()
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        cursor.execute('SELECT project_id FROM milestones WHERE id = %s', (milestone_id,))
+        milestone = cursor.fetchone()
+        
+        if not milestone:
+            conn.close()
+            return jsonify({"error": "Milestone not found"}), 404
+
+        cursor.execute(
+            '''
+            UPDATE milestones SET status = %s
+            WHERE id = %s
+        ''', ('Completed', milestone_id))
+
+        conn.commit()
+        conn.close()
+
+        log_activity(user_id,
+                     'milestone_completed',
+                     f'Completed milestone ID: {milestone_id}',
+                     milestone_id=milestone_id)
+
+        # Update project progress
+        try:
+            calculate_project_progress(milestone['project_id'])
+        except:
+            pass
+
+        return jsonify({"message": "Milestone completed successfully!"}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/employee/documents", methods=["GET"])
+@login_required
+def get_employee_documents():
+    try:
+        user_id = get_current_user_id()
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        cursor.execute(
+            '''
+            SELECT d.id, d.filename, d.original_filename, d.file_size,
+                   d.uploaded_by_id, u.username as uploaded_by, d.project_id, d.task_id,
+                   d.uploaded_at
+            FROM documents d
+            LEFT JOIN users u ON d.uploaded_by_id = u.id
+            WHERE d.uploaded_by_id = %s OR d.project_id IN (
+                SELECT project_id FROM project_assignments WHERE user_id = %s
+            )
+            ORDER BY d.uploaded_at DESC
+        ''', (user_id, user_id))
+
+        documents = cursor.fetchall()
+        conn.close()
+
+        return jsonify([dict(row) for row in documents]), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/employee/documents/upload", methods=["POST"])
+@login_required
+def upload_employee_document():
+    try:
+        if 'file' not in request.files:
+            return jsonify({"error": "No file provided"}), 400
+
+        file = request.files['file']
+        project_id = request.form.get('project_id')
+
+        if not file.filename or not project_id:
+            return jsonify({"error": "File and project ID are required"}), 400
+
+        user_id = get_current_user_id()
+
+        # Ensure upload folder exists
+        upload_dir = os.path.join('uploads', 'documents')
+        os.makedirs(upload_dir, exist_ok=True)
+
+        # Use a secure and unique filename
+        filename = f"{secrets.token_hex(8)}_{secure_filename(file.filename)}"
+        file_path = os.path.join(upload_dir, filename)
+        
+        # Save the file
+        file.save(file_path)
+
+        file_size = os.path.getsize(file_path)
+
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        cursor.execute(
+            '''
+            INSERT INTO documents (filename, original_filename, file_size, uploaded_by_id, project_id)
+            VALUES (%s,%s,%s,%s,%s) RETURNING id
+        ''', (filename, file.filename, file_size, user_id, project_id))
+
+        doc_id = cursor.fetchone()['id']
+        conn.commit()
+        conn.close()
+
+        log_activity(user_id,
+                     'document_uploaded',
+                     f'Uploaded document: {file.filename}',
+                     project_id=project_id)
+
+        return jsonify({
+            "id": doc_id,
+            "filename": file.filename,
+            "message": "Document uploaded successfully!"
+        }), 201
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/employee/documents/<int:doc_id>/delete", methods=["DELETE"])
+@login_required
+def delete_employee_document(doc_id):
+    try:
+        user_id = get_current_user_id()
+
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        cursor.execute(
+            'SELECT uploaded_by_id, project_id, filename FROM documents WHERE id = %s',
+            (doc_id, ))
+        doc_info = cursor.fetchone()
+
+        if not doc_info:
+            conn.close()
+            return jsonify({"error": "Document not found."}), 404
+
+        # Check ownership or project assignment
+        if doc_info['uploaded_by_id'] != user_id:
+            cursor.execute('''
+                SELECT 1 FROM project_assignments WHERE user_id = %s AND project_id = %s
+            ''', (user_id, doc_info['project_id']))
+            if not cursor.fetchone():
+                conn.close()
+                return jsonify({"error": "Permission denied"}), 403
+        
+        # Delete file from storage
+        file_path = os.path.join('uploads', 'documents', doc_info['filename'])
+        try:
+            if os.path.exists(file_path):
+                os.remove(file_path)
+        except OSError as e:
+            print(f"[WARNING] Could not delete file {file_path}: {e}")
+            # Continue with deletion from DB even if file deletion fails
+
+        cursor.execute('DELETE FROM documents WHERE id = %s', (doc_id, ))
+        conn.commit()
+        conn.close()
+
+        log_activity(user_id,
+                     'document_deleted',
+                     f'Deleted document ID: {doc_id}',
+                     project_id=doc_info['project_id'])
+
+        return jsonify({"message": "Document deleted successfully!"}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/employee/dashboard/stats", methods=["GET"])
+@login_required
+def get_employee_dashboard_stats():
+    try:
+        user_id = get_current_user_id()
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        cursor.execute(
+            '''
+            SELECT COUNT(DISTINCT id) as count FROM projects 
+            WHERE created_by_id = %s OR id IN (SELECT project_id FROM project_assignments WHERE user_id = %s)
+        ''', (user_id, user_id))
+        total_projects = cursor.fetchone()['count']
+
+        cursor.execute(
+            'SELECT COUNT(*) as count FROM tasks WHERE assigned_to_id = %s OR created_by_id = %s',
+            (user_id, user_id))
+        total_tasks = cursor.fetchone()['count']
+
+        cursor.execute(
+            'SELECT COUNT(*) as count FROM tasks WHERE (assigned_to_id = %s OR created_by_id = %s) AND status = %s',
+            (user_id, user_id, 'Completed'))
+        completed_tasks = cursor.fetchone()['count']
+
+        cursor.execute(
+            '''
+            SELECT COUNT(*) as count FROM milestones m 
+            WHERE m.project_id IN (
+                SELECT id FROM projects WHERE created_by_id = %s OR id IN (
+                    SELECT project_id FROM project_assignments WHERE user_id = %s
+                )
+            )
+        ''', (user_id, user_id))
+        total_milestones = cursor.fetchone()['count']
+
+        conn.close()
+
+        return jsonify({
+            "total_projects": total_projects,
+            "total_tasks": total_tasks,
+            "completed_tasks": completed_tasks,
+            "total_milestones": total_milestones,
+            "pending_tasks": total_tasks - completed_tasks
+        }), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/employee/activities", methods=["GET"])
+@login_required
+def get_employee_activities():
+    try:
+        user_id = get_current_user_id()
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        cursor.execute(
+            '''
+            SELECT a.id, a.activity_type, a.description, a.created_at,
+                   u.username, p.title as project_title, p.description as project_description, p.deadline as project_deadline,
+                   t.title as task_title, m.title as milestone_title
+            FROM activities a
+            LEFT JOIN users u ON a.user_id = u.id
+            LEFT JOIN projects p ON a.project_id = p.id
+            LEFT JOIN tasks t ON a.task_id = t.id
+            LEFT JOIN milestones m ON a.milestone_id = m.id
+            WHERE a.user_id = %s OR a.project_id IN (
+                SELECT project_id FROM project_assignments WHERE user_id = %s
+            ) OR a.task_id IN (
+                SELECT id FROM tasks WHERE assigned_to_id = %s OR created_by_id = %s
+            ) OR a.milestone_id IN (
+                SELECT id FROM milestones WHERE project_id IN (
+                    SELECT project_id FROM project_assignments WHERE user_id = %s
+                )
+            )
+            ORDER BY a.created_at DESC
+            LIMIT 50
+        ''', (user_id, user_id, user_id, user_id, user_id))
+
+        activities = cursor.fetchall()
+        conn.close()
+
+        return jsonify([dict(row) for row in activities]), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/search", methods=["GET"])
+@login_required
+def search():
+    try:
+        query = request.args.get('q', '').strip()
+        if not query or len(query) < 2:
+            return jsonify({"results": []}), 200
+
+        # Check if admin or employee
+        is_admin = session.get('admin') or session.get('user_type') == 'admin'
+        user_id = get_current_user_id()
+
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        results = []
+
+        # Search projects
+        if is_admin:
+            cursor.execute(
+                '''
+                SELECT 'project' as type, id, title as name, description,
+                       created_at, NULL as project_name, NULL as status
+                FROM projects
+                WHERE title LIKE %s OR description LIKE %s
+                ORDER BY created_at DESC
+                LIMIT 10
+            ''', (f'%{query}%', f'%{query}%'))
+        else:
+            cursor.execute(
+                '''
+                SELECT 'project' as type, p.id, p.title as name, p.description,
+                       p.created_at, NULL as project_name, NULL as status
+                FROM projects p
+                WHERE (p.title LIKE %s OR p.description LIKE %s) AND
+                      (p.created_by_id = %s OR p.id IN (
+                          SELECT project_id FROM project_assignments WHERE user_id = %s
+                      ))
+                ORDER BY p.created_at DESC
+                LIMIT 10
+            ''', (f'%{query}%', f'%{query}%', user_id, user_id))
+
+        projects = cursor.fetchall()
+        for project in projects:
+            results.append({
+                "type":
+                "project",
+                "id":
+                project['id'],
+                "name":
+                project['name'],
+                "description":
+                project['description'][:100] + "..."
+                if project['description'] and len(project['description']) > 100
+                else project['description'],
+                "url":
+                "/admin-dashboard" if is_admin else "/employee-dashboard",
+                "tab":
+                "projects-tab" if not is_admin else None
+            })
+
+        # Search tasks
+        if is_admin:
+            cursor.execute(
+                '''
+                SELECT 'task' as type, t.id, t.title as name, t.description,
+                       t.created_at, p.title as project_name, t.status
+                FROM tasks t
+                LEFT JOIN projects p ON t.project_id = p.id
+                WHERE t.title LIKE %s OR t.description LIKE %s
+                ORDER BY t.created_at DESC
+                LIMIT 10
+            ''', (f'%{query}%', f'%{query}%'))
+        else:
+            cursor.execute(
+                '''
+                SELECT 'task' as type, t.id, t.title as name, t.description,
+                       t.created_at, p.title as project_name, t.status
+                FROM tasks t
+                LEFT JOIN projects p ON t.project_id = p.id
+                WHERE (t.title LIKE %s OR t.description LIKE %s) AND
+                      (t.assigned_to_id = %s OR t.created_by_id = %s)
+                ORDER BY t.created_at DESC
+                LIMIT 10
+            ''', (f'%{query}%', f'%{query}%', user_id, user_id))
+
+        tasks = cursor.fetchall()
+        for task in tasks:
+            results.append({
+                "type":
+                "task",
+                "id":
+                task['id'],
+                "name":
+                task['name'],
+                "description":
+                task['description'][:100] if task['description']
+                and len(task['description']) > 100 else task['description'],
+                "project_name":
+                task['project_name'],
+                "status":
+                task['status'],
+                "url":
+                "/admin-dashboard" if is_admin else "/employee-dashboard",
+                "tab":
+                "tasks-tab" if not is_admin else None
+            })
+
+        # Search users (admin only)
+        if is_admin:
+            cursor.execute(
+                '''
+                SELECT 'user' as type, id, username as name, email as description,
+                       created_at, NULL as project_name, NULL as status
+                FROM users
+                WHERE username LIKE %s OR email LIKE %s
+                ORDER BY created_at DESC
+                LIMIT 10
+            ''', (f'%{query}%', f'%{query}%'))
+
+            users = cursor.fetchall()
+            for user in users:
+                results.append({
+                    "type": "user",
+                    "id": user['id'],
+                    "name": user['name'],
+                    "description": user['description'],
+                    "url": "/admin-dashboard",
+                    "tab": "users-tab"
                 })
-                .then(projects => {
-                    renderRealTimeProjects(projects);
-                    updateProgressElements(projects);
-                    updateProjectTimers();
-                })
-                .catch(error => console.error('Real-time update error:', error));
+
+        # Search milestones
+        if is_admin:
+            cursor.execute(
+                '''
+                SELECT 'milestone' as type, m.id, m.title as name, m.description,
+                       m.created_at, p.title as project_name, m.status
+                FROM milestones m
+                LEFT JOIN projects p ON m.project_id = p.id
+                WHERE m.title LIKE %s OR m.description LIKE %s
+                ORDER BY m.created_at DESC
+                LIMIT 10
+            ''', (f'%{query}%', f'%{query}%'))
+        else:
+            cursor.execute(
+                '''
+                SELECT 'milestone' as type, m.id, m.title as name, m.description,
+                       m.created_at, p.title as project_name, m.status
+                FROM milestones m
+                LEFT JOIN projects p ON m.project_id = p.id
+                WHERE (m.title LIKE %s OR m.description LIKE %s) AND
+                      (p.created_by_id = %s OR m.project_id IN (
+                          SELECT project_id FROM project_assignments WHERE user_id = %s
+                      ))
+                ORDER BY m.created_at DESC
+                LIMIT 10
+            ''', (f'%{query}%', f'%{query}%', user_id, user_id))
+
+        milestones = cursor.fetchall()
+        for milestone in milestones:
+            results.append({
+                "type":
+                "milestone",
+                "id":
+                milestone['id'],
+                "name":
+                milestone['name'],
+                "description":
+                milestone['description'][:100]
+                if milestone['description']
+                and len(milestone['description']) > 100 else
+                milestone['description'],
+                "project_name":
+                milestone['project_name'],
+                "status":
+                milestone['status'],
+                "url":
+                "/admin-dashboard" if is_admin else "/employee-dashboard",
+                "tab":
+                "milestones-tab" if not is_admin else None
+            })
+
+        # Search documents
+        if is_admin:
+            cursor.execute(
+                '''
+                SELECT 'document' as type, d.id, d.original_filename as name,
+                       d.file_size, d.uploaded_at, p.title as project_name, NULL as status
+                FROM documents d
+                LEFT JOIN projects p ON d.project_id = p.id
+                WHERE d.original_filename LIKE %s
+                ORDER BY d.uploaded_at DESC
+                LIMIT 10
+            ''', (f'%{query}%', ))
+        else:
+            cursor.execute(
+                '''
+                SELECT 'document' as type, d.id, d.original_filename as name,
+                       d.file_size, d.uploaded_at, p.title as project_name, NULL as status
+                FROM documents d
+                LEFT JOIN projects p ON d.project_id = p.id
+                WHERE d.original_filename LIKE %s AND
+                      (d.uploaded_by_id = %s OR d.project_id IN (
+                          SELECT project_id FROM project_assignments WHERE user_id = %s
+                      ))
+                ORDER BY d.uploaded_at DESC
+                LIMIT 10
+            ''', (f'%{query}%', user_id, user_id))
+
+        documents = cursor.fetchall()
+        for doc in documents:
+            results.append({
+                "type": "document",
+                "id": doc['id'],
+                "name": doc['name'],
+                "description": f"Size: {doc['file_size']} bytes",
+                "project_name": doc['project_name'],
+                "url":
+                f"/admin-dashboard" if is_admin else f"/employee-dashboard",
+                "tab": "documents-tab" if not is_admin else None
+            })
+
+        conn.close()
+
+        return jsonify({"results": results}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/admin/projects", methods=["GET"])
+@admin_required
+def get_admin_projects():
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        cursor.execute('''
+            SELECT p.id, p.title, p.description, p.status, p.progress, 
+                   p.deadline, p.created_by_id, u.username as creator_name, 
+                   p.created_at, COUNT(DISTINCT pa.user_id) as team_count,
+                   COUNT(DISTINCT t.id) as task_count
+            FROM projects p
+            LEFT JOIN users u ON p.created_by_id = u.id
+            LEFT JOIN project_assignments pa ON p.id = pa.project_id
+            LEFT JOIN tasks t ON p.id = t.project_id
+            GROUP BY p.id, u.username
+            ORDER BY p.created_at DESC
+        ''')
+
+        projects = cursor.fetchall()
+        conn.close()
+
+        return jsonify([dict(row) for row in projects]), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/admin/tasks", methods=["GET"])
+@admin_required
+def get_admin_tasks():
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        cursor.execute('''
+            SELECT t.id, t.title, t.description, t.status, t.priority, 
+                   t.deadline, t.project_id, p.title as project_name,
+                   t.assigned_to_id, u.username as assigned_to_name,
+                   t.created_by_id, uc.username as created_by_name,
+                   t.created_at, t.approval_status
+            FROM tasks t
+            LEFT JOIN projects p ON t.project_id = p.id
+            LEFT JOIN users u ON t.assigned_to_id = u.id
+            LEFT JOIN users uc ON t.created_by_id = uc.id
+            ORDER BY t.created_at DESC
+        ''')
+
+        tasks = cursor.fetchall()
+        conn.close()
+
+        return jsonify([dict(row) for row in tasks]), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/health")
+def health():
+    return jsonify({"status": "ok"}), 200
+
+
+def log_activity(user_id,
+                 activity_type,
+                 description,
+                 project_id=None,
+                 task_id=None,
+                 milestone_id=None):
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            '''
+            INSERT INTO activities (user_id, activity_type, description, project_id, task_id, milestone_id)
+            VALUES (%s,%s,%s,%s,%s,%s)
+        ''', (user_id, activity_type, description, project_id, task_id,
+              milestone_id))
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print(f"[ERROR] Failed to log activity: {str(e)}")
+
+
+@app.route("/api/employee/skills", methods=["GET"])
+@login_required
+def get_employee_skills():
+    """Get all skills for the logged-in employee"""
+    try:
+        user_id = session.get('user_id')
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        cursor.execute(
+            '''
+            SELECT id, skill_name, created_at 
+            FROM user_skills 
+            WHERE user_id = %s
+            ORDER BY skill_name
+        ''', (user_id, ))
+
+        skills = cursor.fetchall()
+        conn.close()
+
+        return jsonify([dict(row) for row in skills]), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/employee/skills", methods=["POST"])
+@login_required
+def add_employee_skill():
+    """Add a new skill for the logged-in employee"""
+    try:
+        data = request.get_json() or {}
+        skill_name = (data.get("skill_name") or "").strip()
+
+        if not skill_name:
+            return jsonify({"error": "Skill name is required"}), 400
+
+        user_id = session.get('user_id')
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        try:
+            cursor.execute(
+                '''
+                INSERT INTO user_skills (user_id, skill_name)
+                VALUES (%s, %s) RETURNING id
+            ''', (user_id, skill_name))
+            skill_id = cursor.fetchone()['id']
+            conn.commit()
+            conn.close()
+
+            return jsonify({
+                "id": skill_id,
+                "skill_name": skill_name,
+                "message": "Skill added successfully!"
+            }), 201
+        except psycopg2.IntegrityError:
+            conn.close()
+            return jsonify({"error": "Skill already exists"}), 409
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/employee/skills/<int:skill_id>", methods=["DELETE"])
+@login_required
+def delete_employee_skill(skill_id):
+    """Delete a skill for the logged-in employee"""
+    try:
+        user_id = session.get('user_id')
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        cursor.execute(
+            'SELECT id FROM user_skills WHERE id = %s AND user_id = %s',
+            (skill_id, user_id))
+        if not cursor.fetchone():
+            conn.close()
+            return jsonify({"error": "Skill not found"}), 404
+
+        cursor.execute('DELETE FROM user_skills WHERE id = %s AND user_id = %s',
+                       (skill_id, user_id))
+        conn.commit()
+        conn.close()
+
+        return jsonify({"message": "Skill deleted successfully!"}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/employee/profile", methods=["GET"])
+@login_required
+def get_employee_profile():
+    """Get profile for the logged-in employee"""
+    try:
+        user_id = get_current_user_id()
+        if not user_id:
+            return jsonify({"error": "User not authenticated"}), 401
+            
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        cursor.execute(
+            '''
+            SELECT u.id, u.username, u.email, u.user_type_id, ut.user_role,
+                   u.phone, u.department, u.bio, u.avatar_url, u.created_at
+            FROM users u
+            LEFT JOIN usertypes ut ON u.user_type_id = ut.id
+            WHERE u.id = %s
+        ''', (user_id, ))
+
+        user = cursor.fetchone()
+        if not user:
+            conn.close()
+            return jsonify({"error": "User not found"}), 404
+
+        cursor.execute(
+            '''
+            SELECT skill_name FROM user_skills WHERE user_id = %s ORDER BY skill_name
+        ''', (user_id, ))
+        skills = [row['skill_name'] for row in cursor.fetchall()]
+
+        conn.close()
+
+        profile = dict(user)
+        profile['skills'] = skills
+
+        return jsonify(profile), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/employee/profile", methods=["PUT"])
+@login_required
+def update_employee_profile():
+    """Update profile for the logged-in employee with validation"""
+    try:
+        data = request.get_json() or {}
+        user_id = get_current_user_id()
+        if not user_id:
+            return jsonify({"error": "User not authenticated"}), 401
+
+        phone = data.get("phone", "").strip() if data.get("phone") else None
+        department = data.get("department", "").strip() if data.get("department") else None
+        bio = data.get("bio", "").strip() if data.get("bio") else None
+
+        if phone and len(phone) > 20:
+            return jsonify({"error": "Phone number too long"}), 400
+        if department and len(department) > 100:
+            return jsonify({"error": "Department name too long"}), 400
+        if bio and len(bio) > 500:
+            return jsonify({"error": "Bio too long"}), 400
+
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        cursor.execute(
+            '''
+            UPDATE users 
+            SET phone = %s, department = %s, bio = %s
+            WHERE id = %s
+        ''', (phone, department, bio, user_id))
+
+        conn.commit()
+        conn.close()
+
+        return jsonify({"message": "Profile updated successfully!"}), 200
+    except Exception as e:
+        print(f"[ERROR] Profile update failed: {str(e)}")
+        return jsonify({"error": f"Update failed: {str(e)}"}), 500
+
+
+@app.route("/api/admin/profile", methods=["GET"])
+@admin_required
+def get_admin_profile():
+    """Get admin profile"""
+    return jsonify({
+        "name": "Super Admin",
+        "email": ADMIN_EMAIL,
+        "role": "Administrator",
+        "department": "Administration",
+        "created_at": datetime.now().isoformat()
+    }), 200
+
+
+def allowed_file(filename):
+    """Check if file has allowed extension"""
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+def optimize_image(image_file, max_width=500, max_height=500):
+    """
+    Optimize and validate uploaded image
+    Resize to reasonable dimensions and compress for efficient storage
+    Returns: BytesIO object with optimized image bytes
+    """
+    try:
+        img = Image.open(image_file)
+        
+        # Convert RGBA to RGB if necessary
+        if img.mode in ('RGBA', 'LA', 'P'):
+            background = Image.new('RGB', img.size, (255, 255, 255))
+            background.paste(img, mask=img.split()[-1] if img.mode == 'RGBA' else None)
+            img = background
+        
+        # Resize image maintaining aspect ratio
+        img.thumbnail((max_width, max_height), Image.Resampling.LANCZOS)
+        
+        # Save optimized image to BytesIO
+        output = io.BytesIO()
+        img.save(output, format='JPEG', quality=85, optimize=True)
+        output.seek(0)
+        
+        return output
+    except Exception as e:
+        print(f"Error optimizing image: {str(e)}")
+        raise
+
+@app.route("/api/employee/profile/upload-avatar", methods=["POST"])
+@login_required
+def upload_avatar():
+    """Upload and optimize profile avatar"""
+    try:
+        if 'avatar' not in request.files:
+            return jsonify({"error": "No file provided"}), 400
+
+        file = request.files['avatar']
+        if not file.filename:
+            return jsonify({"error": "No file selected"}), 400
+
+        if not allowed_file(file.filename):
+            return jsonify({"error": "Invalid file type. Only PNG, JPG, JPEG, GIF, and WebP are allowed"}), 400
+
+        user_id = get_current_user_id()
+
+        # Ensure upload folder exists
+        os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+        # Optimize image
+        try:
+            optimized_image_bytes = optimize_image(file)
+        except Exception as e:
+            print(f"[ERROR] Failed to optimize image: {str(e)}")
+            return jsonify({"error": "Failed to process image. Please try another file."}), 400
+
+        # Generate secure filename
+        filename = f"{user_id}_{secrets.token_hex(8)}.jpg"
+        file_path = os.path.join(UPLOAD_FOLDER, filename)
+
+        try:
+            # Save optimized image bytes to file
+            with open(file_path, 'wb') as f:
+                f.write(optimized_image_bytes.getvalue())
+        except Exception as save_error:
+            print(f"[ERROR] Error saving avatar: {str(save_error)}")
+            return jsonify({"error": "Failed to save file to server. Check folder permissions."}), 500
+
+        # Update database with new avatar URL
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        avatar_url = f"/uploads/profiles/{filename}"
+        
+        try:
+            cursor.execute('UPDATE users SET avatar_url = %s WHERE id = %s', (avatar_url, user_id))
+            conn.commit()
+        except psycopg2.OperationalError as db_error:
+            # If column doesn't exist, add it
+            if "no such column: avatar_url" in str(db_error):
+                try:
+                    cursor.execute('ALTER TABLE users ADD COLUMN avatar_url TEXT')
+                    conn.commit()
+                    cursor.execute('UPDATE users SET avatar_url = %s WHERE id = %s', (avatar_url, user_id))
+                    conn.commit()
+                    print(f"[INFO] Added avatar_url column for user {user_id}")
+                except Exception as alter_error:
+                    conn.close()
+                    print(f"[ERROR] Failed to add avatar_url column: {str(alter_error)}")
+                    return jsonify({"error": "Database configuration issue. Please contact administrator."}), 500
+        
+        conn.close()
+
+        return jsonify({
+            "message": "Profile picture uploaded successfully!",
+            "avatar_url": avatar_url
+        }), 200
+
+    except Exception as e:
+        print(f"[ERROR] Error uploading avatar: {str(e)}")
+        return jsonify({"error": f"Upload failed: {str(e)}"}), 500
+
+
+@app.route("/api/employee/profile/avatar", methods=["DELETE"])
+@login_required
+def delete_avatar():
+    """
+    Enhanced avatar deletion with proper file cleanup
+    """
+    try:
+        user_id = get_current_user_id()
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        cursor.execute('SELECT avatar_url FROM users WHERE id = %s', (user_id,))
+        user = cursor.fetchone()
+
+        if not user or not user['avatar_url']:
+            conn.close()
+            return jsonify({"error": "No profile picture found"}), 404
+
+        # Delete file from storage
+        filename = user['avatar_url'].split('/')[-1]
+        file_path = os.path.join(UPLOAD_FOLDER, filename)
+        try:
+            if os.path.exists(file_path):
+                os.remove(file_path)
+        except OSError:
+            pass
+
+        # Update database
+        cursor.execute('UPDATE users SET avatar_url = NULL WHERE id = %s', (user_id,))
+        conn.commit()
+        conn.close()
+
+        return jsonify({"message": "Profile picture deleted successfully!"}), 200
+
+    except Exception as e:
+        print(f"[v0] Error deleting avatar: {str(e)}")
+        return jsonify({"error": "Internal server error"}), 500
+
+
+@app.route("/uploads/profiles/<path:filename>")
+def serve_profile_picture(filename):
+    """
+    Serve profile pictures with proper security
+    Validates filename before serving
+    """
+    try:
+        # Security check: only allow alphanumeric and underscores
+        if not re.match(r'^[\w\-]+\.jpg$', filename):
+            return jsonify({"error": "Invalid file"}), 400
+        
+        return send_from_directory(UPLOAD_FOLDER, filename, as_attachment=False)
+    except FileNotFoundError:
+        return jsonify({"error": "File not found"}), 404
+
+
+@app.route("/api/projects/<int:project_id>/progress", methods=["GET"])
+@login_required
+def get_project_progress(project_id):
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        # Count total tasks
+        cursor.execute("SELECT COUNT(*) as total FROM tasks WHERE project_id = %s", (project_id,))
+        total = cursor.fetchone()["total"]
+
+        # Count completed tasks
+        cursor.execute("SELECT COUNT(*) as completed FROM tasks WHERE project_id = %s AND status = 'Completed'", (project_id,))
+        completed = cursor.fetchone()["completed"]
+
+        # Avoid division by zero
+        progress = 0
+        if total > 0:
+            progress = int((completed / total) * 100)
+
+        # Save progress in DB
+        cursor.execute("UPDATE projects SET progress = %s, updated_at = CURRENT_TIMESTAMP WHERE id = %s", (progress, project_id))
+        conn.commit()
+        conn.close()
+
+        return jsonify({"project_id": project_id, "progress": progress}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/employee/documents/<int:doc_id>/download", methods=["GET"])
+@login_required
+def download_document(doc_id):
+    """Download a document file with proper error handling"""
+    try:
+        user_id = get_current_user_id()
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # Check if user has access to this document
+        cursor.execute('''
+            SELECT d.filename, d.original_filename, d.project_id
+            FROM documents d
+            WHERE d.id = %s AND (
+                d.uploaded_by_id = %s OR 
+                d.project_id IN (
+                    SELECT project_id FROM project_assignments WHERE user_id = %s
+                ) OR
+                d.project_id IN (
+                    SELECT id FROM projects WHERE created_by_id = %s
+                )
+            )
+        ''', (doc_id, user_id, user_id, user_id))
+        
+        doc = cursor.fetchone()
+        conn.close()
+        
+        if not doc:
+            return jsonify({"error": "Document not found or access denied"}), 404
+        
+        file_path = os.path.join('uploads', 'documents', doc['filename'])
+        
+        if not os.path.exists(file_path):
+            print(f"[ERROR] File not found at path: {file_path}")
+            return jsonify({"error": "File not found on server"}), 404
+        
+        # Log download activity
+        log_activity(user_id, 'document_downloaded', 
+                    f'Downloaded document: {doc["original_filename"]}',
+                    project_id=doc['project_id'])
+        
+        return send_from_directory('uploads/documents', doc['filename'], 
+                                  as_attachment=True,
+                                  download_name=doc['original_filename'])
+    
+    except Exception as e:
+        print(f"[ERROR] Document download failed: {str(e)}")
+        return jsonify({"error": f"Download failed: {str(e)}"}), 500
+
+
+@app.route("/api/admin/documents/<int:doc_id>/download", methods=["GET"])
+@admin_required
+def admin_download_document(doc_id):
+    """Admin download a document file"""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            SELECT filename, original_filename, project_id
+            FROM documents
+            WHERE id = %s
+        ''', (doc_id,))
+        
+        doc = cursor.fetchone()
+        conn.close()
+        
+        if not doc:
+            return jsonify({"error": "Document not found"}), 404
+        
+        file_path = os.path.join('uploads', 'documents', doc['filename'])
+        
+        if not os.path.exists(file_path):
+            print(f"[ERROR] Admin document file not found at path: {file_path}")
+            return jsonify({"error": "File not found on server"}), 404
+        
+        return send_from_directory('uploads/documents', doc['filename'], 
+                                  as_attachment=True,
+                                  download_name=doc['original_filename'])
+    
+    except Exception as e:
+        print(f"[ERROR] Admin document download failed: {str(e)}")
+        return jsonify({"error": f"Download failed: {str(e)}"}), 500
+
+
+# Enhanced profile stats endpoint
+@app.route("/api/employee/profile/stats", methods=["GET"])
+@login_required
+def get_employee_profile_stats():
+    """Get detailed profile statistics for employee"""
+    try:
+        user_id = get_current_user_id()
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # Total projects
+        cursor.execute('''
+            SELECT COUNT(DISTINCT id) as count FROM projects 
+            WHERE created_by_id = %s OR id IN (
+                SELECT project_id FROM project_assignments WHERE user_id = %s
+            )
+        ''', (user_id, user_id))
+        total_projects = cursor.fetchone()['count']
+        
+        # Completed tasks
+        cursor.execute('''
+            SELECT COUNT(*) as count FROM tasks 
+            WHERE (assigned_to_id = %s OR created_by_id = %s) AND status = 'Completed'
+        ''', (user_id, user_id))
+        completed_tasks = cursor.fetchone()['count']
+        
+        # Pending tasks
+        cursor.execute('''
+            SELECT COUNT(*) as count FROM tasks 
+            WHERE (assigned_to_id = %s OR created_by_id = %s) 
+            AND status != 'Completed'
+        ''', (user_id, user_id))
+        pending_tasks = cursor.fetchone()['count']
+        
+        # Total milestones
+        cursor.execute('''
+            SELECT COUNT(*) as count FROM milestones m
+            WHERE m.project_id IN (
+                SELECT id FROM projects WHERE created_by_id = %s
+                OR id IN (SELECT project_id FROM project_assignments WHERE user_id = %s)
+            )
+        ''', (user_id, user_id))
+        total_milestones = cursor.fetchone()['count']
+        
+        # Completed milestones
+        cursor.execute('''
+            SELECT COUNT(*) as count FROM milestones m
+            WHERE m.status = 'Completed' AND m.project_id IN (
+                SELECT id FROM projects WHERE created_by_id = %s
+                OR id IN (SELECT project_id FROM project_assignments WHERE user_id = %s)
+            )
+        ''', (user_id, user_id))
+        completed_milestones = cursor.fetchone()['count']
+        
+        # Documents uploaded
+        cursor.execute('''
+            SELECT COUNT(*) as count FROM documents WHERE uploaded_by_id = %s
+        ''', (user_id,))
+        documents_uploaded = cursor.fetchone()['count']
+        
+        conn.close()
+        
+        return jsonify({
+            "total_projects": total_projects,
+            "completed_tasks": completed_tasks,
+            "pending_tasks": pending_tasks,
+            "total_milestones": total_milestones,
+            "completed_milestones": completed_milestones,
+            "documents_uploaded": documents_uploaded,
+            "completion_rate": round((completed_tasks / (completed_tasks + pending_tasks) * 100), 2) if (completed_tasks + pending_tasks) > 0 else 0
+        }), 200
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+
+@app.route("/api/admin/projects/realtime", methods=["GET"])
+@admin_required
+def get_admin_realtime_projects():
+    """Get real-time project updates for admin dashboard"""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            SELECT p.id, p.title, p.description, p.status, p.progress,
+                   p.deadline, p.reporting_time, p.created_at, p.updated_at,
+                   u.username as creator_name,
+                   COUNT(DISTINCT t.id) as total_tasks,
+                   SUM(CASE WHEN t.status = 'Completed' THEN 1 ELSE 0 END) as completed_tasks,
+                   COUNT(DISTINCT m.id) as total_milestones,
+                   SUM(CASE WHEN m.status = 'Completed' THEN 1 ELSE 0 END) as completed_milestones,
+                   COUNT(DISTINCT pa.user_id) as team_size
+            FROM projects p
+            LEFT JOIN users u ON p.created_by_id = u.id
+            LEFT JOIN tasks t ON p.id = t.project_id
+            LEFT JOIN milestones m ON p.id = m.project_id
+            LEFT JOIN project_assignments pa ON p.id = pa.project_id
+            WHERE p.status != 'Completed'
+            GROUP BY p.id, u.username
+            ORDER BY p.updated_at DESC
+        ''')
+        
+        projects = cursor.fetchall()
+        conn.close()
+        
+        result = []
+        for row in projects:
+            project_dict = dict(row)
+            project_dict['completed_tasks'] = project_dict.get('completed_tasks') or 0
+            project_dict['total_tasks'] = project_dict.get('total_tasks') or 0
+            project_dict['completed_milestones'] = project_dict.get('completed_milestones') or 0
+            project_dict['total_milestones'] = project_dict.get('total_milestones') or 0
+            project_dict['progress'] = project_dict.get('progress') or 0
+            result.append(project_dict)
+        
+        return jsonify(result), 200
+    except Exception as e:
+        print(f"[ERROR] Admin realtime projects error: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+
+# Get specific project details for admin
+@app.route("/api/admin/projects/<int:project_id>", methods=["GET"])
+@admin_required
+def get_admin_project_detail(project_id):
+    """Get detailed project information"""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            SELECT p.*, u.username as creator_name,
+                   COUNT(DISTINCT t.id) as total_tasks,
+                   COUNT(DISTINCT m.id) as total_milestones
+            FROM projects p
+            LEFT JOIN users u ON p.created_by_id = u.id
+            LEFT JOIN tasks t ON p.id = t.project_id
+            LEFT JOIN milestones m ON p.id = m.project_id
+            WHERE p.id = %s
+            GROUP BY p.id, u.username
+        ''', (project_id,))
+        
+        project = cursor.fetchone()
+        conn.close()
+        
+        if not project:
+            return jsonify({"error": "Project not found"}), 404
+        
+        return jsonify(dict(project)), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+# Get specific task details for admin
+@app.route("/api/admin/tasks/<int:task_id>", methods=["GET"])
+@admin_required
+def get_admin_task_detail(task_id):
+    """Get detailed task information"""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            SELECT t.*, p.title as project_name,
+                   u.username as assigned_to_name,
+                   uc.username as created_by_name
+            FROM tasks t
+            LEFT JOIN projects p ON t.project_id = p.id
+            LEFT JOIN users u ON t.assigned_to_id = u.id
+            LEFT JOIN users uc ON t.created_by_id = uc.id
+            WHERE t.id = %s
+        ''', (task_id,))
+        
+        task = cursor.fetchone()
+        conn.close()
+        
+        if not task:
+            return jsonify({"error": "Task not found"}), 404
+        
+        return jsonify(dict(task)), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+# Employee real-time projects endpoint with live progress calculation
+@app.route("/api/employee/projects/realtime", methods=["GET"])
+@login_required
+def get_employee_realtime_projects():
+    """Get real-time project updates with calculated progress percentage"""
+    try:
+        user_id = get_current_user_id()
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            SELECT DISTINCT p.id, p.title, p.description, p.status,
+                   p.deadline, p.reporting_time, p.created_at, p.updated_at,
+                   u.username as creator_name,
+                   COUNT(DISTINCT t.id) as total_tasks,
+                   SUM(CASE WHEN t.status = 'Completed' THEN 1 ELSE 0 END) as completed_tasks,
+                   COUNT(DISTINCT m.id) as total_milestones,
+                   SUM(CASE WHEN m.status = 'Completed' THEN 1 ELSE 0 END) as completed_milestones,
+                   COUNT(DISTINCT pa.user_id) as team_size
+            FROM projects p
+            LEFT JOIN users u ON p.created_by_id = u.id
+            LEFT JOIN tasks t ON p.id = t.project_id
+            LEFT JOIN milestones m ON p.id = m.project_id
+            LEFT JOIN project_assignments pa ON p.id = pa.project_id
+            WHERE (p.created_by_id = %s OR p.id IN (
+                SELECT project_id FROM project_assignments WHERE user_id = %s
+            )) AND p.status != 'Completed'
+            GROUP BY p.id, u.username
+            ORDER BY p.updated_at DESC
+        ''', (user_id, user_id))
+        
+        projects = cursor.fetchall()
+        
+        # Calculate live progress percentage for each project
+        result = []
+        for row in projects:
+            project_dict = dict(row)
+            total_tasks = project_dict.get('total_tasks') or 0
+            completed_tasks = project_dict.get('completed_tasks') or 0
+            total_milestones = project_dict.get('total_milestones') or 0
+            completed_milestones = project_dict.get('completed_milestones') or 0
+            
+            # Calculate progress: if no tasks, progress is 0
+            if total_tasks > 0:
+                progress = int((completed_tasks / total_tasks) * 100)
+            elif total_milestones > 0:
+                progress = int((completed_milestones / total_milestones) * 100)
+            else:
+                progress = 0
+            
+            project_dict['progress'] = progress
+            project_dict['completed_tasks'] = completed_tasks
+            project_dict['total_tasks'] = total_tasks
+            project_dict['completed_milestones'] = completed_milestones
+            project_dict['total_milestones'] = total_milestones
+            result.append(project_dict)
+        
+        conn.close()
+        return jsonify(result), 200
+    except Exception as e:
+        print(f"[ERROR] Realtime projects error: {str(e)}")
+        conn.close()
+        return jsonify({"error": str(e)}), 500
+
+
+
+def check_db_initialized():
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT EXISTS (
+                SELECT FROM information_schema.tables
+                WHERE table_name = 'usertypes'
+            );
+        """)
+        exists = cursor.fetchone()['exists']
+        cursor.close()
+        conn.close()
+        return exists
+    except Exception as e:
+        print("DB check failed:", e)
+        return False
+
+
+
+
+def safe_init_db():
+    try:
+        if not check_db_initialized():
+            init_db()
+    except Exception as e:
+        print("DB init skipped:", e)
+
+safe_init_db()
+
+if os.getenv("RUN_DB_MIGRATION") == "true":
+    migrate_db()
+
+
+
+def update_project_status(project_id):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    # Get total + completed tasks
+    cursor.execute("""
+        SELECT 
+            COUNT(*) as total,
+            SUM(CASE WHEN status='Completed' THEN 1 ELSE 0 END) as completed
+        FROM tasks 
+        WHERE project_id = %s
+    """, (project_id,))
+    row = cursor.fetchone()
+
+    total = row['total']
+    completed = row['completed']
+
+    # Decide project status
+    new_status = None
+    if total == 0:
+        new_status = 'Pending'
+    elif completed == total:
+        new_status = 'Completed'
+    else:
+        new_status = 'In Progress'
+
+    cursor.execute(
+        "UPDATE projects SET status = %s WHERE id = %s",
+        (new_status, project_id)
+    )
+
+    conn.commit()
+    conn.close()
+
+@app.route("/api/admin/employees/<int:employee_id>/profile", methods=["GET"])
+@admin_required
+def get_employee_profile_admin(employee_id):
+    """Admin endpoint to get an employee's profile details"""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        cursor.execute('''
+            SELECT u.id, u.username, u.email, u.user_type_id, ut.user_role,
+                   u.phone, u.department, u.bio, u.avatar_url, u.created_at
+            FROM users u
+            LEFT JOIN usertypes ut ON u.user_type_id = ut.id
+            WHERE u.id = %s
+        ''', (employee_id,))
+
+        user = cursor.fetchone()
+        if not user:
+            conn.close()
+            return jsonify({"error": "Employee not found"}), 404
+
+        # Get skills
+        cursor.execute('''
+            SELECT skill_name FROM user_skills WHERE user_id = %s ORDER BY skill_name
+        ''', (employee_id,))
+        skills = [row['skill_name'] for row in cursor.fetchall()]
+
+        # Get stats
+        cursor.execute('''
+            SELECT COUNT(DISTINCT id) as count FROM projects 
+            WHERE created_by_id = %s OR id IN (
+                SELECT project_id FROM project_assignments WHERE user_id = %s
+            )
+        ''', (employee_id, employee_id))
+        projects_count = cursor.fetchone()['count']
+
+        cursor.execute('''
+            SELECT COUNT(*) as count FROM tasks 
+            WHERE assigned_to_id = %s AND status = 'Completed'
+        ''', (employee_id,))
+        tasks_completed = cursor.fetchone()['count']
+
+        cursor.execute('''
+            SELECT COUNT(*) as count FROM documents WHERE uploaded_by_id = %s
+        ''', (employee_id,))
+        documents_count = cursor.fetchone()['count']
+
+        conn.close()
+
+        profile = dict(user)
+        profile['skills'] = skills
+        profile['stats'] = {
+            'projects': projects_count,
+            'tasks_completed': tasks_completed,
+            'documents': documents_count
         }
 
-        function renderRealTimeProjects(projects) {
-            const container = document.getElementById('realTimeProjects');
-            if (!container) return;
+        return jsonify(profile), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
-            if (!Array.isArray(projects) || projects.length === 0) {
-                const noActive = document.getElementById('noActiveProjects');
-                if (noActive) noActive.style.display = 'block';
-                container.innerHTML = '';
-                return;
-            }
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
 
-            const noActive = document.getElementById('noActiveProjects');
-            if (noActive) noActive.style.display = 'none';
-
-            container.innerHTML = projects.map(project => `
-                <div class="item-card" data-project-id="${project.id}">
-                    <div class="item-content">
-                        <h5><i class="fas fa-project-diagram"></i> ${project.title}</h5>
-                        <p>${project.description || 'No description'}</p>
-                        
-                        <div class="row" style="margin-top: 15px;">
-                            <div class="col-md-4">
-                                <div class="real-time-stat">
-                                    <h6><i class="fas fa-calendar-plus"></i> Created</h6>
-                                    <div class="time-display" id="created-${project.id}">
-                                        ${formatDate(project.created_at)}
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="real-time-stat">
-                                    <h6><i class="fas fa-clock"></i> Daily Report</h6>
-                                    <div class="time-display" id="reporting-${project.id}">
-                                        ${project.reporting_time || '09:00'}
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="real-time-stat">
-                                    <h6><i class="fas fa-calendar-times"></i> Deadline</h6>
-                                    <div class="time-display countdown" id="deadline-${project.id}" 
-                                         data-deadline="${project.deadline}">
-                                        ${formatDate(project.deadline)}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- Overall Progress -->
-                        <div style="margin-top: 15px; padding: 12px; background: #f8f9fa; border-radius: 8px;">
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                                <strong style="font-size: 14px; color: #2d3748;">Overall Progress</strong>
-                                <span style="font-weight: 700; color: #667eea; font-size: 16px;">
-                                    <span id="progress-text-${project.id}">${project.progress || 0}</span>%
-                                </span>
-                            </div>
-                            <div class="progress" style="height: 8px;">
-                                <div id="progress-bar-${project.id}" class="progress-bar" role="progressbar" 
-                                     aria-valuemin="0" aria-valuemax="100" aria-valuenow="${project.progress || 0}"
-                                     style="width: ${project.progress || 0}%; background:  linear-gradient(90deg, #667eea, #764ba2);">
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Task & Milestone Breakdown -->
-                        <div style="margin-top: 12px; display: grid; grid-template-columns: 1fr 1fr; gap:  10px;">
-                            <div style="background: #e8f4fd; padding: 10px; border-radius: 6px; text-align: center;">
-                                <small style="color: #0c5aa0; font-weight: 600;">Tasks</small>
-                                <div style="color: #0c5aa0; font-weight: 700; font-size: 14px;">
-                                    <span id="tasks-completed-${project.id}">${project.completed_tasks || 0}</span>/<span id="tasks-total-${project.id}">${project.total_tasks || 0}</span>
-                                </div>
-                            </div>
-                            <div style="background: #e8f5e9; padding: 10px; border-radius: 6px; text-align: center;">
-                                <small style="color: #1b5e20; font-weight:  600;">Milestones</small>
-                                <div style="color: #1b5e20; font-weight: 700; font-size: 14px;">
-                                    <span id="milestones-completed-${project.id}">${project.completed_milestones || 0}</span>/<span id="milestones-total-${project.id}">${project.total_milestones || 0}</span>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="item-meta" style="margin-top: 12px;">
-                            <span><i class="fas fa-user"></i> ${project.creator_name || 'Unknown'}</span>
-                            <span><i class="fas fa-history"></i> Updated: ${formatTimeAgo(project.updated_at)}</span>
-                            <span class="badge ${getStatusBadgeClass(project.status)}">${project.status}</span>
-                        </div>
-                    </div>
-                </div>
-            `).join('');
-        }
-
-
-        function updateProgressElements(projects) {
-            if (!projects || projects.length === 0) return;
-
-            projects.forEach(p => {
-                try {
-                    const bar = document.getElementById(`progress-bar-${p.id}`);
-                    const text = document.getElementById(`progress-text-${p.id}`);
-                    const tasksCompleted = document.getElementById(`tasks-completed-${p.id}`);
-                    const tasksTotal = document.getElementById(`tasks-total-${p.id}`);
-                    const milestonesCompleted = document.getElementById(`milestones-completed-${p.id}`);
-                    const milestonesTotal = document.getElementById(`milestones-total-${p.id}`);
-
-                    // Only update if elements exist
-                    if (bar) {
-                        bar.style.transition = 'width 0.6s ease';
-                        bar.style.width = (p.progress || 0) + '%';
-                        bar.setAttribute('aria-valuenow', p.progress || 0);
-                    }
-                    if (text) {
-                        text.textContent = p.progress || 0;
-                    }
-                    if (tasksCompleted) {
-                        tasksCompleted.textContent = p.completed_tasks || 0;
-                    }
-                    if (tasksTotal) {
-                        tasksTotal.textContent = p.total_tasks || 0;
-                    }
-                    if (milestonesCompleted) {
-                        milestonesCompleted.textContent = p.completed_milestones || 0;
-                    }
-                    if (milestonesTotal) {
-                        milestonesTotal.textContent = p.total_milestones || 0;
-                    }
-                } catch (error) {
-                    console.error('[v0] Error updating progress for project ' + p.id + ':', error);
-                }
-            });
-        }
-
-        function updateProjectTimers() {
-            // Update countdown timers for deadlines
-            const countdownElements = document.querySelectorAll('.countdown');
-            countdownElements.forEach(element => {
-                if (!element) return; // Skip if element doesn't exist
-                const deadline = element.getAttribute('data-deadline');
-                if (deadline) {
-                    const timeLeft = calculateTimeLeft(deadline);
-                    element.innerHTML = timeLeft;
-                    if (element.style) { // Added null check for style
-                        element.style.color = timeLeft.includes('Overdue') ? '#f56565' : '#48bb78';
-                    }
-                }
-            });
-
-            // Update reporting time indicators
-            const now = new Date();
-            const currentTime = now.getHours() + ':' + (now.getMinutes() < 10 ? '0' : '') + now.getMinutes();
-
-            const timeDisplays = document.querySelectorAll('.time-display:not(.countdown)');
-            timeDisplays.forEach(element => {
-                if (!element || !element.style) return; // Added safety check
-                if (element.textContent.includes(':')) {
-                    const [hours, minutes] = element.textContent.split(':').map(Number);
-                    const reportingTime = new Date();
-                    reportingTime.setHours(hours, minutes, 0, 0);
-
-                    if (now > reportingTime) {
-                        element.style.color = '#f56565';
-                    } else if ((reportingTime - now) < 3600000) {
-                        element.style.color = '#ed8936';
-                    } else {
-                        element.style.color = '#48bb78';
-                    }
-                }
-            });
-        }
-
-        function formatDate(dateString) {
-            if (!dateString) return 'Not set';
-            const date = new Date(dateString);
-            return date.toLocaleDateString('en-US', {
-                year: 'numeric',
-                month: 'short',
-                day: 'numeric'
-            });
-        }
-
-        function formatTimeAgo(dateString) {
-            if (!dateString) return 'Just now';
-            const date = new Date(dateString);
-            const now = new Date();
-            const diffMs = now - date;
-            const diffMins = Math.floor(diffMs / 60000);
-            const diffHours = Math.floor(diffMs / 3600000);
-            const diffDays = Math.floor(diffMs / 86400000);
-
-            if (diffMins < 1) return 'Just now';
-            if (diffMins < 60) return `${diffMins}m ago`;
-            if (diffHours < 24) return `${diffHours}h ago`;
-            return `${diffDays}d ago`;
-        }
-
-        function calculateTimeLeft(deadline) {
-            if (!deadline) return 'No deadline';
-
-            const deadlineDate = new Date(deadline);
-            const now = new Date();
-            const diffMs = deadlineDate - now;
-
-            if (diffMs < 0) return 'Overdue! ';
-
-            const diffDays = Math.floor(diffMs / 86400000);
-            const diffHours = Math.floor((diffMs % 86400000) / 3600000);
-
-            if (diffDays > 0) return `${diffDays}d ${diffHours}h left`;
-            if (diffHours > 0) return `${diffHours}h left`;
-            return 'Due today! ';
-        }
-
-        function getStatusBadgeClass(status) {
-            switch (status) {
-                case 'Completed': return 'badge-success';
-                case 'In Progress': return 'badge-info';
-                case 'On Hold': return 'badge-warning';
-                case 'Cancelled': return 'badge-danger';
-                default: return 'badge-secondary';
-            }
-        }
-
-        // Activity Details Functions
-        async function showProjectsDetails() {
-            const modal = document.getElementById('activityDetailsModal');
-            const title = document.getElementById('activityDetailsTitle');
-            const content = document.getElementById('activityDetailsContent');
-
-            title.innerHTML = '<i class="fas fa-folder"></i> Projects Details';
-            content.innerHTML = '<div class="empty-state"><i class="fas fa-spinner fa-spin" style="font-size: 2rem; color: #667eea;"></i><h4>Loading...</h4><p>Fetching project details...</p></div>';
-            modal.classList.add('active');
-
-            try {
-                const token = localStorage.getItem('employee_token');
-                const response = await fetch(`${API_BASE}/employee/projects`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-
-                if (response.ok) {
-                    const projects = await response.json();
-                    renderActivityDetails(projects, 'projects');
-                } else {
-                    content.innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-triangle"></i><h4>Error</h4><p>Failed to load project details.</p></div>';
-                }
-            } catch (error) {
-                console.error('Error loading projects:', error);
-                content.innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-triangle"></i><h4>Error</h4><p>Failed to load project details.</p></div>';
-            }
-        }
-
-        async function showCompletedTasksDetails() {
-            const modal = document.getElementById('activityDetailsModal');
-            const title = document.getElementById('activityDetailsTitle');
-            const content = document.getElementById('activityDetailsContent');
-
-            title.innerHTML = '<i class="fas fa-check-circle"></i> Completed Tasks Details';
-            content.innerHTML = '<div class="empty-state"><i class="fas fa-spinner fa-spin" style="font-size: 2rem; color: #667eea;"></i><h4>Loading...</h4><p>Fetching completed tasks...</p></div>';
-            modal.classList.add('active');
-
-            try {
-                const token = localStorage.getItem('employee_token');
-                const response = await fetch(`${API_BASE}/employee/tasks?status=Completed`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-
-                if (response.ok) {
-                    const tasks = await response.json();
-                    renderActivityDetails(tasks, 'completed-tasks');
-                } else {
-                    content.innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-triangle"></i><h4>Error</h4><p>Failed to load completed tasks.</p></div>';
-                }
-            } catch (error) {
-                console.error('Error loading completed tasks:', error);
-                content.innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-triangle"></i><h4>Error</h4><p>Failed to load completed tasks.</p></div>';
-            }
-        }
-
-        async function showPendingTasksDetails() {
-            const modal = document.getElementById('activityDetailsModal');
-            const title = document.getElementById('activityDetailsTitle');
-            const content = document.getElementById('activityDetailsContent');
-
-            title.innerHTML = '<i class="fas fa-clock"></i> Pending Tasks Details';
-            content.innerHTML = '<div class="empty-state"><i class="fas fa-spinner fa-spin" style="font-size: 2rem; color: #667eea;"></i><h4>Loading...</h4><p>Fetching pending tasks...</p></div>';
-            modal.classList.add('active');
-
-            try {
-                const token = localStorage.getItem('employee_token');
-                const response = await fetch(`${API_BASE}/employee/tasks?status=In Progress`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-
-                if (response.ok) {
-                    const tasks = await response.json();
-                    renderActivityDetails(tasks, 'pending-tasks');
-                } else {
-                    content.innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-triangle"></i><h4>Error</h4><p>Failed to load pending tasks.</p></div>';
-                }
-            } catch (error) {
-                console.error('Error loading pending tasks:', error);
-                content.innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-triangle"></i><h4>Error</h4><p>Failed to load pending tasks.</p></div>';
-            }
-        }
-
-        async function showMilestonesDetails() {
-            const modal = document.getElementById('activityDetailsModal');
-            const title = document.getElementById('activityDetailsTitle');
-            const content = document.getElementById('activityDetailsContent');
-
-            title.innerHTML = '<i class="fas fa-flag"></i> Milestones Details';
-            content.innerHTML = '<div class="empty-state"><i class="fas fa-spinner fa-spin" style="font-size: 2rem; color: #667eea;"></i><h4>Loading...</h4><p>Fetching milestones...</p></div>';
-            modal.classList.add('active');
-
-            try {
-                const token = localStorage.getItem('employee_token');
-                const response = await fetch(`${API_BASE}/employee/milestones`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-
-                if (response.ok) {
-                    const milestones = await response.json();
-                    renderActivityDetails(milestones, 'milestones');
-                } else {
-                    content.innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-triangle"></i><h4>Error</h4><p>Failed to load milestones.</p></div>';
-                }
-            } catch (error) {
-                console.error('Error loading milestones:', error);
-                content.innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-triangle"></i><h4>Error</h4><p>Failed to load milestones.</p></div>';
-            }
-        }
-
-        function renderActivityDetails(items, type) {
-            const content = document.getElementById('activityDetailsContent');
-
-            if (!items || items.length === 0) {
-                content.innerHTML = '<div class="empty-state"><i class="fas fa-inbox"></i><h4>No items found</h4><p>No data available for this category.</p></div>';
-                return;
-            }
-
-            let html = '<div class="items-list">';
-
-            items.forEach(item => {
-                let icon, title, description, meta, statusBadge;
-
-                switch (type) {
-                    case 'projects':
-                        icon = 'fas fa-folder';
-                        title = item.title;
-                        description = item.description || 'No description';
-                        meta = `<span><i class="fas fa-user"></i> ${item.creator_name || 'Unknown'}</span><span><i class="fas fa-calendar"></i> ${new Date(item.created_at).toLocaleDateString()}</span>`;
-                        statusBadge = `<span class="badge ${getStatusBadgeClass(item.status)}">${item.status}</span>`;
-                        break;
-                    case 'completed-tasks':
-                    case 'pending-tasks':
-                        icon = 'fas fa-tasks';
-                        title = item.title;
-                        description = item.description || 'No description';
-                        meta = `<span><i class="fas fa-folder"></i> ${item.project_name || 'No Project'}</span><span><i class="fas fa-calendar"></i> ${item.deadline ? new Date(item.deadline).toLocaleDateString() : 'No deadline'}</span>`;
-                        statusBadge = `<span class="badge ${getStatusBadgeClass(item.status)}">${item.status}</span>`;
-                        break;
-                    case 'milestones':
-                        icon = 'fas fa-flag';
-                        title = item.title;
-                        description = item.description || 'No description';
-                        meta = `<span><i class="fas fa-folder"></i> ${item.project_title || 'No Project'}</span><span><i class="fas fa-calendar"></i> ${item.due_date ? new Date(item.due_date).toLocaleDateString() : 'No due date'}</span>`;
-                        statusBadge = `<span class="badge ${getStatusBadgeClass(item.status)}">${item.status}</span>`;
-                        break;
-                }
-
-                html += `
-                    <div class="item-card">
-                        <div class="item-content">
-                            <h5><i class="${icon}"></i> ${title}</h5>
-                            <p>${description}</p>
-                            <div class="item-meta">
-                                ${meta}
-                                ${statusBadge}
-                            </div>
-                        </div>
-                    </div>
-                `;
-            });
-
-            html += '</div>';
-            content.innerHTML = html;
-        }
-
-        function closeActivityDetailsModal() {
-            const modal = document.getElementById('activityDetailsModal');
-            modal.classList.remove('active');
-        }
-
-        async function completeProject(projectId) {
-            if (!confirm("Mark this project as completed?")) return;
-
-            try {
-                const token = localStorage.getItem("employee_token");
-                if (!token) {
-                    showAlert("Authentication required. Please log in.", "error");
-                    return;
-                }
-
-                const response = await fetch(
-                    `${API_BASE}/employee/projects/${projectId}/complete`,
-                    {
-                        method: "POST",
-                        headers: {
-                            "Authorization": `Bearer ${token}`,
-                            "Content-Type": "application/json"
-                        }
-                    }
-                );
-
-                if (!response.ok) {
-                    const errorData = await response.json().catch(() => ({}));
-                    showAlert(errorData.error || "Failed to complete project", "error");
-                    return;
-                }
-
-                showAlert("Project completed successfully!", "success");
-                loadDashboardData();
-                updateRealTimeProjectStatus();
-
-            } catch (error) {
-                console.error("[v0] Project completion error:", error);
-                showAlert("Error completing project", "error");
-            }
-        }
-
-        async function completeTask(taskId) {
-            if (!confirm("Mark this task as completed?")) return;
-
-            try {
-                const token = localStorage.getItem("employee_token");
-                if (!token) {
-                    showAlert("Authentication required. Please log in.", "error");
-                    return;
-                }
-
-                const response = await fetch(
-                    `${API_BASE}/employee/tasks/${taskId}/complete`,
-                    {
-                        method: "POST",
-                        headers: {
-                            "Authorization": `Bearer ${token}`,
-                            "Content-Type": "application/json"
-                        }
-                    }
-                );
-
-                if (!response.ok) {
-                    const errorData = await response.json().catch(() => ({}));
-                    showAlert(errorData.error || "Failed to complete task", "error");
-                    return;
-                }
-
-                showAlert("Task completed successfully!", "success");
-                loadDashboardData();
-
-            } catch (error) {
-                console.error("[v0] Task completion error:", error);
-                showAlert("Error completing task", "error");
-            }
-        }
-
-        async function completeMilestone(milestoneId) {
-            if (!confirm("Mark this milestone as completed?")) return;
-
-            try {
-                const token = localStorage.getItem("employee_token");
-                if (!token) {
-                    showAlert("Authentication required. Please log in.", "error");
-                    return;
-                }
-
-                const response = await fetch(
-                    `${API_BASE}/employee/milestones/${milestoneId}/complete`,
-                    {
-                        method: "POST",
-                        headers: {
-                            "Authorization": `Bearer ${token}`,
-                            "Content-Type": "application/json"
-                        }
-                    }
-                );
-
-                if (!response.ok) {
-                    const errorData = await response.json().catch(() => ({}));
-                    showAlert(errorData.error || "Failed to complete milestone", "error");
-                    return;
-                }
-
-                showAlert("Milestone completed successfully!", "success");
-                loadDashboardData();
-
-            } catch (error) {
-                console.error("[v0] Milestone completion error:", error);
-                showAlert("Error completing milestone", "error");
-            }
-        }
-
-
-
-
-        // Theme toggle functionality
-        function toggleTheme() {
-            const body = document.body;
-            const isDark = body.classList.toggle('dark-mode');
-            localStorage.setItem('theme', isDark ? 'dark' : 'light');
-            updateThemeIcon();
-        }
-
-        function updateThemeIcon() {
-            const icon = document.querySelector('#themeToggle i');
-            const isDark = document.body.classList.contains('dark-mode');
-            icon.className = isDark ? 'fas fa-sun' : 'fas fa-moon';
-        }
-
-        document.addEventListener('DOMContentLoaded', function () {
-            const savedTheme = localStorage.getItem('theme');
-            if (savedTheme === 'dark') {
-                document.body.classList.add('dark-mode');
-            }
-            updateThemeIcon();
-        });
-
-    </script>
-</body>
-
-</html>

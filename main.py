@@ -968,7 +968,10 @@ def set_user_permissions(user_id):
 @app.route("/api/usertypes", methods=["GET"])
 @login_required
 def get_user_types():
-  try:
+  conn = None
+cursor = None
+
+try:
     conn = get_db_connection()
     cursor = conn.cursor()
 
@@ -984,10 +987,11 @@ except Exception as e:
     return jsonify({"error": str(e)}), 500
 
 finally:
-    if cursor:
+    if cursor is not None:
         cursor.close()
-    if conn:
+    if conn is not None:
         conn.close()
+
 
 
 

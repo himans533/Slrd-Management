@@ -3124,7 +3124,7 @@ def update_project_status(project_id):
             COUNT(*) as total,
             SUM(CASE WHEN status='Completed' THEN 1 ELSE 0 END) as completed
         FROM tasks 
-        WHERE project_id = ?
+        WHERE project_id = %s
     """, (project_id,))
     row = cursor.fetchone()
 
@@ -3141,7 +3141,7 @@ def update_project_status(project_id):
         new_status = 'In Progress'
 
     cursor.execute(
-        "UPDATE projects SET status = ? WHERE id = ?",
+        "UPDATE projects SET status = %s WHERE id = %s",
         (new_status, project_id)
     )
 
@@ -3161,7 +3161,7 @@ def get_employee_profile_admin(employee_id):
                    u.phone, u.department, u.bio, u.avatar_url, u.created_at
             FROM users u
             LEFT JOIN usertypes ut ON u.user_type_id = ut.id
-            WHERE u.id = ?
+            WHERE u.id = %s
         ''', (employee_id,))
 
         user = cursor.fetchone()
@@ -3171,27 +3171,27 @@ def get_employee_profile_admin(employee_id):
 
         # Get skills
         cursor.execute('''
-            SELECT skill_name FROM user_skills WHERE user_id = ? ORDER BY skill_name
+            SELECT skill_name FROM user_skills WHERE user_id = %s ORDER BY skill_name
         ''', (employee_id,))
         skills = [row['skill_name'] for row in cursor.fetchall()]
 
         # Get stats
         cursor.execute('''
             SELECT COUNT(DISTINCT id) as count FROM projects 
-            WHERE created_by_id = ? OR id IN (
-                SELECT project_id FROM project_assignments WHERE user_id = ?
+            WHERE created_by_id = %s OR id IN (
+                SELECT project_id FROM project_assignments WHERE user_id = %s
             )
         ''', (employee_id, employee_id))
         projects_count = cursor.fetchone()['count']
 
         cursor.execute('''
             SELECT COUNT(*) as count FROM tasks 
-            WHERE assigned_to_id = ? AND status = 'Completed'
+            WHERE assigned_to_id = %s AND status = 'Completed'
         ''', (employee_id,))
         tasks_completed = cursor.fetchone()['count']
 
         cursor.execute('''
-            SELECT COUNT(*) as count FROM documents WHERE uploaded_by_id = ?
+            SELECT COUNT(*) as count FROM documents WHERE uploaded_by_id = %s
         ''', (employee_id,))
         documents_count = cursor.fetchone()['count']
 

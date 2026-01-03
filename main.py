@@ -41,9 +41,18 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['MAX_CONTENT_LENGTH'] = MAX_CONTENT_LENGTH
 
-    
+def get_db_connection():
+    return psycopg2.connect(
+        host=os.getenv("PGHOST"),
+        database=os.getenv("PGDATABASE"),
+        user=os.getenv("PGUSER"),
+        password=os.getenv("PGPASSWORD"),
+        port=int(os.getenv("PGPORT", 5432)),
+        cursor_factory=RealDictCursor
+    )
+
 def init_db():
-    conn = get_db_connection()
+   
     cursor = conn.cursor()
 
     # Drop existing tables if they exist
@@ -93,7 +102,7 @@ def init_db():
             user_id INTEGER NOT NULL,
             module TEXT NOT NULL,
             action TEXT NOT NULL,
-            granted BOOLEAN DEFAULT 1,
+            granted BOOLEAN DEFAULT FALSE,
             FOREIGN KEY (user_id) REFERENCES users(id),
             UNIQUE(user_id, module, action)
         )
@@ -282,18 +291,6 @@ def migrate_db():
     cursor.close()
     conn.close()
     print("[OK] Database migration completed!")
-
-def get_db_connection():
-    return psycopg2.connect(
-        host=os.getenv("PGHOST"),
-        database=os.getenv("PGDATABASE"),
-        user=os.getenv("PGUSER"),
-        password=os.getenv("PGPASSWORD"),
-        port=int(os.getenv("PGPORT", 5432)),
-        cursor_factory=RealDictCursor
-    )
-
-
 
 def validate_password_complexity(password):
     if len(password) < 8:

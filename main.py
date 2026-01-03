@@ -991,21 +991,16 @@ finally:
         conn.close()
 
 
-
-
 @app.route("/api/usertypes", methods=["POST"])
 @admin_required
 def create_usertype():
-    data = request.get_json()
-    user_role = data.get("user_role")
-
-    if not user_role:
-        return jsonify({"error": "user_role is required"}), 400
-
-    conn = None
-    cursor = None
-
     try:
+        data = request.get_json()
+        user_role = data.get("user_role")
+
+        if not user_role:
+            return jsonify({"error": "user_role is required"}), 400
+
         conn = get_db_connection()
         cursor = conn.cursor()
 
@@ -1026,6 +1021,7 @@ def create_usertype():
             cursor.close()
         if conn:
             conn.close()
+
 
 
 

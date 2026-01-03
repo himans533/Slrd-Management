@@ -968,27 +968,33 @@ def set_user_permissions(user_id):
 @app.route("/api/usertypes", methods=["GET"])
 @login_required
 def get_user_types():
+    conn = None
+    cursor = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
 
-try:
-    conn = get_db_connection()
-    cursor = conn.cursor()
+        cursor.execute("SELECT id, user_role FROM usertypes")
+        rows = cursor.fetchall()
 
-    cursor.execute(
-        "INSERT INTO usertypes (user_role) VALUES (%s)",
-        (user_role,)
-    )
+        usertypes = []
+        for row in rows:
+            usertypes.append({
+                "id": row[0],
+                "user_role": row[1]
+            })
 
-    conn.commit()
+        return jsonify(usertypes), 200
 
-except Exception as e:
-    print("DB error:", e)
-    return jsonify({"error": str(e)}), 500
+    except Exception as e:
+        print("DB error:", e)
+        return jsonify({"error": str(e)}), 500
 
-finally:
-    if cursor is not None:
-        cursor.close()
-    if conn is not None:
-        conn.close()
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
 
 
 @app.route("/api/usertypes", methods=["POST"])

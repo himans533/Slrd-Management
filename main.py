@@ -12,7 +12,7 @@ import io
 from datetime import datetime, timezone, timedelta
 import logging
 import psycopg2
-import psycopg2.extras
+
 
 
 # Setup logging
@@ -45,15 +45,6 @@ def init_db():
 
     conn = get_db_connection()
     cursor = conn.cursor()
-
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS projects (
-            id SERIAL PRIMARY KEY,
-            name VARCHAR(255) NOT NULL,
-            description TEXT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        );
-    """)
 
     # Drop existing tables if they exist
     cursor.execute("DROP TABLE IF EXISTS documents")
@@ -250,9 +241,7 @@ def migrate_db():
     # Safety check for Railway
     if os.getenv("RUN_DB_MIGRATION", "false").lower() != "true":
         print("DB init skipped")
-        return
-
-    conn = mysql.connector.connect(
+        return psycopg2.connect(
         host=os.getenv("DB_HOST"),
         user=os.getenv("DB_USER"),
         password=os.getenv("DB_PASSWORD"),
@@ -285,12 +274,14 @@ def migrate_db():
     conn.close()
     print("[OK] Database migration completed!")
 
-   def get_db_connection():
+ def get_db_connection():
     return psycopg2.connect(
-        os.environ["DATABASE_URL"],
-        sslmode="require"
+        host=os.getenv("PGHOST"),
+        database=os.getenv("PGDATABASE"),
+        user=os.getenv("PGUSER"),
+        password=os.getenv("PGPASSWORD"),
+        port=os.getenv("PGPORT", 5432)
     )
-
 
 def validate_password_complexity(password):
     if len(password) < 8:

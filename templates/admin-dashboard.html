@@ -1394,7 +1394,7 @@
                     method: 'GET',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${sessionStorage.getItem('admin_session_token')}`
+                        'Authorization': `Bearer ${localStorage.getItem('admin_session_token')}`
                     }
                 });
                 if (projectsResponse.ok) {
@@ -1422,7 +1422,7 @@
                     method: 'GET',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${sessionStorage.getItem('admin_session_token')}`
+                        'Authorization': `Bearer ${localStorage.getItem('admin_session_token')}`
                     }
                 });
                 if (tasksResponse.ok) {
@@ -1741,7 +1741,15 @@
             const userRole = document.getElementById('typRole').value.trim();
             if (!userRole || userRole.length < 3) { alert('User role must be at least 3 characters'); return; }
             try {
-                const response = await fetch(`${API_BASE}/usertypes`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ user_role: userRole }) });
+                const token = localStorage.getItem('admin_session_token');
+                const response = await fetch(`${API_BASE}/usertypes`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ user_role: userRole })
+                });
                 const data = await response.json();
                 if (!response.ok) { document.getElementById('usertypeError').innerHTML = `<div style="background: #f8d7da; color: #721c24; padding: 12px; border-radius: 8px;">${data.error}</div>`; return; }
                 showSuccessMessage('User type created successfully!');
@@ -1756,7 +1764,15 @@
             const userRole = document.getElementById('updateTypRole').value.trim();
             if (!userRole || userRole.length < 3) { alert('User role must be at least 3 characters'); return; }
             try {
-                const response = await fetch(`${API_BASE}/usertypes/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ user_role: userRole }) });
+                const token = localStorage.getItem('admin_session_token');
+                const response = await fetch(`${API_BASE}/usertypes/${id}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ user_role: userRole })
+                });
                 const data = await response.json();
                 if (!response.ok) { alert(data.error); return; }
                 showSuccessMessage('User type updated successfully!');
@@ -1768,7 +1784,11 @@
         async function deleteUserType(id) {
             if (!confirm('Are you sure you want to delete this user type?')) return;
             try {
-                const response = await fetch(`${API_BASE}/usertypes/${id}`, { method: 'DELETE' });
+                const token = localStorage.getItem('admin_session_token');
+                const response = await fetch(`${API_BASE}/usertypes/${id}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
                 if (response.ok) { showSuccessMessage('User type deleted successfully!'); loadUserTypes(); }
                 else { alert('Error deleting user type'); }
             } catch (error) { alert('Error deleting user type'); }
@@ -1798,7 +1818,22 @@
                 }
             });
             try {
-                const response = await fetch(`${API_BASE}/users`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username, email, password, confirm_password: confirmPassword, user_type_id: parseInt(userTypeId), permissions }) });
+                const token = localStorage.getItem('admin_session_token');
+                const response = await fetch(`${API_BASE}/users`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        username,
+                        email,
+                        password,
+                        confirm_password: confirmPassword,
+                        user_type_id: parseInt(userTypeId),
+                        permissions
+                    })
+                });
                 const data = await response.json();
                 if (!response.ok) { errorDiv.innerHTML = `<div style="background: #f8d7da; color: #721c24; padding: 12px; border-radius: 8px;">${data.error}</div>`; return; }
                 showSuccessMessage('Employee created successfully!');
@@ -1809,7 +1844,10 @@
 
         async function openUpdateUserModal(userId) {
             try {
-                const response = await fetch(`${API_BASE}/users/${userId}`);
+                const token = localStorage.getItem('admin_session_token');
+                const response = await fetch(`${API_BASE}/users/${userId}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
                 if (!response.ok) { alert('Failed to load user data'); return; }
                 const user = await response.json();
                 document.getElementById('updateUsrId').value = user.id;
@@ -1856,7 +1894,15 @@
             const payload = { username, email, user_type_id: parseInt(userTypeId), permissions };
             if (password) payload.password = password;
             try {
-                const response = await fetch(`${API_BASE}/users/${userId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                const token = localStorage.getItem('admin_session_token');
+                const response = await fetch(`${API_BASE}/users/${userId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify(payload)
+                });
                 const data = await response.json();
                 if (!response.ok) { errorDiv.innerHTML = `<div style="background: #f8d7da; color: #721c24; padding: 12px; border-radius: 8px;">${data.error}</div>`; return; }
                 showSuccessMessage('Employee updated successfully!');
@@ -1868,7 +1914,11 @@
         async function deleteUser(userId) {
             if (!confirm('Are you sure you want to delete this employee?')) return;
             try {
-                const response = await fetch(`${API_BASE}/users/${userId}`, { method: 'DELETE' });
+                const token = localStorage.getItem('admin_session_token');
+                const response = await fetch(`${API_BASE}/users/${userId}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
                 if (response.ok) { showSuccessMessage('Employee deleted successfully!'); loadUsers(); }
                 else { alert('Error deleting employee'); }
             } catch (error) { alert('Error deleting employee'); }

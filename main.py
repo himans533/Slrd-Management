@@ -969,12 +969,16 @@ def set_user_permissions(user_id):
 @login_required
 def get_user_types():
     try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-       cursor.execute(
-    "INSERT INTO usertypes (user_role) VALUES (%s)",
-    (user_role,)
-)
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    cursor.execute(
+        "INSERT INTO usertypes (user_role) VALUES (%s)",
+        (user_role,)
+    )
+
+    conn.commit()
+
         user_types = cursor.fetchall()
         conn.close()
 

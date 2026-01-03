@@ -11,7 +11,8 @@ import os
 import io
 from datetime import datetime, timezone, timedelta
 import logging
-import mysql.connector
+import psycopg2
+
 
 
 # Setup logging
@@ -284,7 +285,9 @@ def migrate_db():
     
 
 def get_db_connection():
-    return mysql.connector.connect(
+   return psycopg2.connect(
+       database-url= os.environ.get("DATABASE_URL"),
+        sslmode="require"
         host=os.getenv("MYSQLHOST"),
         user=os.getenv("MYSQLUSER"),
         password=os.getenv("MYSQLPASSWORD"),

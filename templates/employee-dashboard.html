@@ -2638,7 +2638,7 @@
                         display.innerHTML = userRoles.map(role =>
                             `<div style="padding: 10px; background: white; border-radius: 8px; margin-bottom: 10px;">
                                 <strong>${role.user_role}</strong>
-                                <div style="color: #718096; font-size: 0.85rem;">ID: ${role.id}</div>
+                                <div style="color: #718096; font-size: 0.85rem;">ID: ${role.id} | Created: ${role.created_at ? new Date(role.created_at).toLocaleDateString() : 'N/A'}</div>
                             </div>`
                         ).join('');
                     } else {

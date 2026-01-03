@@ -14,7 +14,7 @@ import logging
 import psycopg2
 from psycopg2.extras import RealDictCursor
 from urllib.parse import urlparse
-
+from psycopg2 import errors
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -43,7 +43,6 @@ app.config['MAX_CONTENT_LENGTH'] = MAX_CONTENT_LENGTH
 
     
 def init_db():
-
     conn = get_db_connection()
     cursor = conn.cursor()
 
@@ -284,21 +283,15 @@ def migrate_db():
     print("[OK] Database migration completed!")
 
 def get_db_connection():
-    database_url = os.getenv("DATABASE_URL")
-
-    if not database_url:
-        raise Exception("DATABASE_URL not set")
-
-    result = urlparse(database_url)
-
     return psycopg2.connect(
-        dbname=result.path[1:],
-        user=result.username,
-        password=result.password,
-        host=result.hostname,
-        port=result.port,
-        sslmode="require"
+        host=os.getenv("PGHOST"),
+        database=os.getenv("PGDATABASE"),
+        user=os.getenv("PGUSER"),
+        password=os.getenv("PGPASSWORD"),
+        port=os.getenv("PGPORT", 5432),
+        cursor_factory=psycopg2.extras.RealDictCursor
     )
+
 
 
 def validate_password_complexity(password):
@@ -978,9 +971,10 @@ def get_user_types():
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
-        cursor.execute(
-            'SELECT id, user_role, created_at FROM usertypes ORDER BY user_role'
-        )
+       cursor.execute(
+    "INSERT INTO usertypes (user_role) VALUES (%s)",
+    (user_role,)
+)
         user_types = cursor.fetchall()
         conn.close()
 

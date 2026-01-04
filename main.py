@@ -959,9 +959,8 @@ def set_user_permissions(user_id):
                     cursor.execute(
                         '''
                         INSERT INTO user_permissions (user_id, module, action, granted)
-                        VALUES (%s,%s,%s,%s)
-                        
-                    ''', (user_id, module, action, 1 if granted else 0))
+                        VALUES (%s,%s,%s,%s::boolean)
+                    ''', (user_id, module, action, bool(granted)))
 
         conn.commit()
         conn.close()
@@ -1202,8 +1201,8 @@ def create_user():
                             cursor.execute(
                                 '''
                                 INSERT INTO user_permissions (user_id, module, action, granted)
-                                VALUES (%s,%s,%s,%s)
-                            ''', (user_id, module, action, 1 if granted else 0))
+                                VALUES (%s,%s,%s,%s::boolean)
+                            ''', (user_id, module, action, bool(granted)))
                         except psycopg2.IntegrityError:
                             pass
 
@@ -1336,8 +1335,8 @@ def update_user(id):
                             cursor.execute(
                                 '''
                                 INSERT INTO user_permissions (user_id, module, action, granted)
-                                VALUES (%s,%s,%s,%s)
-                            ''', (id, module, action, 1 if granted else 0))
+                                VALUES (%s,%s,%s,%s::boolean)
+                            ''', (id, module, action, bool(granted)))
                         except psycopg2.IntegrityError as e:
                             print(f"[DEBUG] Permission insert conflict: {e}")
                             pass

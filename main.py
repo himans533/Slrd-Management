@@ -14,7 +14,7 @@ import logging
 import psycopg2
 from psycopg2.extras import RealDictCursor
 from urllib.parse import urlparse
-from psycopg2 import errors
+from psycopg2 import errors, sql
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -23,8 +23,6 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__)
 CORS(app)
 app.secret_key = secrets.token_hex(32)
-
-
 
 valid_tokens = {}
 
@@ -41,15 +39,15 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['MAX_CONTENT_LENGTH'] = MAX_CONTENT_LENGTH
 
+
 def get_db_connection():
-    return psycopg2.connect(
-        host=os.getenv("PGHOST"),
-        database=os.getenv("PGDATABASE"),
-        user=os.getenv("PGUSER"),
-        password=os.getenv("PGPASSWORD"),
-        port=int(os.getenv("PGPORT", 5432)),
-        cursor_factory=RealDictCursor
-    )
+    return psycopg2.connect(host=os.getenv("PGHOST"),
+                            database=os.getenv("PGDATABASE"),
+                            user=os.getenv("PGUSER"),
+                            password=os.getenv("PGPASSWORD"),
+                            port=int(os.getenv("PGPORT", 5432)),
+                            cursor_factory=RealDictCursor)
+
 
 def init_db():
     conn = None
@@ -73,7 +71,6 @@ def init_db():
         cursor.execute("DROP TABLE IF EXISTS progress_history CASCADE")
         cursor.execute("DROP TABLE IF EXISTS user_skills CASCADE")
 
-    
         cursor.execute('''
             CREATE TABLE usertypes (
                id SERIAL PRIMARY KEY,
@@ -98,7 +95,6 @@ def init_db():
                 FOREIGN KEY (user_type_id) REFERENCES usertypes(id)
             );
         ''')
-
 
         cursor.execute('''
             CREATE TABLE user_permissions (
@@ -240,7 +236,8 @@ def init_db():
         )''')
 
         # Insert default user types
-        cursor.execute("INSERT INTO usertypes (user_role) VALUES ('Administrator')")
+        cursor.execute(
+            "INSERT INTO usertypes (user_role) VALUES ('Administrator')")
         cursor.execute("INSERT INTO usertypes (user_role) VALUES ('Employee')")
 
         conn.commit()
@@ -253,7 +250,7 @@ def init_db():
     finally:
         if conn:
             conn.close()
-    
+
 
 def migrate_db():
     """Add new columns without wiping existing data"""
@@ -281,11 +278,13 @@ def migrate_db():
         for table, column, col_type in columns_to_add:
             try:
                 cursor.execute(
-                    f"ALTER TABLE {table} ADD COLUMN {column} {col_type}"
-                )
+                    sql.SQL("ALTER TABLE {} ADD COLUMN {} {}").format(
+                        sql.Identifier(table), sql.Identifier(column),
+                        sql.SQL(col_type)))
             except psycopg2.Error:
                 if conn:
-                    conn.rollback() # Rollback if adding column fails, though typically we just ignore if exists.
+                    conn.rollback(
+                    )  # Rollback if adding column fails, though typically we just ignore if exists.
                 pass  # Column likely already exists or other non-critical error
 
         conn.commit()
@@ -298,6 +297,7 @@ def migrate_db():
     finally:
         if conn:
             conn.close()
+
 
 def validate_password_complexity(password):
     if len(password) < 8:
@@ -312,6 +312,7 @@ def validate_password_complexity(password):
 
 
 def login_required(f):
+
     @wraps(f)
     def decorated_function(*args, **kwargs):
         auth_header = request.headers.get('Authorization')
@@ -319,9 +320,10 @@ def login_required(f):
             token = auth_header.split(' ')[1]
             if token in valid_tokens:
                 g.current_user_id = valid_tokens[token]['user_id']
-                g.current_user_type = valid_tokens[token].get('user_type', 'employee')
+                g.current_user_type = valid_tokens[token].get(
+                    'user_type', 'employee')
                 return f(*args, **kwargs)
-        
+
         if 'user_id' in session:
             g.current_user_id = session.get('user_id')
             g.current_user_type = session.get('user_type', 'employee')
@@ -333,24 +335,27 @@ def login_required(f):
 
 
 def admin_required(f):
+
     @wraps(f)
     def decorated_function(*args, **kwargs):
         auth_header = request.headers.get('Authorization')
         is_admin = False
-        
+
         # Check Bearer token
         if auth_header and auth_header.startswith('Bearer '):
             token = auth_header.split(' ')[1]
-            if token in valid_tokens and valid_tokens[token].get('user_type') == 'admin':
+            if token in valid_tokens and valid_tokens[token].get(
+                    'user_type') == 'admin':
                 is_admin = True
-        
+
         # Check session
         if session.get('user_type') == 'admin' or session.get('admin'):
             is_admin = True
-        
+
         if not is_admin:
             return jsonify({"error": "Admin access required"}), 403
         return f(*args, **kwargs)
+
     return decorated_function
 
 
@@ -450,7 +455,7 @@ def get_overdue_items():
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
-        
+
         # Overdue tasks
         cursor.execute('''
             SELECT t.id, t.title, t.description, t.status, t.priority, 
@@ -469,7 +474,7 @@ def get_overdue_items():
             ORDER BY t.deadline ASC
         ''')
         overdue_tasks = cursor.fetchall()
-        
+
         # Overdue projects
         cursor.execute('''
             SELECT p.id, p.title, p.description, p.status, p.progress, 
@@ -483,14 +488,16 @@ def get_overdue_items():
             ORDER BY p.deadline ASC
         ''')
         overdue_projects = cursor.fetchall()
-        
+
         conn.close()
-        
+
         return jsonify({
             "overdue_tasks": [dict(row) for row in overdue_tasks],
             "overdue_projects": [dict(row) for row in overdue_projects],
-            "total_overdue_tasks": len(overdue_tasks),
-            "total_overdue_projects": len(overdue_projects)
+            "total_overdue_tasks":
+            len(overdue_tasks),
+            "total_overdue_projects":
+            len(overdue_projects)
         }), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -503,7 +510,7 @@ def get_completed_outcomes():
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
-        
+
         cursor.execute('''
             SELECT p.id, p.title, p.description, p.status, p.progress, 
                    p.deadline, p.created_by_id, u.username as creator_name,
@@ -520,10 +527,10 @@ def get_completed_outcomes():
             GROUP BY p.id, u.username
             ORDER BY p.completed_at DESC
         ''')
-        
+
         completed_projects = cursor.fetchall()
         conn.close()
-        
+
         return jsonify([dict(row) for row in completed_projects]), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -536,7 +543,7 @@ def get_recent_actions():
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
-        
+
         cursor.execute('''
             SELECT a.id, a.activity_type, a.description, a.created_at,
                    u.username, u.email, u.user_type_id, ut.user_role,
@@ -561,10 +568,10 @@ def get_recent_actions():
             ORDER BY a.created_at DESC
             LIMIT 50
         ''')
-        
+
         activities = cursor.fetchall()
         conn.close()
-        
+
         return jsonify([dict(row) for row in activities]), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -577,7 +584,7 @@ def get_admin_activities():
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
-        
+
         cursor.execute('''
             SELECT a.id, a.activity_type, a.description, a.created_at,
                    u.username, u.email, p.title as project_title,
@@ -590,10 +597,10 @@ def get_admin_activities():
             ORDER BY a.created_at DESC
             LIMIT 100
         ''')
-        
+
         activities = cursor.fetchall()
         conn.close()
-        
+
         return jsonify([dict(row) for row in activities]), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -640,8 +647,9 @@ def get_admin_dashboard_stats():
         total_user_types = cursor.fetchone()['count']
 
         # Add total outcomes (completed projects)
-        cursor.execute('SELECT COUNT(*) as count FROM projects WHERE status = %s',
-                       ('Completed', ))
+        cursor.execute(
+            'SELECT COUNT(*) as count FROM projects WHERE status = %s',
+            ('Completed', ))
         total_outcomes = cursor.fetchone()['count']
 
         conn.close()
@@ -660,7 +668,8 @@ def get_admin_dashboard_stats():
         return jsonify({"error": str(e)}), 500
 
 
-@app.route("/api/projects/<int:project_id>/calculate-progress", methods=["GET"])
+@app.route("/api/projects/<int:project_id>/calculate-progress",
+           methods=["GET"])
 @login_required
 def calculate_project_progress(project_id):
     """
@@ -671,9 +680,10 @@ def calculate_project_progress(project_id):
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
-        
+
         # Get task progress data
-        cursor.execute('''
+        cursor.execute(
+            '''
             SELECT 
                 COUNT(*) as total_tasks,
                 SUM(CASE WHEN status = 'Completed' THEN 1 ELSE 0 END) as completed_tasks,
@@ -681,11 +691,12 @@ def calculate_project_progress(project_id):
                 COALESCE(SUM(CASE WHEN status = 'Completed' THEN weightage ELSE 0 END), 0) as completed_weightage
             FROM tasks 
             WHERE project_id = %s
-        ''', (project_id,))
+        ''', (project_id, ))
         task_data = cursor.fetchone()
-        
+
         # Get milestone progress data
-        cursor.execute('''
+        cursor.execute(
+            '''
             SELECT 
                 COUNT(*) as total_milestones,
                 SUM(CASE WHEN status = 'Completed' THEN 1 ELSE 0 END) as completed_milestones,
@@ -693,58 +704,73 @@ def calculate_project_progress(project_id):
                 COALESCE(SUM(CASE WHEN status = 'Completed' THEN weightage ELSE 0 END), 0) as completed_m_weightage
             FROM milestones 
             WHERE project_id = %s
-        ''', (project_id,))
+        ''', (project_id, ))
         milestone_data = cursor.fetchone()
-        
+
         # Calculate weighted progress
         task_progress = 0
         if task_data['total_weightage'] and task_data['total_weightage'] > 0:
-            task_progress = (task_data['completed_weightage'] / task_data['total_weightage']) * 100
-        
+            task_progress = (task_data['completed_weightage'] /
+                             task_data['total_weightage']) * 100
+
         milestone_progress = 0
-        if milestone_data['total_m_weightage'] and milestone_data['total_m_weightage'] > 0:
-            milestone_progress = (milestone_data['completed_m_weightage'] / milestone_data['total_m_weightage']) * 100
-        
+        if milestone_data['total_m_weightage'] and milestone_data[
+                'total_m_weightage'] > 0:
+            milestone_progress = (milestone_data['completed_m_weightage'] /
+                                  milestone_data['total_m_weightage']) * 100
+
         # Overall progress:  70% tasks + 30% milestones
-        overall_progress = int((task_progress * 0.7) + (milestone_progress * 0.3))
-        
+        overall_progress = int((task_progress * 0.7) +
+                               (milestone_progress * 0.3))
+
         # Update project progress in database
-        cursor.execute('''
+        cursor.execute(
+            '''
             UPDATE projects 
             SET progress = %s, updated_at = CURRENT_TIMESTAMP 
             WHERE id = %s
         ''', (overall_progress, project_id))
-        
+
         # Record progress history
-        cursor.execute('''
+        cursor.execute(
+            '''
             INSERT INTO progress_history (
                 project_id, progress_percentage, 
                 tasks_completed, total_tasks,
                 milestones_completed, total_milestones
             ) VALUES (%s, %s, %s, %s, %s, %s)
-        ''', (
-            project_id, overall_progress,
-            task_data['completed_tasks'] or 0, task_data['total_tasks'] or 0,
-            milestone_data['completed_milestones'] or 0, milestone_data['total_milestones'] or 0
-        ))
-        
+        ''', (project_id, overall_progress, task_data['completed_tasks']
+              or 0, task_data['total_tasks']
+              or 0, milestone_data['completed_milestones']
+              or 0, milestone_data['total_milestones'] or 0))
+
         conn.commit()
         conn.close()
-        
+
         return jsonify({
-            "project_id": project_id,
-            "progress":  overall_progress,
-            "task_progress": round(task_progress, 2),
-            "milestone_progress": round(milestone_progress, 2),
-            "tasks_completed": task_data['completed_tasks'] or 0,
-            "total_tasks": task_data['total_tasks'] or 0,
-            "milestones_completed":  milestone_data['completed_milestones'] or 0,
-            "total_milestones": milestone_data['total_milestones'] or 0,
-            "message": "Progress calculated successfully"
+            "project_id":
+            project_id,
+            "progress":
+            overall_progress,
+            "task_progress":
+            round(task_progress, 2),
+            "milestone_progress":
+            round(milestone_progress, 2),
+            "tasks_completed":
+            task_data['completed_tasks'] or 0,
+            "total_tasks":
+            task_data['total_tasks'] or 0,
+            "milestones_completed":
+            milestone_data['completed_milestones'] or 0,
+            "total_milestones":
+            milestone_data['total_milestones'] or 0,
+            "message":
+            "Progress calculated successfully"
         }), 200
-        
+
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
 
 @app.route("/api/projects/<int:project_id>/progress-history", methods=["GET"])
 @login_required
@@ -752,11 +778,12 @@ def get_project_progress_history(project_id):
     """
     Retrieve historical progress data for charts/graphs
     """
-    try: 
+    try:
         conn = get_db_connection()
-        cursor = conn. cursor()
-        
-        cursor.execute('''
+        cursor = conn.cursor()
+
+        cursor.execute(
+            '''
             SELECT 
                 progress_percentage,
                 tasks_completed,
@@ -768,15 +795,16 @@ def get_project_progress_history(project_id):
             WHERE project_id = %s
             ORDER BY recorded_at DESC
             LIMIT 30
-        ''', (project_id,))
-        
+        ''', (project_id, ))
+
         history = cursor.fetchall()
         conn.close()
-        
+
         return jsonify([dict(row) for row in history]), 200
-        
+
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
 
 @app.route("/api/dashboard/live-progress", methods=["GET"])
 @login_required
@@ -788,10 +816,10 @@ def get_live_dashboard_progress():
     try:
         user_id = get_current_user_id()
         is_admin = session.get('admin') or session.get('user_type') == 'admin'
-        
+
         conn = get_db_connection()
         cursor = conn.cursor()
-        
+
         if is_admin:
             # Admin sees all active projects
             cursor.execute('''
@@ -822,7 +850,8 @@ def get_live_dashboard_progress():
             ''')
         else:
             # Employees see only assigned projects
-            cursor.execute('''
+            cursor.execute(
+                '''
                 SELECT DISTINCT
                     p.id,
                     p.title,
@@ -851,63 +880,78 @@ def get_live_dashboard_progress():
                 GROUP BY p.id, u.username
                 ORDER BY p.updated_at DESC
             ''', (user_id, user_id))
-        
+
         projects = cursor.fetchall()
         conn.close()
-        
+
         formatted_projects = []
         for project in projects:
             project_dict = dict(project)
-            
+
             # Calculate additional metrics
             try:
-                created_at = datetime.strptime(project_dict['created_at'], '%Y-%m-%d %H:%M:%S')
+                created_at = datetime.strptime(project_dict['created_at'],
+                                               '%Y-%m-%d %H:%M:%S')
             except:
                 created_at = datetime.now()
-            
+
             now = datetime.now()
             days_active = max(1, (now - created_at).days)
-            progress_per_day = project_dict['progress'] / days_active if days_active > 0 else 0
-            
+            progress_per_day = project_dict[
+                'progress'] / days_active if days_active > 0 else 0
+
             # Estimate completion date
             estimated_completion_str = None
             if project_dict['progress'] > 0 and progress_per_day > 0:
-                days_remaining = (100 - project_dict['progress']) / progress_per_day
+                days_remaining = (100 -
+                                  project_dict['progress']) / progress_per_day
                 estimated_completion = now + timedelta(days=days_remaining)
-                estimated_completion_str = estimated_completion.strftime('%Y-%m-%d')
-            
+                estimated_completion_str = estimated_completion.strftime(
+                    '%Y-%m-%d')
+
             # Calculate sub-progress metrics
-            tasks_progress = int((project_dict['completed_tasks'] / project_dict['total_tasks'] * 100)) if project_dict['total_tasks'] > 0 else 0
-            milestones_progress = int((project_dict['completed_milestones'] / project_dict['total_milestones'] * 100)) if project_dict['total_milestones'] > 0 else 0
-            
+            tasks_progress = int(
+                (project_dict['completed_tasks'] /
+                 project_dict['total_tasks'] *
+                 100)) if project_dict['total_tasks'] > 0 else 0
+            milestones_progress = int(
+                (project_dict['completed_milestones'] /
+                 project_dict['total_milestones'] *
+                 100)) if project_dict['total_milestones'] > 0 else 0
+
             # Health status
-            health_status = 'good' if project_dict['progress'] >= 70 else 'warning' if project_dict['progress'] >= 40 else 'danger'
-            
-            project_dict. update({
+            health_status = 'good' if project_dict[
+                'progress'] >= 70 else 'warning' if project_dict[
+                    'progress'] >= 40 else 'danger'
+
+            project_dict.update({
                 'days_active': days_active,
-                'progress_per_day':  round(progress_per_day, 2),
+                'progress_per_day': round(progress_per_day, 2),
                 'estimated_completion': estimated_completion_str,
                 'tasks_progress': tasks_progress,
                 'milestones_progress': milestones_progress,
-                'health_status':  health_status
+                'health_status': health_status
             })
-            
+
             formatted_projects.append(project_dict)
-        
+
         # Calculate average progress
         avg_progress = 0
-        if formatted_projects: 
-            avg_progress = round(sum(p['progress'] for p in formatted_projects) / len(formatted_projects), 2)
-        
+        if formatted_projects:
+            avg_progress = round(
+                sum(p['progress']
+                    for p in formatted_projects) / len(formatted_projects), 2)
+
         return jsonify({
             "timestamp": datetime.now().isoformat(),
-            "total_projects":  len(formatted_projects),
+            "total_projects": len(formatted_projects),
             "average_progress": avg_progress,
             "projects": formatted_projects
         }), 200
-        
+
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
 
 @app.route("/api/users/<int:user_id>/permissions", methods=["GET"])
 @admin_required
@@ -979,15 +1023,20 @@ def get_user_types():
         conn = get_db_connection()
         cursor = conn.cursor()
 
-        cursor.execute("SELECT id, user_role, created_at FROM usertypes ORDER BY created_at DESC")
+        cursor.execute(
+            "SELECT id, user_role, created_at FROM usertypes ORDER BY created_at DESC"
+        )
         rows = cursor.fetchall()
 
         usertypes = []
         for row in rows:
             usertypes.append({
-                "id": row['id'],
-                "user_role": row['user_role'],
-                "created_at": row['created_at'].isoformat() if row['created_at'] else None
+                "id":
+                row['id'],
+                "user_role":
+                row['user_role'],
+                "created_at":
+                row['created_at'].isoformat() if row['created_at'] else None
             })
 
         return jsonify(usertypes), 200
@@ -1018,23 +1067,25 @@ def create_usertype():
 
         cursor.execute(
             "INSERT INTO usertypes (user_role) VALUES (%s) RETURNING id, created_at",
-            (user_role,)
-        )
+            (user_role, ))
         row = cursor.fetchone()
         conn.commit()
         cursor.close()
         conn.close()
 
         return jsonify({
-            "id": row['id'],
-            "user_role": user_role,
-            "created_at": row['created_at'].isoformat() if row['created_at'] else None,
-            "message": "User type created successfully"
+            "id":
+            row['id'],
+            "user_role":
+            user_role,
+            "created_at":
+            row['created_at'].isoformat() if row['created_at'] else None,
+            "message":
+            "User type created successfully"
         }), 201
 
     except psycopg2.errors.UniqueViolation:
         return jsonify({"error": "User role already exists"}), 409
-
 
 
 @app.route("/api/usertypes/<int:id>", methods=["PUT"])
@@ -1123,12 +1174,18 @@ def get_users():
         conn.close()
 
         return jsonify([{
-            "id": row['id'],
-            "username": row['username'],
-            "email": row['email'],
-            "user_type_id": row['user_type_id'],
-            "user_role": row['user_role'],
-            "created_at": row['created_at'].isoformat() if row['created_at'] else None
+            "id":
+            row['id'],
+            "username":
+            row['username'],
+            "email":
+            row['email'],
+            "user_type_id":
+            row['user_type_id'],
+            "user_role":
+            row['user_role'],
+            "created_at":
+            row['created_at'].isoformat() if row['created_at'] else None
         } for row in users]), 200
     except Exception as e:
         print(f"[ERROR] /api/users GET failed: {str(e)}")
@@ -1550,10 +1607,11 @@ def create_employee_project():
         conn.commit()
         conn.close()
 
-        log_activity(user_id,
-                     'project_created',
-                     f'Created project: {title} with reporting time {reporting_time}',
-                     project_id=project_id)
+        log_activity(
+            user_id,
+            'project_created',
+            f'Created project: {title} with reporting time {reporting_time}',
+            project_id=project_id)
 
         # Calculate initial progress
         try:
@@ -1640,9 +1698,8 @@ def create_employee_task():
             '''
             INSERT INTO tasks (title, description, project_id, created_by_id, assigned_to_id, priority, deadline, status)
             VALUES (%s,%s,%s,%s,%s,%s,%s,%s) RETURNING id
-            ''',
-            (title, description, project_id, user_id, assigned_to_id, priority, deadline or None, status_to_set)
-        )
+            ''', (title, description, project_id, user_id, assigned_to_id,
+                  priority, deadline or None, status_to_set))
 
         task_id = cursor.fetchone()['id']
         conn.commit()
@@ -1667,7 +1724,7 @@ def create_employee_task():
             "title": title,
             "message": "Task created successfully!"
         }), 201
-    
+
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -1681,21 +1738,24 @@ def complete_employee_task(task_id):
         cursor = conn.cursor()
 
         # Get task and project details
-        cursor.execute('''
+        cursor.execute(
+            '''
             SELECT status, project_id FROM tasks WHERE id = %s  AND (assigned_to_id = %s OR created_by_id = %s)
         ''', (task_id, user_id, user_id))
         task = cursor.fetchone()
 
         if not task:
             conn.close()
-            return jsonify({"error": "Task not found or permission denied"}), 404
+            return jsonify({"error":
+                            "Task not found or permission denied"}), 404
 
-        if task['status'] == 'Completed': 
+        if task['status'] == 'Completed':
             conn.close()
             return jsonify({"message": "Task is already completed. "}), 200
 
         # Update task status
-        cursor.execute('''
+        cursor.execute(
+            '''
             UPDATE tasks SET status = %s, completed_at = CURRENT_TIMESTAMP
             WHERE id = %s
         ''', ('Completed', task_id))
@@ -1704,13 +1764,16 @@ def complete_employee_task(task_id):
         conn.close()
 
         # Log activity
-        log_activity(user_id, 'task_completed', f'Completed task ID: {task_id}', task_id=task_id)
+        log_activity(user_id,
+                     'task_completed',
+                     f'Completed task ID: {task_id}',
+                     task_id=task_id)
 
         # ⭐ IMPORTANT:  Recalculate project progress
         try:
             progress_response = calculate_project_progress(task['project_id'])
             if progress_response[1] == 200:
-                progress_data = progress_response[0]. get_json()
+                progress_data = progress_response[0].get_json()
                 return jsonify({
                     "message": "Task completed successfully! ",
                     "project_progress": progress_data
@@ -1771,7 +1834,8 @@ def create_employee_milestone():
         cursor = conn.cursor()
 
         # Verify user has access to this project
-        cursor.execute('''
+        cursor.execute(
+            '''
             SELECT id FROM projects 
             WHERE id = %s AND (
                 created_by_id = %s OR id IN (
@@ -1779,14 +1843,16 @@ def create_employee_milestone():
                 )
             )
         ''', (project_id, user_id, user_id))
-        
+
         project = cursor.fetchone()
         if not project:
             conn.close()
-            return jsonify({"error": "Project not found or access denied"}), 404
+            return jsonify({"error":
+                            "Project not found or access denied"}), 404
 
         try:
-            cursor.execute('''
+            cursor.execute(
+                '''
                 INSERT INTO milestones (title, description, project_id, due_date, status, created_by_id)
                 VALUES (%s,%s,%s,%s, 'Pending', %s) RETURNING id
             ''', (title, description, project_id, due_date, user_id))
@@ -1796,13 +1862,18 @@ def create_employee_milestone():
         except psycopg2.ProgrammingError as e:
             conn.close()
             print(f"[ERROR] Database schema error: {str(e)}")
-            return jsonify({"error": "Database configuration error. Please contact administrator."}), 500
+            return jsonify({
+                "error":
+                "Database configuration error. Please contact administrator."
+            }), 500
 
         conn.close()
 
-        log_activity(user_id, 'milestone_created', 
-                    f'Created milestone: {title}',
-                    project_id=project_id, milestone_id=milestone_id)
+        log_activity(user_id,
+                     'milestone_created',
+                     f'Created milestone: {title}',
+                     project_id=project_id,
+                     milestone_id=milestone_id)
 
         return jsonify({
             "id": milestone_id,
@@ -1814,7 +1885,8 @@ def create_employee_milestone():
         return jsonify({"error": f"Milestone creation failed: {str(e)}"}), 500
 
 
-@app.route("/api/employee/milestones/<int:milestone_id>/complete",methods=["POST"])
+@app.route("/api/employee/milestones/<int:milestone_id>/complete",
+           methods=["POST"])
 @login_required
 def complete_employee_milestone(milestone_id):
     try:
@@ -1822,9 +1894,10 @@ def complete_employee_milestone(milestone_id):
         conn = get_db_connection()
         cursor = conn.cursor()
 
-        cursor.execute('SELECT project_id FROM milestones WHERE id = %s', (milestone_id,))
+        cursor.execute('SELECT project_id FROM milestones WHERE id = %s',
+                       (milestone_id, ))
         milestone = cursor.fetchone()
-        
+
         if not milestone:
             conn.close()
             return jsonify({"error": "Milestone not found"}), 404
@@ -1905,7 +1978,7 @@ def upload_employee_document():
         # Use a secure and unique filename
         filename = f"{secrets.token_hex(8)}_{secure_filename(file.filename)}"
         file_path = os.path.join(upload_dir, filename)
-        
+
         # Save the file
         file.save(file_path)
 
@@ -1958,13 +2031,14 @@ def delete_employee_document(doc_id):
 
         # Check ownership or project assignment
         if doc_info['uploaded_by_id'] != user_id:
-            cursor.execute('''
+            cursor.execute(
+                '''
                 SELECT 1 FROM project_assignments WHERE user_id = %s AND project_id = %s
             ''', (user_id, doc_info['project_id']))
             if not cursor.fetchone():
                 conn.close()
                 return jsonify({"error": "Permission denied"}), 403
-        
+
         # Delete file from storage
         file_path = os.path.join('uploads', 'documents', doc_info['filename'])
         try:
@@ -2244,8 +2318,7 @@ def search():
                 "name":
                 milestone['name'],
                 "description":
-                milestone['description'][:100]
-                if milestone['description']
+                milestone['description'][:100] if milestone['description']
                 and len(milestone['description']) > 100 else
                 milestone['description'],
                 "project_name":
@@ -2466,8 +2539,9 @@ def delete_employee_skill(skill_id):
             conn.close()
             return jsonify({"error": "Skill not found"}), 404
 
-        cursor.execute('DELETE FROM user_skills WHERE id = %s AND user_id = %s',
-                       (skill_id, user_id))
+        cursor.execute(
+            'DELETE FROM user_skills WHERE id = %s AND user_id = %s',
+            (skill_id, user_id))
         conn.commit()
         conn.close()
 
@@ -2484,7 +2558,7 @@ def get_employee_profile():
         user_id = get_current_user_id()
         if not user_id:
             return jsonify({"error": "User not authenticated"}), 401
-            
+
         conn = get_db_connection()
         cursor = conn.cursor()
 
@@ -2529,7 +2603,8 @@ def update_employee_profile():
             return jsonify({"error": "User not authenticated"}), 401
 
         phone = data.get("phone", "").strip() if data.get("phone") else None
-        department = data.get("department", "").strip() if data.get("department") else None
+        department = data.get("department",
+                              "").strip() if data.get("department") else None
         bio = data.get("bio", "").strip() if data.get("bio") else None
 
         if phone and len(phone) > 20:
@@ -2573,7 +2648,9 @@ def get_admin_profile():
 
 def allowed_file(filename):
     """Check if file has allowed extension"""
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+    return '.' in filename and filename.rsplit(
+        '.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
 
 def optimize_image(image_file, max_width=500, max_height=500):
     """
@@ -2583,25 +2660,27 @@ def optimize_image(image_file, max_width=500, max_height=500):
     """
     try:
         img = Image.open(image_file)
-        
+
         # Convert RGBA to RGB if necessary
         if img.mode in ('RGBA', 'LA', 'P'):
             background = Image.new('RGB', img.size, (255, 255, 255))
-            background.paste(img, mask=img.split()[-1] if img.mode == 'RGBA' else None)
+            background.paste(
+                img, mask=img.split()[-1] if img.mode == 'RGBA' else None)
             img = background
-        
+
         # Resize image maintaining aspect ratio
         img.thumbnail((max_width, max_height), Image.Resampling.LANCZOS)
-        
+
         # Save optimized image to BytesIO
         output = io.BytesIO()
         img.save(output, format='JPEG', quality=85, optimize=True)
         output.seek(0)
-        
+
         return output
     except Exception as e:
         print(f"Error optimizing image: {str(e)}")
         raise
+
 
 @app.route("/api/employee/profile/upload-avatar", methods=["POST"])
 @login_required
@@ -2616,7 +2695,10 @@ def upload_avatar():
             return jsonify({"error": "No file selected"}), 400
 
         if not allowed_file(file.filename):
-            return jsonify({"error": "Invalid file type. Only PNG, JPG, JPEG, GIF, and WebP are allowed"}), 400
+            return jsonify({
+                "error":
+                "Invalid file type. Only PNG, JPG, JPEG, GIF, and WebP are allowed"
+            }), 400
 
         user_id = get_current_user_id()
 
@@ -2628,7 +2710,9 @@ def upload_avatar():
             optimized_image_bytes = optimize_image(file)
         except Exception as e:
             print(f"[ERROR] Failed to optimize image: {str(e)}")
-            return jsonify({"error": "Failed to process image. Please try another file."}), 400
+            return jsonify(
+                {"error":
+                 "Failed to process image. Please try another file."}), 400
 
         # Generate secure filename
         filename = f"{user_id}_{secrets.token_hex(8)}.jpg"
@@ -2640,31 +2724,43 @@ def upload_avatar():
                 f.write(optimized_image_bytes.getvalue())
         except Exception as save_error:
             print(f"[ERROR] Error saving avatar: {str(save_error)}")
-            return jsonify({"error": "Failed to save file to server. Check folder permissions."}), 500
+            return jsonify({
+                "error":
+                "Failed to save file to server. Check folder permissions."
+            }), 500
 
         # Update database with new avatar URL
         conn = get_db_connection()
         cursor = conn.cursor()
-        
+
         avatar_url = f"/uploads/profiles/{filename}"
-        
+
         try:
-            cursor.execute('UPDATE users SET avatar_url = %s WHERE id = %s', (avatar_url, user_id))
+            cursor.execute('UPDATE users SET avatar_url = %s WHERE id = %s',
+                           (avatar_url, user_id))
             conn.commit()
         except psycopg2.OperationalError as db_error:
             # If column doesn't exist, add it
             if "no such column: avatar_url" in str(db_error):
                 try:
-                    cursor.execute('ALTER TABLE users ADD COLUMN avatar_url TEXT')
+                    cursor.execute(
+                        'ALTER TABLE users ADD COLUMN avatar_url TEXT')
                     conn.commit()
-                    cursor.execute('UPDATE users SET avatar_url = %s WHERE id = %s', (avatar_url, user_id))
+                    cursor.execute(
+                        'UPDATE users SET avatar_url = %s WHERE id = %s',
+                        (avatar_url, user_id))
                     conn.commit()
                     print(f"[INFO] Added avatar_url column for user {user_id}")
                 except Exception as alter_error:
                     conn.close()
-                    print(f"[ERROR] Failed to add avatar_url column: {str(alter_error)}")
-                    return jsonify({"error": "Database configuration issue. Please contact administrator."}), 500
-        
+                    print(
+                        f"[ERROR] Failed to add avatar_url column: {str(alter_error)}"
+                    )
+                    return jsonify({
+                        "error":
+                        "Database configuration issue. Please contact administrator."
+                    }), 500
+
         conn.close()
 
         return jsonify({
@@ -2688,7 +2784,8 @@ def delete_avatar():
         conn = get_db_connection()
         cursor = conn.cursor()
 
-        cursor.execute('SELECT avatar_url FROM users WHERE id = %s', (user_id,))
+        cursor.execute('SELECT avatar_url FROM users WHERE id = %s',
+                       (user_id, ))
         user = cursor.fetchone()
 
         if not user or not user['avatar_url']:
@@ -2705,11 +2802,13 @@ def delete_avatar():
             pass
 
         # Update database
-        cursor.execute('UPDATE users SET avatar_url = NULL WHERE id = %s', (user_id,))
+        cursor.execute('UPDATE users SET avatar_url = NULL WHERE id = %s',
+                       (user_id, ))
         conn.commit()
         conn.close()
 
-        return jsonify({"message": "Profile picture deleted successfully!"}), 200
+        return jsonify({"message":
+                        "Profile picture deleted successfully!"}), 200
 
     except Exception as e:
         print(f"[v0] Error deleting avatar: {str(e)}")
@@ -2726,8 +2825,10 @@ def serve_profile_picture(filename):
         # Security check: only allow alphanumeric and underscores
         if not re.match(r'^[\w\-]+\.jpg$', filename):
             return jsonify({"error": "Invalid file"}), 400
-        
-        return send_from_directory(UPLOAD_FOLDER, filename, as_attachment=False)
+
+        return send_from_directory(UPLOAD_FOLDER,
+                                   filename,
+                                   as_attachment=False)
     except FileNotFoundError:
         return jsonify({"error": "File not found"}), 404
 
@@ -2740,11 +2841,15 @@ def get_project_progress(project_id):
         cursor = conn.cursor()
 
         # Count total tasks
-        cursor.execute("SELECT COUNT(*) as total FROM tasks WHERE project_id = %s", (project_id,))
+        cursor.execute(
+            "SELECT COUNT(*) as total FROM tasks WHERE project_id = %s",
+            (project_id, ))
         total = cursor.fetchone()["total"]
 
         # Count completed tasks
-        cursor.execute("SELECT COUNT(*) as completed FROM tasks WHERE project_id = %s AND status = 'Completed'", (project_id,))
+        cursor.execute(
+            "SELECT COUNT(*) as completed FROM tasks WHERE project_id = %s AND status = 'Completed'",
+            (project_id, ))
         completed = cursor.fetchone()["completed"]
 
         # Avoid division by zero
@@ -2753,7 +2858,9 @@ def get_project_progress(project_id):
             progress = int((completed / total) * 100)
 
         # Save progress in DB
-        cursor.execute("UPDATE projects SET progress = %s, updated_at = CURRENT_TIMESTAMP WHERE id = %s", (progress, project_id))
+        cursor.execute(
+            "UPDATE projects SET progress = %s, updated_at = CURRENT_TIMESTAMP WHERE id = %s",
+            (progress, project_id))
         conn.commit()
         conn.close()
 
@@ -2770,9 +2877,10 @@ def download_document(doc_id):
         user_id = get_current_user_id()
         conn = get_db_connection()
         cursor = conn.cursor()
-        
+
         # Check if user has access to this document
-        cursor.execute('''
+        cursor.execute(
+            '''
             SELECT d.filename, d.original_filename, d.project_id
             FROM documents d
             WHERE d.id = %s AND (
@@ -2785,28 +2893,31 @@ def download_document(doc_id):
                 )
             )
         ''', (doc_id, user_id, user_id, user_id))
-        
+
         doc = cursor.fetchone()
         conn.close()
-        
+
         if not doc:
-            return jsonify({"error": "Document not found or access denied"}), 404
-        
+            return jsonify({"error":
+                            "Document not found or access denied"}), 404
+
         file_path = os.path.join('uploads', 'documents', doc['filename'])
-        
+
         if not os.path.exists(file_path):
             print(f"[ERROR] File not found at path: {file_path}")
             return jsonify({"error": "File not found on server"}), 404
-        
+
         # Log download activity
-        log_activity(user_id, 'document_downloaded', 
-                    f'Downloaded document: {doc["original_filename"]}',
-                    project_id=doc['project_id'])
-        
-        return send_from_directory('uploads/documents', doc['filename'], 
-                                  as_attachment=True,
-                                  download_name=doc['original_filename'])
-    
+        log_activity(user_id,
+                     'document_downloaded',
+                     f'Downloaded document: {doc["original_filename"]}',
+                     project_id=doc['project_id'])
+
+        return send_from_directory('uploads/documents',
+                                   doc['filename'],
+                                   as_attachment=True,
+                                   download_name=doc['original_filename'])
+
     except Exception as e:
         print(f"[ERROR] Document download failed: {str(e)}")
         return jsonify({"error": f"Download failed: {str(e)}"}), 500
@@ -2819,29 +2930,32 @@ def admin_download_document(doc_id):
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
-        
-        cursor.execute('''
+
+        cursor.execute(
+            '''
             SELECT filename, original_filename, project_id
             FROM documents
             WHERE id = %s
-        ''', (doc_id,))
-        
+        ''', (doc_id, ))
+
         doc = cursor.fetchone()
         conn.close()
-        
+
         if not doc:
             return jsonify({"error": "Document not found"}), 404
-        
+
         file_path = os.path.join('uploads', 'documents', doc['filename'])
-        
+
         if not os.path.exists(file_path):
-            print(f"[ERROR] Admin document file not found at path: {file_path}")
+            print(
+                f"[ERROR] Admin document file not found at path: {file_path}")
             return jsonify({"error": "File not found on server"}), 404
-        
-        return send_from_directory('uploads/documents', doc['filename'], 
-                                  as_attachment=True,
-                                  download_name=doc['original_filename'])
-    
+
+        return send_from_directory('uploads/documents',
+                                   doc['filename'],
+                                   as_attachment=True,
+                                   download_name=doc['original_filename'])
+
     except Exception as e:
         print(f"[ERROR] Admin document download failed: {str(e)}")
         return jsonify({"error": f"Download failed: {str(e)}"}), 500
@@ -2856,33 +2970,37 @@ def get_employee_profile_stats():
         user_id = get_current_user_id()
         conn = get_db_connection()
         cursor = conn.cursor()
-        
+
         # Total projects
-        cursor.execute('''
+        cursor.execute(
+            '''
             SELECT COUNT(DISTINCT id) as count FROM projects 
             WHERE created_by_id = %s OR id IN (
                 SELECT project_id FROM project_assignments WHERE user_id = %s
             )
         ''', (user_id, user_id))
         total_projects = cursor.fetchone()['count']
-        
+
         # Completed tasks
-        cursor.execute('''
+        cursor.execute(
+            '''
             SELECT COUNT(*) as count FROM tasks 
             WHERE (assigned_to_id = %s OR created_by_id = %s) AND status = 'Completed'
         ''', (user_id, user_id))
         completed_tasks = cursor.fetchone()['count']
-        
+
         # Pending tasks
-        cursor.execute('''
+        cursor.execute(
+            '''
             SELECT COUNT(*) as count FROM tasks 
             WHERE (assigned_to_id = %s OR created_by_id = %s) 
             AND status != 'Completed'
         ''', (user_id, user_id))
         pending_tasks = cursor.fetchone()['count']
-        
+
         # Total milestones
-        cursor.execute('''
+        cursor.execute(
+            '''
             SELECT COUNT(*) as count FROM milestones m
             WHERE m.project_id IN (
                 SELECT id FROM projects WHERE created_by_id = %s
@@ -2890,9 +3008,10 @@ def get_employee_profile_stats():
             )
         ''', (user_id, user_id))
         total_milestones = cursor.fetchone()['count']
-        
+
         # Completed milestones
-        cursor.execute('''
+        cursor.execute(
+            '''
             SELECT COUNT(*) as count FROM milestones m
             WHERE m.status = 'Completed' AND m.project_id IN (
                 SELECT id FROM projects WHERE created_by_id = %s
@@ -2900,28 +3019,37 @@ def get_employee_profile_stats():
             )
         ''', (user_id, user_id))
         completed_milestones = cursor.fetchone()['count']
-        
+
         # Documents uploaded
-        cursor.execute('''
+        cursor.execute(
+            '''
             SELECT COUNT(*) as count FROM documents WHERE uploaded_by_id = %s
-        ''', (user_id,))
+        ''', (user_id, ))
         documents_uploaded = cursor.fetchone()['count']
-        
+
         conn.close()
-        
+
         return jsonify({
-            "total_projects": total_projects,
-            "completed_tasks": completed_tasks,
-            "pending_tasks": pending_tasks,
-            "total_milestones": total_milestones,
-            "completed_milestones": completed_milestones,
-            "documents_uploaded": documents_uploaded,
-            "completion_rate": round((completed_tasks / (completed_tasks + pending_tasks) * 100), 2) if (completed_tasks + pending_tasks) > 0 else 0
+            "total_projects":
+            total_projects,
+            "completed_tasks":
+            completed_tasks,
+            "pending_tasks":
+            pending_tasks,
+            "total_milestones":
+            total_milestones,
+            "completed_milestones":
+            completed_milestones,
+            "documents_uploaded":
+            documents_uploaded,
+            "completion_rate":
+            round((completed_tasks /
+                   (completed_tasks + pending_tasks) * 100), 2) if
+            (completed_tasks + pending_tasks) > 0 else 0
         }), 200
-        
+
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
 
 
 @app.route("/api/admin/projects/realtime", methods=["GET"])
@@ -2931,7 +3059,7 @@ def get_admin_realtime_projects():
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
-        
+
         cursor.execute('''
             SELECT p.id, p.title, p.description, p.status, p.progress,
                    p.deadline, p.reporting_time, p.created_at, p.updated_at,
@@ -2950,20 +3078,23 @@ def get_admin_realtime_projects():
             GROUP BY p.id, u.username
             ORDER BY p.updated_at DESC
         ''')
-        
+
         projects = cursor.fetchall()
         conn.close()
-        
+
         result = []
         for row in projects:
             project_dict = dict(row)
-            project_dict['completed_tasks'] = project_dict.get('completed_tasks') or 0
+            project_dict['completed_tasks'] = project_dict.get(
+                'completed_tasks') or 0
             project_dict['total_tasks'] = project_dict.get('total_tasks') or 0
-            project_dict['completed_milestones'] = project_dict.get('completed_milestones') or 0
-            project_dict['total_milestones'] = project_dict.get('total_milestones') or 0
+            project_dict['completed_milestones'] = project_dict.get(
+                'completed_milestones') or 0
+            project_dict['total_milestones'] = project_dict.get(
+                'total_milestones') or 0
             project_dict['progress'] = project_dict.get('progress') or 0
             result.append(project_dict)
-        
+
         return jsonify(result), 200
     except Exception as e:
         print(f"[ERROR] Admin realtime projects error: {str(e)}")
@@ -2978,8 +3109,9 @@ def get_admin_project_detail(project_id):
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
-        
-        cursor.execute('''
+
+        cursor.execute(
+            '''
             SELECT p.*, u.username as creator_name,
                    COUNT(DISTINCT t.id) as total_tasks,
                    COUNT(DISTINCT m.id) as total_milestones
@@ -2989,14 +3121,14 @@ def get_admin_project_detail(project_id):
             LEFT JOIN milestones m ON p.id = m.project_id
             WHERE p.id = %s
             GROUP BY p.id, u.username
-        ''', (project_id,))
-        
+        ''', (project_id, ))
+
         project = cursor.fetchone()
         conn.close()
-        
+
         if not project:
             return jsonify({"error": "Project not found"}), 404
-        
+
         return jsonify(dict(project)), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -3010,8 +3142,9 @@ def get_admin_task_detail(task_id):
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
-        
-        cursor.execute('''
+
+        cursor.execute(
+            '''
             SELECT t.*, p.title as project_name,
                    u.username as assigned_to_name,
                    uc.username as created_by_name
@@ -3020,14 +3153,14 @@ def get_admin_task_detail(task_id):
             LEFT JOIN users u ON t.assigned_to_id = u.id
             LEFT JOIN users uc ON t.created_by_id = uc.id
             WHERE t.id = %s
-        ''', (task_id,))
-        
+        ''', (task_id, ))
+
         task = cursor.fetchone()
         conn.close()
-        
+
         if not task:
             return jsonify({"error": "Task not found"}), 404
-        
+
         return jsonify(dict(task)), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -3042,8 +3175,9 @@ def get_employee_realtime_projects():
         user_id = get_current_user_id()
         conn = get_db_connection()
         cursor = conn.cursor()
-        
-        cursor.execute('''
+
+        cursor.execute(
+            '''
             SELECT DISTINCT p.id, p.title, p.description, p.status,
                    p.deadline, p.reporting_time, p.created_at, p.updated_at,
                    u.username as creator_name,
@@ -3063,9 +3197,9 @@ def get_employee_realtime_projects():
             GROUP BY p.id, u.username
             ORDER BY p.updated_at DESC
         ''', (user_id, user_id))
-        
+
         projects = cursor.fetchall()
-        
+
         # Calculate live progress percentage for each project
         result = []
         for row in projects:
@@ -3073,8 +3207,9 @@ def get_employee_realtime_projects():
             total_tasks = project_dict.get('total_tasks') or 0
             completed_tasks = project_dict.get('completed_tasks') or 0
             total_milestones = project_dict.get('total_milestones') or 0
-            completed_milestones = project_dict.get('completed_milestones') or 0
-            
+            completed_milestones = project_dict.get(
+                'completed_milestones') or 0
+
             # Calculate progress: if no tasks, progress is 0
             if total_tasks > 0:
                 progress = int((completed_tasks / total_tasks) * 100)
@@ -3082,21 +3217,20 @@ def get_employee_realtime_projects():
                 progress = int((completed_milestones / total_milestones) * 100)
             else:
                 progress = 0
-            
+
             project_dict['progress'] = progress
             project_dict['completed_tasks'] = completed_tasks
             project_dict['total_tasks'] = total_tasks
             project_dict['completed_milestones'] = completed_milestones
             project_dict['total_milestones'] = total_milestones
             result.append(project_dict)
-        
+
         conn.close()
         return jsonify(result), 200
     except Exception as e:
         print(f"[ERROR] Realtime projects error: {str(e)}")
         conn.close()
         return jsonify({"error": str(e)}), 500
-
 
 
 def check_db_initialized():
@@ -3118,8 +3252,6 @@ def check_db_initialized():
         return False
 
 
-
-
 def safe_init_db():
     try:
         if not check_db_initialized():
@@ -3127,11 +3259,11 @@ def safe_init_db():
     except Exception as e:
         print("DB init skipped:", e)
 
+
 safe_init_db()
 
 if os.getenv("RUN_DB_MIGRATION") == "true":
     migrate_db()
-
 
 
 def update_project_status(project_id):
@@ -3139,13 +3271,14 @@ def update_project_status(project_id):
     cursor = conn.cursor()
 
     # Get total + completed tasks
-    cursor.execute("""
+    cursor.execute(
+        """
         SELECT 
             COUNT(*) as total,
             SUM(CASE WHEN status='Completed' THEN 1 ELSE 0 END) as completed
         FROM tasks 
         WHERE project_id = %s
-    """, (project_id,))
+    """, (project_id, ))
     row = cursor.fetchone()
 
     total = row['total']
@@ -3160,13 +3293,12 @@ def update_project_status(project_id):
     else:
         new_status = 'In Progress'
 
-    cursor.execute(
-        "UPDATE projects SET status = %s WHERE id = %s",
-        (new_status, project_id)
-    )
+    cursor.execute("UPDATE projects SET status = %s WHERE id = %s",
+                   (new_status, project_id))
 
     conn.commit()
     conn.close()
+
 
 @app.route("/api/admin/employees/<int:employee_id>/profile", methods=["GET"])
 @admin_required
@@ -3176,13 +3308,14 @@ def get_employee_profile_admin(employee_id):
         conn = get_db_connection()
         cursor = conn.cursor()
 
-        cursor.execute('''
+        cursor.execute(
+            '''
             SELECT u.id, u.username, u.email, u.user_type_id, ut.user_role,
                    u.phone, u.department, u.bio, u.avatar_url, u.created_at
             FROM users u
             LEFT JOIN usertypes ut ON u.user_type_id = ut.id
             WHERE u.id = %s
-        ''', (employee_id,))
+        ''', (employee_id, ))
 
         user = cursor.fetchone()
         if not user:
@@ -3190,13 +3323,15 @@ def get_employee_profile_admin(employee_id):
             return jsonify({"error": "Employee not found"}), 404
 
         # Get skills
-        cursor.execute('''
+        cursor.execute(
+            '''
             SELECT skill_name FROM user_skills WHERE user_id = %s ORDER BY skill_name
-        ''', (employee_id,))
+        ''', (employee_id, ))
         skills = [row['skill_name'] for row in cursor.fetchall()]
 
         # Get stats
-        cursor.execute('''
+        cursor.execute(
+            '''
             SELECT COUNT(DISTINCT id) as count FROM projects 
             WHERE created_by_id = %s OR id IN (
                 SELECT project_id FROM project_assignments WHERE user_id = %s
@@ -3204,15 +3339,17 @@ def get_employee_profile_admin(employee_id):
         ''', (employee_id, employee_id))
         projects_count = cursor.fetchone()['count']
 
-        cursor.execute('''
+        cursor.execute(
+            '''
             SELECT COUNT(*) as count FROM tasks 
             WHERE assigned_to_id = %s AND status = 'Completed'
-        ''', (employee_id,))
+        ''', (employee_id, ))
         tasks_completed = cursor.fetchone()['count']
 
-        cursor.execute('''
+        cursor.execute(
+            '''
             SELECT COUNT(*) as count FROM documents WHERE uploaded_by_id = %s
-        ''', (employee_id,))
+        ''', (employee_id, ))
         documents_count = cursor.fetchone()['count']
 
         conn.close()
@@ -3229,7 +3366,9 @@ def get_employee_profile_admin(employee_id):
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
+
 

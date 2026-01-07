@@ -26,8 +26,8 @@ app.secret_key = secrets.token_hex(32)
 
 valid_tokens = {}
 
-ADMIN_EMAIL = os.environ.get('ADMIN_EMAIL', 'anubha@gmail.com').lower()
-ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', 'Anubha@#46')
+ADMIN_EMAIL = os.environ.get('ADMIN_EMAIL', 'abhijeet@yeseartheco.com').lower()
+ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', 'Abhijeet@#46')
 ADMIN_PIN = os.environ.get('ADMIN_PIN', '468101')
 ADMIN_OTP = os.environ.get('ADMIN_OTP', '654321')
 

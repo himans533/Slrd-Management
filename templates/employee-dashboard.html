@@ -734,7 +734,7 @@
         .modal-header {
             background: linear-gradient(135deg, #667eea, #764ba2);
             color: white;
-            padding: 25px;
+            padding: 10px;
             border-radius: 12px 12px 0 0;
             display: flex;
             justify-content: space-between;
@@ -757,14 +757,14 @@
         }
 
         .modal-body {
-            padding: 30px;
+            padding: 20px;
         }
 
         .modal-footer {
             padding: 20px 30px;
             border-top: 2px solid var(--border);
             display: flex;
-            gap: 10px;
+            gap: 7px;
             justify-content: flex-end;
         }
 
@@ -790,34 +790,111 @@
             border-color: #f56565;
         }
 
-        /* Added Cropper modal styles for image cropping interface */
+        /* ENHANCED CROPPER MODAL STYLES */
+      
         .cropper-modal-content {
-            max-width: 800px;
+            max-width: 500px;
+            width: 50%;
         }
 
         .cropper-container-wrapper {
             background: var(--bg-secondary);
-            border-radius: 8px;
+            border-radius: 3px;
             overflow: hidden;
-            margin-bottom: 20px;
-            height: 500px;
+            margin-bottom: 10px;
+            height: 200px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px dashed var(--border);
+            position: relative;
         }
 
-        .cropper-img {
-            display: block;
-            max-width: 100%;
+        .cropper-instructions {
+            text-align: center;
+            margin-bottom: 10px;
+            padding: 10px;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
+            border-radius: 5px;
+            border-left: 2px solid var(--primary);
+        }
+
+        .cropper-instructions p {
+            margin: 5px 0;
+            color: var(--text);
+            font-size: 0.85rem;
+            line-height: 1.4;
+        }
+
+        .cropper-instructions i {
+            color: var(--primary);
+            margin-right: 4px;
+        }
+
+        .cropper-zoom-controls {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 10px 0 10px 0;
+            padding: 10px;
+            background: var(--bg-secondary);
+            border-radius: 8px;
+        }
+
+        .cropper-zoom-controls button {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border: 2px solid var(--primary);
+            background: var(--bg);
+            color: var(--primary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+
+        .cropper-zoom-controls button:hover {
+            background: var(--primary);
+            color: white;
+        }
+
+        .cropper-zoom-slider {
+            flex: 1;
+            max-width: 180px;
+        }
+
+        .cropper-zoom-slider input {
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: var(--border);
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        .cropper-zoom-slider input::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: var(--primary);
+            cursor: pointer;
+            border: 2px solid white;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
         }
 
         .cropper-controls {
             display: flex;
-            gap: 10px;
-            justify-content: center;
-            margin: 20px 0;
             flex-wrap: wrap;
+            gap: 8px;
+            justify-content: center;
+            margin: 15px 0;
         }
 
         .cropper-control-btn {
-            padding: 8px 16px;
+            padding: 5px 10px;
             border: 2px solid var(--primary);
             background: var(--bg);
             color: var(--primary);
@@ -825,11 +902,56 @@
             cursor: pointer;
             font-weight: 600;
             transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            min-width: 120px;
+            justify-content: center;
         }
 
         .cropper-control-btn:hover {
-            background: #667eea;
+            background: var(--primary);
             color: white;
+            transform: translateY(-2px);
+        }
+
+        .cropper-control-btn i {
+            font-size: 1rem;
+        }
+
+        @media (max-width: 768px) {
+            .cropper-container-wrapper {
+                height: 250px;
+            }
+
+            .cropper-modal-content {
+                width: 98%;
+                max-width: 500px;
+            }
+
+            .cropper-controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .cropper-control-btn {
+                width: 100%;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .cropper-container-wrapper {
+                height: 200px;
+            }
+        }
+
+
+
+
+        .cropper-modal-body {
+            padding: 20px;
+            max-height: 70vh;
+            overflow-y: auto;
         }
 
         .team-members-section {
@@ -1147,11 +1269,26 @@
             }
 
             .cropper-modal-content {
-                width: 95%;
+                width: 98%;
+                max-width: 500px;
             }
 
             .cropper-container-wrapper {
                 height: 300px;
+            }
+
+            .cropper-controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .cropper-control-btn {
+                width: 100%;
+            }
+
+            .cropper-preview {
+                width: 120px;
+                height: 120px;
             }
         }
 
@@ -1330,6 +1467,15 @@
 
             .empty-state h4 {
                 font-size: 1.1rem;
+            }
+
+            .cropper-container-wrapper {
+                height: 250px;
+            }
+
+            .cropper-preview {
+                width: 100px;
+                height: 100px;
             }
         }
 
@@ -1752,7 +1898,7 @@
 
                         <div class="profile-picture-container" onclick="triggerAvatarInput()">
                             <img id="profileAvatarImg" class="user-avatar"
-                                src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgdmlld0JveD0iMCAwIDEwMCAxMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CiAgPGNpcmNsZSBjeD0iNTAiIGN5PSI1MCIgcj0iNTAiIGZpbGw9IiNlMmU4ZjAiLz4KICA8Y2lyY2xlIGN4PSI1MCIgY3k9IjM1IiByPSIxNSIgZmlsbD0iI2EwYWVjMCIvPgogIDxwYXRoIGQ9Ik0yMCA8NTAgTDIwIDY1IFE2NSA2NSAzNSA8NTAgTDM1IDY1IFE2NSA2NSA8NTAgT20wIDUwWiIgc3Ryb2tlPSJibGFjayIgc3Ryb2tlLXdpZHRoPSIyIi8+Cjwvc3ZnPg=="
+                                src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgdmlld0JveD0iMCAwIDEwMCAxMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CiAgPGNpcmNsZSBjeD0iNTAiIGN5PSI1MCIgcj0iNTAiIGZpbGw9IiNlMmU4ZjAiLz4KICA8Y2lyY2xlIGN4PSI1MCIgY3k9IjM1IiByPSIxNSIgZmlsbD0iI2EwYWVjMCIvPgogIDxwYXRoIGQ9Ik0yMCA4NTAgTDIwIDY1IFE2NSA2NSAzNSA4NTAgTDM1IDY1IFE2NSA2NSA8NTAgT20wIDUwWiIgc3Ryb2tlPSJibGFjayIgc3Ryb2tlLXdpZHRoPSIyIi8+Cjwvc3ZnPg=="
                                 alt="Profile Picture" style="display: none;">
                             <div class="user-avatar" id="profileAvatar" style="
                             width: 100px;
@@ -2323,36 +2469,49 @@
     </div>
 
 
-    <!-- Image Cropper Modal -->
+    <!-- Compact Image Cropper Modal -->
     <div id="cropperModal" class="modal">
         <div class="modal-content cropper-modal-content">
             <div class="modal-header">
-                <h3><i class="fas fa-crop-alt"></i> Crop Your Profile Picture</h3>
+                <h3><i class="fas fa-crop-alt"></i> Crop Profile Picture</h3>
                 <button onclick="closeCropperModal()" class="modal-close">&times;</button>
             </div>
             <div class="modal-body">
-                <div class="cropper-container">
+                <div class="cropper-instructions">
+                    <p><i class="fas fa-info-circle"></i> Drag to position and scroll to zoom</p>
+                    <p><i class="fas fa-exclamation-triangle"></i> Ensure your face is centered in the circle</p>
+                </div>
+
+                <div class="cropper-container-wrapper">
                     <img id="cropperImage"
-                        src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Crect fill='%23e2e8f0' width='200' height='200'/%3E%3C/svg%3E"
+                        src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect fill='%23e2e8f0' width='100' height='100'/%3E%3C/svg%3E"
                         alt="Image for cropping">
                 </div>
-                <div class="cropper-controls">
-                    <button class="cropper-control-btn" onclick="rotateCropper(-90)"><i class="fas fa-redo"></i> Rotate
-                        Left</button>
-                    <button class="cropper-control-btn" onclick="rotateCropper(90)"><i class="fas fa-undo"></i> Rotate
-                        Right</button>
-                    <button class="cropper-control-btn" onclick="flipCropperX()"><i class="fas fa-arrows-alt-h"></i>
-                        Flip H</button>
-                    <button class="cropper-control-btn" onclick="flipCropperY()"><i class="fas fa-arrows-alt-v"></i>
-                        Flip V</button>
-                    <button class="cropper-control-btn" onclick="resetCropper()"><i class="fas fa-undo"></i>
-                        Reset</button>
+
+                <div class="cropper-zoom-controls">
+                    <button onclick="zoomCropper(-0.1)" title="Zoom Out">
+                        <i class="fas fa-search-minus"></i>
+                    </button>
+                    <div class="cropper-zoom-slider">
+                        <input type="range" id="zoomSlider" min="0.1" max="3" step="0.1" value="1"
+                            oninput="updateZoom(this.value)">
+                    </div>
+                    <button onclick="zoomCropper(0.1)" title="Zoom In">
+                        <i class="fas fa-search-plus"></i>
+                    </button>
                 </div>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-secondary" onclick="closeCropperModal()">Cancel</button>
-                <button class="btn btn-primary" onclick="saveCroppedImage()"><i class="fas fa-check"></i> Save
-                    Picture</button>
+
+                <div class="cropper-controls">
+                    <button class="cropper-control-btn" onclick="resetCropper()" title="Reset">
+                        <i class="fas fa-undo"></i> Reset
+                    </button>
+                    <button class="cropper-control-btn" onclick="closeCropperModal()" title="Cancel">
+                        <i class="fas fa-times"></i> Cancel
+                    </button>
+                    <button class="cropper-control-btn" onclick="saveCroppedImage()" title="Save">
+                        <i class="fas fa-check"></i> Save
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -2391,8 +2550,9 @@
         let tasks = [];
         let milestones = [];
         let documents = [];
-        let cropper = null; // Added cropper instance variable
-        let selectedAvatarFile = null; // Added to store the selected file for cropping
+        let cropper = null;
+        let selectedAvatarFile = null;
+        let currentZoom = 1;
 
         function checkAuthentication() {
             const employeeData = localStorage.getItem("employee_user");
@@ -2405,7 +2565,7 @@
             }
 
             try {
-                currentUser = JSON.parse(employeeData); // Use currentUser variable directly
+                currentUser = JSON.parse(employeeData);
                 userPermissions = currentUser.permissions || {};
                 return true;
             } catch (error) {
@@ -2422,9 +2582,8 @@
                 return;
             }
 
-            // Load all dashboard data
             updateUserInfo();
-            updateHeaderAvatar(); // Add this call
+            updateHeaderAvatar();
             loadDashboardData();
             loadRecentActivities();
             loadTeamMembers();
@@ -2435,11 +2594,15 @@
             displayPermissions();
             updatePermissionVisibility();
 
-            // Set up event listeners
             setupEventListeners();
-
-            // Start real-time updates
             startEmployeeLiveUpdates();
+
+            // Initialize theme
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme === 'dark') {
+                document.body.classList.add('dark-mode');
+            }
+            updateThemeIcon();
         });
 
         function setupEventListeners() {
@@ -2448,28 +2611,25 @@
                 searchInput.addEventListener("keyup", performAdminSearch);
             }
 
-            // Close search results when clicking outside
             document.addEventListener('click', function (event) {
                 const searchContainer = document.querySelector('.search-container');
                 if (searchContainer && !searchContainer.contains(event.target)) {
                     hideSearchResults();
                 }
             });
+
+            // Add drag and drop listeners for avatar
+            const dragDropArea = document.getElementById('dragDropArea');
+            if (dragDropArea) {
+                dragDropArea.addEventListener('click', () => document.getElementById('avatarInput').click());
+            }
         }
 
-
         function updateUserInfo() {
-            document.getElementById("userName").textContent =
-                currentUser.username || "Employee";
-            document.getElementById("userRole").textContent =
-                currentUser.user_role || "Employee";
-            document.getElementById("headerAvatarInitials").textContent = (
-                currentUser.username || "E"
-            )
-                .substring(0, 2)
-                .toUpperCase();
+            document.getElementById("userName").textContent = currentUser.username || "Employee";
+            document.getElementById("userRole").textContent = currentUser.user_role || "Employee";
+            document.getElementById("headerAvatarInitials").textContent = (currentUser.username || "E").substring(0, 2).toUpperCase();
 
-            // Update profile section as well
             if (document.getElementById("profileName")) {
                 document.getElementById("profileName").textContent = currentUser.username || "Employee";
                 document.getElementById("profileRole").textContent = currentUser.user_role || "Employee";
@@ -2492,10 +2652,8 @@
                 Proj_Dis_: "Project Discussion",
                 task: "Tasks",
             };
-            if (
-                !userPermissions ||
-                Object.keys(userPermissions).length === 0
-            ) {
+
+            if (!userPermissions || Object.keys(userPermissions).length === 0) {
                 if (document.getElementById("noPermissions")) {
                     document.getElementById("noPermissions").style.display = "block";
                 }
@@ -2510,13 +2668,7 @@
             container.innerHTML = Object.entries(modules)
                 .map(([module, label]) => {
                     const actions = userPermissions[module] || {};
-                    return `<div class="permission-module"><h5><i class="fas fa-check-circle"></i> ${label}</h5><div class="permission-actions">${[
-                        "View",
-                        "Add",
-                        "Edit",
-                        "Delete",
-                        "Download",
-                    ]
+                    return `<div class="permission-module"><h5><i class="fas fa-check-circle"></i> ${label}</h5><div class="permission-actions">${["View", "Add", "Edit", "Delete", "Download"]
                         .map((action) => {
                             const has = actions[action] || false;
                             return `<span class="permission-badge ${has ? "granted" : "denied"}"><i class="fas fa-${has ? "check" : "times"}"></i> ${action}</span>`;
@@ -2564,12 +2716,8 @@
         }
 
         function selectTab(tabName, event) {
-            document
-                .querySelectorAll(".tab-content")
-                .forEach((tab) => tab.classList.remove("active"));
-            document
-                .querySelectorAll(".tab-button")
-                .forEach((btn) => btn.classList.remove("active"));
+            document.querySelectorAll(".tab-content").forEach((tab) => tab.classList.remove("active"));
+            document.querySelectorAll(".tab-button").forEach((btn) => btn.classList.remove("active"));
 
             const tabElement = document.getElementById(tabName);
             if (tabElement) {
@@ -2581,9 +2729,7 @@
                 if (tabBtn) {
                     tabBtn.classList.add("active");
                 } else {
-                    const targetBtn = document.querySelector(
-                        `[onclick*="${tabName}"].tab-button`,
-                    );
+                    const targetBtn = document.querySelector(`[onclick*="${tabName}"].tab-button`);
                     if (targetBtn) targetBtn.classList.add("active");
                 }
             }
@@ -2607,9 +2753,7 @@
             try {
                 const token = localStorage.getItem("employee_token");
                 const response = await fetch(`${API_BASE}/usertypes`, {
-                    headers: {
-                        'Authorization': `Bearer ${token}`
-                    }
+                    headers: { 'Authorization': `Bearer ${token}` }
                 });
 
                 if (!response.ok) {
@@ -2631,7 +2775,6 @@
                         usertypes.map(ut => `<option value="${ut.id}">${ut.user_role}</option>`).join('');
                 }
 
-                // Display user types in settings tab
                 const display = document.getElementById("userTypesDisplay");
                 if (display) {
                     if (userRoles.length > 0) {
@@ -2654,9 +2797,7 @@
             try {
                 const token = localStorage.getItem("employee_token");
                 const response = await fetch(`${API_BASE}/users`, {
-                    headers: {
-                        'Authorization': `Bearer ${token}`
-                    }
+                    headers: { 'Authorization': `Bearer ${token}` }
                 });
 
                 if (!response.ok) {
@@ -2695,75 +2836,50 @@
 
         function updateTeamMemberSelection() {
             selectedTeamMembers = [];
-            document
-                .querySelectorAll(
-                    '.team-member-checkbox input[type="checkbox"]:checked',
-                )
-                .forEach((checkbox) => {
-                    selectedTeamMembers.push(parseInt(checkbox.value));
-                });
+            document.querySelectorAll('.team-member-checkbox input[type="checkbox"]:checked').forEach((checkbox) => {
+                selectedTeamMembers.push(parseInt(checkbox.value));
+            });
         }
 
         async function loadDashboardData() {
             const token = localStorage.getItem("employee_token");
             const headers = { Authorization: `Bearer ${token}` };
             try {
-                const [
-                    statsRes,
-                    projectsRes,
-                    tasksRes,
-                    milestonesRes,
-                    docsRes,
-                ] = await Promise.all([
-                    fetch(`${API_BASE}/employee/dashboard/stats`, {
-                        method: "GET",
-                        headers,
-                    }),
-                    fetch(`${API_BASE}/employee/projects`, {
-                        method: "GET",
-                        headers,
-                    }),
-                    fetch(`${API_BASE}/employee/tasks`, {
-                        method: "GET",
-                        headers,
-                    }),
-                    fetch(`${API_BASE}/employee/milestones`, {
-                        method: "GET",
-                        headers,
-                    }),
-                    fetch(`${API_BASE}/employee/documents`, {
-                        method: "GET",
-                        headers,
-                    }),
+                const [statsRes, projectsRes, tasksRes, milestonesRes, docsRes] = await Promise.all([
+                    fetch(`${API_BASE}/employee/dashboard/stats`, { method: "GET", headers }),
+                    fetch(`${API_BASE}/employee/projects`, { method: "GET", headers }),
+                    fetch(`${API_BASE}/employee/tasks`, { method: "GET", headers }),
+                    fetch(`${API_BASE}/employee/milestones`, { method: "GET", headers }),
+                    fetch(`${API_BASE}/employee/documents`, { method: "GET", headers }),
                 ]);
+
                 if (statsRes.ok) {
                     const stats = await statsRes.json();
-                    document.getElementById("statProjects").textContent =
-                        stats.total_projects || 0;
-                    document.getElementById("statTasks").textContent =
-                        stats.total_tasks || 0;
-                    document.getElementById("statCompleted").textContent =
-                        stats.completed_tasks || 0;
-                    document.getElementById("statMilestones").textContent =
-                        stats.total_milestones || 0;
+                    document.getElementById("statProjects").textContent = stats.total_projects || 0;
+                    document.getElementById("statTasks").textContent = stats.total_tasks || 0;
+                    document.getElementById("statCompleted").textContent = stats.completed_tasks || 0;
+                    document.getElementById("statMilestones").textContent = stats.total_milestones || 0;
                 }
+
                 if (projectsRes.ok) {
                     projects = await projectsRes.json();
                     renderProjects(projects);
                     renderRecentProjects(projects);
                     populateProjectDropdowns(projects);
                 } else {
-                    document.getElementById("noProjects").style.display =
-                        "block";
+                    document.getElementById("noProjects").style.display = "block";
                 }
+
                 if (tasksRes.ok) {
                     tasks = await tasksRes.json();
                     renderTasks(tasks);
                 }
+
                 if (milestonesRes.ok) {
                     milestones = await milestonesRes.json();
                     renderMilestones(milestones);
                 }
+
                 if (docsRes.ok) {
                     documents = await docsRes.json();
                     renderDocuments(documents);
@@ -2778,21 +2894,16 @@
             try {
                 const token = localStorage.getItem('employee_token');
                 const response = await fetch(`${API_BASE}/employee/profile/stats`, {
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                    },
+                    headers: { Authorization: `Bearer ${token}` }
                 });
 
                 if (response.ok) {
                     const stats = await response.json();
-
-                    // Update profile stats
                     document.getElementById('profileStatProjects').textContent = stats.total_projects || 0;
                     document.getElementById('profileStatCompleted').textContent = stats.completed_tasks || 0;
                     document.getElementById('profileStatPending').textContent = stats.pending_tasks || 0;
                     document.getElementById('profileStatMilestones').textContent = stats.total_milestones || 0;
 
-                    // Also update overview stats if needed
                     document.getElementById('statProjects').textContent = stats.total_projects || 0;
                     document.getElementById('statTasks').textContent = (stats.completed_tasks || 0) + (stats.pending_tasks || 0);
                     document.getElementById('statCompleted').textContent = stats.completed_tasks || 0;
@@ -2807,10 +2918,7 @@
             const token = localStorage.getItem("employee_token");
             const headers = { Authorization: `Bearer ${token}` };
             try {
-                const res = await fetch(`${API_BASE}/employee/activities`, {
-                    method: "GET",
-                    headers,
-                });
+                const res = await fetch(`${API_BASE}/employee/activities`, { method: "GET", headers });
                 if (res.ok) {
                     const activities = await res.json();
                     renderActivities(activities);
@@ -2833,10 +2941,7 @@
             container.innerHTML = activities
                 .map((activity) => {
                     let content = `<div class="item-card"><div class="item-content"><h5><i class="fas fa-history"></i> ${activity.description}</h5><p><strong>Activity:</strong> ${activity.activity_type.replace(/_/g, " ").toUpperCase()}</p>`;
-                    if (
-                        activity.activity_type === "project_created" &&
-                        activity.project_title
-                    ) {
+                    if (activity.activity_type === "project_created" && activity.project_title) {
                         content += `<div style="margin-top: 15px; padding: 15px; background: #f8f9fa; border-radius: 8px; border-left: 4px solid #667eea;"><h6 style="color: #2d3748; margin-bottom: 10px;"><i class="fas fa-project-diagram"></i> Project Details</h6><p><strong>Title:</strong> ${activity.project_title}</p>${activity.project_description ? `<p><strong>Description:</strong> ${activity.project_description}</p>` : ""}${activity.project_deadline ? `<p><strong>Deadline:</strong> ${new Date(activity.project_deadline).toLocaleDateString()}</p>` : ""}</div>`;
                     }
                     content += `<div class="item-meta"><span><i class="fas fa-user"></i> ${activity.username || "Unknown"}</span><span><i class="fas fa-calendar"></i> ${new Date(activity.created_at).toLocaleDateString()}</span></div></div></div>`;
@@ -2851,20 +2956,14 @@
 
             container.innerHTML = "";
             if (projects.length === 0) {
-                document.getElementById("noProjects").style.display =
-                    "block";
+                document.getElementById("noProjects").style.display = "block";
                 return;
             }
             document.getElementById("noProjects").style.display = "none";
             projects.forEach((project) => {
                 const card = document.createElement("div");
                 card.className = "item-card";
-                const statusBadge =
-                    project.status === "Completed"
-                        ? "badge-success"
-                        : project.status === "In Progress"
-                            ? "badge-info"
-                            : "badge-warning";
+                const statusBadge = project.status === "Completed" ? "badge-success" : project.status === "In Progress" ? "badge-info" : "badge-warning";
                 const isCompleted = project.status === "Completed";
                 card.innerHTML = `<div class="item-content"><h5>${project.title}</h5><p>${project.description || "No description"}</p><div class="item-meta"><span><i class="fas fa-user"></i> ${project.creator_name || "Unknown"}</span><span><i class="fas fa-calendar"></i> ${new Date(project.created_at).toLocaleDateString()}</span><span class="badge ${statusBadge}">${project.status}</span></div></div><div class="item-actions">${!isCompleted ? `<button class="btn btn-success btn-sm" onclick="completeProject(${project.id})"><i class="fas fa-check"></i> Complete</button>` : `<span style="color: #48bb78; font-weight: 600"><i class="fas fa-check-circle"></i> Completed</span>`}</div>`;
                 container.appendChild(card);
@@ -2883,9 +2982,8 @@
             if (!container) return;
             container.innerHTML = projects
                 .slice(0, 3)
-                .map(
-                    (project) =>
-                        `<div class="item-card"><div class="item-content"><h5>${project.title}</h5><p>${project.description || "No description"}</p><div class="item-meta"><span><i class="fas fa-user"></i> ${project.creator_name || "Unknown"}</span><span><i class="fas fa-calendar"></i> ${new Date(project.created_at).toLocaleDateString()}</span></div></div></div>`,
+                .map((project) =>
+                    `<div class="item-card"><div class="item-content"><h5>${project.title}</h5><p>${project.description || "No description"}</p><div class="item-meta"><span><i class="fas fa-user"></i> ${project.creator_name || "Unknown"}</span><span><i class="fas fa-calendar"></i> ${new Date(project.created_at).toLocaleDateString()}</span></div></div></div>`
                 )
                 .join("");
         }
@@ -2903,18 +3001,8 @@
             tasks.forEach((task) => {
                 const card = document.createElement("div");
                 card.className = "item-card";
-                const statusBadge =
-                    task.status === "Completed"
-                        ? "badge-success"
-                        : task.status === "In Progress"
-                            ? "badge-info"
-                            : "badge-warning";
-                const priorityBadge =
-                    task.priority === "High"
-                        ? "badge-danger"
-                        : task.priority === "Medium"
-                            ? "badge-warning"
-                            : "badge-info";
+                const statusBadge = task.status === "Completed" ? "badge-success" : task.status === "In Progress" ? "badge-info" : "badge-warning";
+                const priorityBadge = task.priority === "High" ? "badge-danger" : task.priority === "Medium" ? "badge-warning" : "badge-info";
                 card.innerHTML = `<div class="item-content"><h5>${task.title}</h5><p>${task.description || "No description"}</p><div class="item-meta"><span><i class="fas fa-folder"></i> ${task.project_name || "No Project"}</span><span class="badge ${statusBadge}">${task.status}</span><span class="badge ${priorityBadge}">${task.priority}</span></div></div><div class="item-actions"><button class="btn btn-success btn-sm" onclick="completeTask(${task.id})" ${userPermissions["task"]?.["Edit"] ? "" : "disabled"}><i class="fas fa-check"></i> Complete</button></div>`;
                 container.appendChild(card);
             });
@@ -2926,18 +3014,14 @@
 
             container.innerHTML = "";
             if (milestones.length === 0) {
-                document.getElementById("noMilestones").style.display =
-                    "block";
+                document.getElementById("noMilestones").style.display = "block";
                 return;
             }
             document.getElementById("noMilestones").style.display = "none";
             milestones.forEach((milestone) => {
                 const card = document.createElement("div");
                 card.className = "item-card";
-                const statusBadge =
-                    milestone.status === "Completed"
-                        ? "badge-success"
-                        : "badge-warning";
+                const statusBadge = milestone.status === "Completed" ? "badge-success" : "badge-warning";
                 card.innerHTML = `<div class="item-content"><h5>${milestone.title}</h5><p>${milestone.description || "No description"}</p><div class="item-meta"><span><i class="fas fa-folder"></i> ${milestone.project_title || "No Project"}</span><span><i class="fas fa-calendar"></i> ${milestone.due_date ? new Date(milestone.due_date).toLocaleDateString() : "No deadline"}</span><span class="badge ${statusBadge}">${milestone.status}</span></div></div><div class="item-actions"><button class="btn btn-success btn-sm" onclick="completeMilestone(${milestone.id})" ${userPermissions["Proj"]?.["Edit"] ? "" : "disabled"}><i class="fas fa-check"></i> Complete</button></div>`;
                 container.appendChild(card);
             });
@@ -2984,12 +3068,10 @@
             const container = document.getElementById("documentsList");
             if (!container) return;
 
-            // Event delegation for download buttons
             container.addEventListener("click", (e) => {
                 if (e.target.closest(".download-doc-btn")) {
                     const btn = e.target.closest(".download-doc-btn");
                     if (btn.disabled) {
-                        console.log("[v0] Download button is disabled due to insufficient permissions");
                         showAlert("You do not have permission to download documents.", "error");
                         return;
                     }
@@ -3000,12 +3082,10 @@
                 }
             });
 
-            // Event delegation for delete buttons
             container.addEventListener("click", (e) => {
                 if (e.target.closest(".delete-doc-btn")) {
                     const btn = e.target.closest(".delete-doc-btn");
                     if (btn.disabled) {
-                        console.log("[v0] Delete button is disabled due to insufficient permissions");
                         showAlert("You do not have permission to delete documents.", "error");
                         return;
                     }
@@ -3017,7 +3097,6 @@
             });
         }
 
-
         function populateProjectDropdowns(projects) {
             const selects = [
                 document.getElementById("taskProject"),
@@ -3026,26 +3105,14 @@
             ];
             selects.forEach((select) => {
                 if (select) {
-                    select.innerHTML =
-                        '<option value="">Select a project</option>' +
-                        projects
-                            .map(
-                                (p) =>
-                                    `<option value="${p.id}">${p.title}</option>`,
-                            )
-                            .join("");
+                    select.innerHTML = '<option value="">Select a project</option>' +
+                        projects.map((p) => `<option value="${p.id}">${p.title}</option>`).join("");
                 }
             });
             const assigneeSelect = document.getElementById("taskAssignee");
             if (assigneeSelect) {
-                assigneeSelect.innerHTML =
-                    '<option value="">Unassigned</option>' +
-                    allEmployees
-                        .map(
-                            (e) =>
-                                `<option value="${e.id}">${e.username}</option>`,
-                        )
-                        .join("");
+                assigneeSelect.innerHTML = '<option value="">Unassigned</option>' +
+                    allEmployees.map((e) => `<option value="${e.id}">${e.username}</option>`).join("");
             }
         }
 
@@ -3056,39 +3123,24 @@
             }
             if (modalId === "createProjectModal") {
                 newTeamMembers = [];
-                const display = document.getElementById(
-                    "newTeamMembersDisplay",
-                );
+                const display = document.getElementById("newTeamMembersDisplay");
                 if (display) display.style.display = "none";
             }
         }
 
         function openCreateProjectModal() {
-            if (
-                !userPermissions["Proj"] ||
-                !userPermissions["Proj"]["Add"]
-            ) {
-                showAlert(
-                    "You do not have permission to create projects",
-                    "error",
-                );
+            if (!userPermissions["Proj"] || !userPermissions["Proj"]["Add"]) {
+                showAlert("You do not have permission to create projects", "error");
                 return;
             }
             newTeamMembers = [];
             selectedTeamMembers = [];
-            const display = document.getElementById(
-                "newTeamMembersDisplay",
-            );
+            const display = document.getElementById("newTeamMembersDisplay");
             if (display) display.style.display = "none";
-            document
-                .querySelectorAll(
-                    '.team-member-checkbox input[type="checkbox"]',
-                )
-                .forEach((checkbox) => {
-                    checkbox.checked = false;
-                });
+            document.querySelectorAll('.team-member-checkbox input[type="checkbox"]').forEach((checkbox) => {
+                checkbox.checked = false;
+            });
 
-            // Set today's date for creation date and min for deadline
             const today = new Date().toISOString().split('T')[0];
             document.getElementById('projectCreationDate').value = today;
             document.getElementById('projectDeadline').min = today;
@@ -3098,67 +3150,41 @@
         }
 
         function openCreateTaskModal() {
-            document
-                .getElementById("createTaskModal")
-                .classList.add("active");
+            document.getElementById("createTaskModal").classList.add("active");
         }
+
         function openCreateMilestoneModal() {
-            document
-                .getElementById("createMilestoneModal")
-                .classList.add("active");
+            document.getElementById("createMilestoneModal").classList.add("active");
         }
+
         function openUploadDocumentModal() {
-            document
-                .getElementById("uploadDocumentModal")
-                .classList.add("active");
+            document.getElementById("uploadDocumentModal").classList.add("active");
         }
 
         function openAddTeamMemberModal() {
             const modal = document.getElementById("addTeamMemberModal");
             const select = document.getElementById("addMemberUserType");
             if (select) {
-                select.innerHTML =
-                    '<option value="">Select user type</option>' +
-                    userRoles
-                        .map(
-                            (role) =>
-                                `<option value="${role.id}">${role.user_role}</option>`,
-                        )
-                        .join("");
+                select.innerHTML = '<option value="">Select user type</option>' +
+                    userRoles.map((role) => `<option value="${role.id}">${role.user_role}</option>`).join("");
             }
             if (modal) modal.classList.add("active");
         }
 
         async function addTeamMemberToProject(event) {
             event.preventDefault();
-            const username = document
-                .getElementById("addMemberUsername")
-                .value.trim();
-            const email = document
-                .getElementById("addMemberEmail")
-                .value.trim();
-            const password =
-                document.getElementById("addMemberPassword").value;
-            const confirmPassword = document.getElementById(
-                "addMemberConfirmPassword",
-            ).value;
-            const userTypeId =
-                document.getElementById("addMemberUserType").value;
+            const username = document.getElementById("addMemberUsername").value.trim();
+            const email = document.getElementById("addMemberEmail").value.trim();
+            const password = document.getElementById("addMemberPassword").value;
+            const confirmPassword = document.getElementById("addMemberConfirmPassword").value;
+            const userTypeId = document.getElementById("addMemberUserType").value;
 
-            if (
-                !username ||
-                !email ||
-                !password ||
-                !confirmPassword ||
-                !userTypeId
-            ) {
+            if (!username || !email || !password || !confirmPassword || !userTypeId) {
                 showAlert("All fields are required", "error");
                 return;
             }
 
-            if (
-                !/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(email)
-            ) {
+            if (!/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(email)) {
                 showAlert("Invalid email format", "error");
                 return;
             }
@@ -3169,20 +3195,13 @@
             }
 
             if (password.length < 8) {
-                showAlert(
-                    "Password must be at least 8 characters",
-                    "error",
-                );
+                showAlert("Password must be at least 8 characters", "error");
                 return;
             }
 
-            const specialChars = (password.match(/[!@#$%^&*]/g) || [])
-                .length;
+            const specialChars = (password.match(/[!@#$%^&*]/g) || []).length;
             if (specialChars < 2) {
-                showAlert(
-                    "Password must contain at least 2 special characters (!@#$%^&*)",
-                    "error",
-                );
+                showAlert("Password must contain at least 2 special characters (!@#$%^&*)", "error");
                 return;
             }
 
@@ -3204,10 +3223,7 @@
 
                 const data = await response.json();
                 if (!response.ok) {
-                    showAlert(
-                        data.error || "Failed to create team member",
-                        "error",
-                    );
+                    showAlert(data.error || "Failed to create team member", "error");
                     return;
                 }
 
@@ -3219,8 +3235,7 @@
                 document.getElementById("addMemberUsername").value = "";
                 document.getElementById("addMemberEmail").value = "";
                 document.getElementById("addMemberPassword").value = "";
-                document.getElementById("addMemberConfirmPassword").value =
-                    "";
+                document.getElementById("addMemberConfirmPassword").value = "";
                 document.getElementById("addMemberUserType").value = "";
             } catch (error) {
                 console.error("Error adding team member:", error);
@@ -3254,7 +3269,6 @@
                 return;
             }
 
-            // Show status indicator
             const statusDiv = document.getElementById('newProjectStatus');
             const statusMsg = document.getElementById('statusMessage');
             statusDiv.style.display = 'block';
@@ -3290,19 +3304,16 @@
                 statusMsg.textContent = 'Project created successfully!';
                 statusDiv.className = 'alert alert-success';
 
-                // Close modal after success
                 setTimeout(() => {
                     closeModal('createProjectModal');
                     statusDiv.style.display = 'none';
                     statusDiv.className = 'alert alert-info';
 
-                    // Reset form
                     document.getElementById('projectTitle').value = '';
                     document.getElementById('projectDescription').value = '';
                     document.getElementById('projectDeadline').value = '';
                     document.getElementById('projectReportingTime').value = '09:00';
 
-                    // Refresh data
                     loadDashboardData();
                     updateRealTimeProjectStatus();
 
@@ -3320,12 +3331,9 @@
         async function createTask(event) {
             event.preventDefault();
             const title = document.getElementById("taskTitle").value.trim();
-            const description = document
-                .getElementById("taskDescription")
-                .value.trim();
+            const description = document.getElementById("taskDescription").value.trim();
             const projectId = document.getElementById("taskProject").value;
-            const assigneeId =
-                document.getElementById("taskAssignee").value;
+            const assigneeId = document.getElementById("taskAssignee").value;
             const priority = document.getElementById("taskPriority").value;
             const deadline = document.getElementById("taskDeadline").value;
             if (!title || !projectId) {
@@ -3343,19 +3351,14 @@
                         title,
                         description,
                         project_id: parseInt(projectId),
-                        assigned_to_id: assigneeId
-                            ? parseInt(assigneeId)
-                            : null,
+                        assigned_to_id: assigneeId ? parseInt(assigneeId) : null,
                         priority,
                         deadline: deadline || null,
                     }),
                 });
                 const data = await response.json();
                 if (!response.ok) {
-                    showAlert(
-                        data.error || "Failed to create task",
-                        "error",
-                    );
+                    showAlert(data.error || "Failed to create task", "error");
                     return;
                 }
                 showAlert("Task created successfully!", "success");
@@ -3368,46 +3371,31 @@
 
         async function createMilestone(event) {
             event.preventDefault();
-            const title = document
-                .getElementById("milestoneTitle")
-                .value.trim();
-            const description = document
-                .getElementById("milestoneDescription")
-                .value.trim();
-            const projectId =
-                document.getElementById("milestoneProject").value;
-            const dueDate =
-                document.getElementById("milestoneDueDate").value;
+            const title = document.getElementById("milestoneTitle").value.trim();
+            const description = document.getElementById("milestoneDescription").value.trim();
+            const projectId = document.getElementById("milestoneProject").value;
+            const dueDate = document.getElementById("milestoneDueDate").value;
             if (!title || !projectId) {
-                showAlert(
-                    "Milestone title and project are required",
-                    "error",
-                );
+                showAlert("Milestone title and project are required", "error");
                 return;
             }
             try {
-                const response = await fetch(
-                    `${API_BASE}/employee/milestones`,
-                    {
-                        method: "POST",
-                        headers: {
-                            "Content-Type": "application/json",
-                            Authorization: `Bearer ${localStorage.getItem("employee_token")}`,
-                        },
-                        body: JSON.stringify({
-                            title,
-                            description,
-                            project_id: parseInt(projectId),
-                            due_date: dueDate || null,
-                        }),
+                const response = await fetch(`${API_BASE}/employee/milestones`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${localStorage.getItem("employee_token")}`,
                     },
-                );
+                    body: JSON.stringify({
+                        title,
+                        description,
+                        project_id: parseInt(projectId),
+                        due_date: dueDate || null,
+                    }),
+                });
                 const data = await response.json();
                 if (!response.ok) {
-                    showAlert(
-                        data.error || "Failed to create milestone",
-                        "error",
-                    );
+                    showAlert(data.error || "Failed to create milestone", "error");
                     return;
                 }
                 showAlert("Milestone created successfully!", "success");
@@ -3421,8 +3409,7 @@
         async function uploadDocument(event) {
             event.preventDefault();
             const fileInput = document.getElementById("documentFile");
-            const projectId =
-                document.getElementById("documentProject").value;
+            const projectId = document.getElementById("documentProject").value;
             if (!fileInput.files[0] || !projectId) {
                 showAlert("File and project are required", "error");
                 return;
@@ -3431,22 +3418,14 @@
             formData.append("file", fileInput.files[0]);
             formData.append("project_id", projectId);
             try {
-                const response = await fetch(
-                    `${API_BASE}/employee/documents/upload`,
-                    {
-                        method: "POST",
-                        headers: {
-                            Authorization: `Bearer ${localStorage.getItem("employee_token")}`,
-                        },
-                        body: formData,
-                    },
-                );
+                const response = await fetch(`${API_BASE}/employee/documents/upload`, {
+                    method: "POST",
+                    headers: { Authorization: `Bearer ${localStorage.getItem("employee_token")}` },
+                    body: formData,
+                });
                 const data = await response.json();
                 if (!response.ok) {
-                    showAlert(
-                        data.error || "Failed to upload document",
-                        "error",
-                    );
+                    showAlert(data.error || "Failed to upload document", "error");
                     return;
                 }
                 showAlert("Document uploaded successfully!", "success");
@@ -3458,49 +3437,36 @@
         }
 
         async function downloadDocument(docId) {
-            // Input validation - ensure docId is a valid number
             if (!docId) {
-                console.error("[v0] downloadDocument: docId is missing");
                 showAlert("Invalid document ID. Please refresh and try again.", "error");
                 return;
             }
 
-            // Convert string to number if needed
             const numId = parseInt(docId, 10);
             if (isNaN(numId) || numId <= 0) {
-                console.error("[v0] downloadDocument: Invalid docId - not a valid positive number", docId);
                 showAlert("Invalid document ID. Please refresh and try again.", "error");
                 return;
             }
             docId = numId;
 
             if (!confirm("Download this document?")) {
-                console.log("[v0] Download cancelled by user");
                 return;
             }
 
             try {
                 const token = localStorage.getItem("employee_token");
                 if (!token) {
-                    console.error("[v0] downloadDocument: No authentication token found");
                     showAlert("Authentication required. Please log in.", "error");
                     return;
                 }
 
-                console.log("[v0] Starting document download for ID:", docId);
-
                 const response = await fetch(`${API_BASE}/employee/documents/${docId}/download`, {
                     method: "GET",
-                    headers: {
-                        "Authorization": `Bearer ${token}`
-                    }
+                    headers: { "Authorization": `Bearer ${token}` }
                 });
-
-                console.log("[v0] Download response status:", response.status);
 
                 if (!response.ok) {
                     let errorMessage = "Failed to download document";
-
                     if (response.status === 404) {
                         errorMessage = "Document not found. It may have been deleted.";
                     } else if (response.status === 403) {
@@ -3512,17 +3478,12 @@
                     } else {
                         errorMessage = `Failed to download document (HTTP ${response.status})`;
                     }
-
-                    console.error("[v0] Download failed:", errorMessage, response.status);
                     showAlert(errorMessage, "error");
                     return;
                 }
 
                 const contentType = response.headers.get("content-type");
-                console.log("[v0] Content-Type header:", contentType);
-
                 if (contentType && contentType.includes("application/json")) {
-                    console.error("[v0] Received JSON response instead of file - likely an error response");
                     try {
                         const errorData = await response.json();
                         showAlert(errorData.error || "Failed to download document", "error");
@@ -3533,10 +3494,7 @@
                 }
 
                 const blob = await response.blob();
-                console.log("[v0] Blob received - size:", blob.size, "bytes, type:", blob.type);
-
                 if (blob.size === 0) {
-                    console.error("[v0] Received empty blob - document may be corrupted");
                     showAlert("Downloaded file is empty. Document may be corrupted.", "error");
                     return;
                 }
@@ -3545,30 +3503,20 @@
                 const contentDisposition = response.headers.get("content-disposition");
 
                 if (contentDisposition) {
-                    console.log("[v0] Content-Disposition header:", contentDisposition);
-
-                    // Try RFC 5987 encoding first (filename*=UTF-8''...)
                     let matches = contentDisposition.match(/filename\*=(?:UTF-8'')?(.+?)(?:;|$)/);
                     if (matches && matches[1]) {
                         try {
                             filename = decodeURIComponent(matches[1]);
-                            console.log("[v0] Extracted filename (RFC 5987):", filename);
-                        } catch (e) {
-                            console.warn("[v0] Failed to decode RFC 5987 filename, trying fallback");
-                        }
+                        } catch (e) { }
                     }
 
-                    // Fallback to simple filename="..." format
                     if (filename === "document") {
                         matches = contentDisposition.match(/filename="?([^";]+)"?/);
                         if (matches && matches[1]) {
                             filename = matches[1];
-                            console.log("[v0] Extracted filename (simple):", filename);
                         }
                     }
                 }
-
-                console.log("[v0] Final filename for download:", filename);
 
                 const url = window.URL.createObjectURL(blob);
                 const link = document.createElement("a");
@@ -3576,60 +3524,47 @@
                 link.download = filename;
 
                 document.body.appendChild(link);
-                console.log("[v0] Triggering download for file:", filename);
-
                 link.click();
 
                 document.body.removeChild(link);
                 window.URL.revokeObjectURL(url);
 
-                console.log("[v0] Document download completed successfully");
                 showAlert(`Document "${filename}" downloaded successfully!`, "success");
 
             } catch (error) {
-                console.error("[v0] Download document error:", error.message, error.stack);
                 showAlert(`Error downloading document: ${error.message}`, "error");
             }
         }
 
         async function deleteDocument(docId) {
-            // Input validation - ensure docId is a valid number
             if (!docId) {
-                console.error("[v0] deleteDocument: docId is missing");
                 showAlert("Invalid document ID. Please refresh and try again.", "error");
                 return;
             }
 
-            // Convert string to number if needed
             const numId = parseInt(docId, 10);
             if (isNaN(numId) || numId <= 0) {
-                console.error("[v0] deleteDocument: Invalid docId - not a valid positive number", docId);
                 showAlert("Invalid document ID. Please refresh and try again.", "error");
                 return;
             }
             docId = numId;
 
             if (!confirm("Are you sure you want to delete this document? This action cannot be undone.")) {
-                console.log("[v0] Delete cancelled by user");
                 return;
             }
 
             try {
                 const token = localStorage.getItem("employee_token");
                 if (!token) {
-                    console.error("[v0] deleteDocument: No authentication token found");
                     showAlert("Authentication required. Please log in.", "error");
                     return;
                 }
-
-                console.log("[v0] Deleting document with ID:", docId);
 
                 const deleteBtn = document.querySelector(`button[data-doc-id="${docId}"].delete-doc-btn`);
                 if (deleteBtn) {
                     deleteBtn.disabled = true;
                     deleteBtn.style.opacity = "0.5";
                     deleteBtn.style.cursor = "not-allowed";
-                    console.log("[v0] Delete button disabled to prevent duplicate requests");
                 }
 
                 const response = await fetch(`${API_BASE}/employee/documents/${docId}/delete`, {
@@ -3640,31 +3575,17 @@
                     }
                 });
 
-                console.log("[v0] Delete response status:", response.status);
-
                 if (response.ok) {
-                    try {
-                        const data = await response.json();
-                        console.log("[v0] Document deleted successfully:", data);
-                    } catch (e) {
-                        console.warn("[v0] Could not parse success response body");
-                    }
-
                     showAlert("Document deleted successfully!", "success");
-
-                    console.log("[v0] Waiting 500ms before reloading documents...");
                     setTimeout(() => {
-                        console.log("[v0] Reloading dashboard data after delete");
                         if (typeof loadDashboardData === 'function') {
                             loadDashboardData();
                         } else {
-                            console.error("[v0] loadDashboardData function not available");
                             location.reload();
                         }
                     }, 500);
                 } else {
                     let errorMessage = "Failed to delete document";
-
                     if (response.status === 404) {
                         errorMessage = "Document not found. It may have already been deleted.";
                     } else if (response.status === 403) {
@@ -3674,40 +3595,24 @@
                     } else if (response.status === 500) {
                         errorMessage = "Server error. Please try again later.";
                     }
-
-                    try {
-                        const errorData = await response.json();
-                        if (errorData.error) {
-                            errorMessage = errorData.error;
-                        }
-                    } catch (e) {
-                        console.warn("[v0] Could not parse error response body");
-                    }
-
-                    console.error("[v0] Delete failed:", errorMessage, response.status);
                     showAlert(errorMessage, "error");
 
                     if (deleteBtn) {
                         deleteBtn.disabled = false;
                         deleteBtn.style.opacity = "1";
                         deleteBtn.style.cursor = "pointer";
-                        console.log("[v0] Delete button re-enabled after error");
                     }
                 }
             } catch (error) {
-                console.error("[v0] Delete document error:", error.message, error.stack);
                 showAlert(`Error deleting document: ${error.message}`, "error");
-
                 const deleteBtn = document.querySelector(`button[data-doc-id="${docId}"].delete-doc-btn`);
                 if (deleteBtn) {
                     deleteBtn.disabled = false;
                     deleteBtn.style.opacity = "1";
                     deleteBtn.style.cursor = "pointer";
-                    console.log("[v0] Delete button re-enabled after exception");
                 }
             }
         }
-
 
         function openManageSkillsModal() {
             const token = localStorage.getItem("employee_token");
@@ -3715,9 +3620,7 @@
                 showAlert("Please log in first", "error");
                 return;
             }
-            document
-                .getElementById("manageSkillsModal")
-                .classList.add("active");
+            document.getElementById("manageSkillsModal").classList.add("active");
             loadSkills();
         }
 
@@ -3726,22 +3629,17 @@
             if (!token) return;
 
             try {
-                const response = await fetch(
-                    `${API_BASE}/employee/skills`,
-                    {
-                        method: "GET",
-                        headers: {
-                            Authorization: `Bearer ${token}`,
-                            "Content-Type": "application/json",
-                        },
+                const response = await fetch(`${API_BASE}/employee/skills`, {
+                    method: "GET",
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                        "Content-Type": "application/json",
                     },
-                );
+                });
 
                 if (response.ok) {
                     const skills = await response.json();
                     renderSkills(skills);
-
-                    // Also update profile skills display
                     updateProfileSkills(skills);
                 }
             } catch (error) {
@@ -3779,18 +3677,14 @@
 
             container.innerHTML = `
                     <div style="display: flex; flex-wrap: wrap; gap: 10px">
-                        ${skills
-                    .map(
-                        (skill) => `
+                        ${skills.map((skill) => `
                             <div class="badge" style="background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 8px 15px; display: flex; align-items: center; gap: 8px">
                                 <span>${skill.skill_name}</span>
                                 <button onclick="deleteSkill(${skill.id})" style="background: none; border: none; color: white; cursor: pointer; padding: 0; font-size: 0.9rem">
                                     <i class="fas fa-times"></i>
                                 </button>
                             </div>
-                        `,
-                    )
-                    .join("")}
+                        `).join("")}
                     </div>
                 `;
         }
@@ -3811,17 +3705,14 @@
             }
 
             try {
-                const response = await fetch(
-                    `${API_BASE}/employee/skills`,
-                    {
-                        method: "POST",
-                        headers: {
-                            Authorization: `Bearer ${token}`,
-                            "Content-Type": "application/json",
-                        },
-                        body: JSON.stringify({ skill_name: skillName }),
+                const response = await fetch(`${API_BASE}/employee/skills`, {
+                    method: "POST",
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                        "Content-Type": "application/json",
                     },
-                );
+                    body: JSON.stringify({ skill_name: skillName }),
+                });
 
                 const data = await response.json();
 
@@ -3846,16 +3737,13 @@
             }
 
             try {
-                const response = await fetch(
-                    `${API_BASE}/employee/skills/${skillId}`,
-                    {
-                        method: "DELETE",
-                        headers: {
-                            Authorization: `Bearer ${token}`,
-                            "Content-Type": "application/json",
-                        },
+                const response = await fetch(`${API_BASE}/employee/skills/${skillId}`, {
+                    method: "DELETE",
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                        "Content-Type": "application/json",
                     },
-                );
+                });
 
                 if (response.ok) {
                     showAlert("Skill deleted!", "success");
@@ -3877,42 +3765,28 @@
                 }
 
                 const response = await fetch(`${API_BASE}/employee/profile`, {
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                    },
+                    headers: { Authorization: `Bearer ${token}` }
                 });
 
                 if (!response.ok) throw new Error('Failed to load profile');
 
                 const profile = await response.json();
                 currentUser = { ...currentUser, ...profile };
-
-                // Update localStorage
                 localStorage.setItem('employee_user', JSON.stringify(currentUser));
 
-                // Display profile information
                 document.getElementById('profileName').textContent = profile.username || 'Unknown';
                 document.getElementById('profileRole').textContent = profile.user_role || 'Employee';
                 document.getElementById('profileEmail').textContent = profile.email || '-';
-                document.getElementById('profileDepartment').textContent = profile.department
-                    ? `Department: ${profile.department}`
-                    : '';
-
+                document.getElementById('profileDepartment').textContent = profile.department ? `Department: ${profile.department}` : '';
                 document.getElementById('profilePhone').value = profile.phone || '';
                 document.getElementById('profileDeptInput').value = profile.department || '';
                 document.getElementById('profileBio').value = profile.bio || '';
 
-                // Update profile avatar
                 updateProfileAvatar(profile);
-
-                // Update header avatar too
                 updateHeaderAvatar();
 
-                // Load skills for profile
                 const skillsResponse = await fetch(`${API_BASE}/employee/skills`, {
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                    },
+                    headers: { Authorization: `Bearer ${token}` }
                 });
 
                 if (skillsResponse.ok) {
@@ -3924,7 +3798,6 @@
                 showAlert('Failed to load profile', 'error');
             }
         }
-
 
         function updateProfileAvatar(profile) {
             const avatarDiv = document.getElementById('profileAvatar');
@@ -3974,7 +3847,7 @@
                 return;
             }
 
-            if (file.size > 5 * 1024 * 1024) { // 5MB limit
+            if (file.size > 5 * 1024 * 1024) {
                 showAlert('Image size must be less than 5MB', 'error');
                 return;
             }
@@ -3983,19 +3856,19 @@
             openCropperModal(file);
         }
 
+        // Replace the openCropperModal function:
         function openCropperModal(file) {
             const reader = new FileReader();
             reader.onload = (e) => {
                 const cropperImage = document.getElementById('cropperImage');
                 cropperImage.src = e.target.result;
 
-                // Initialize cropper after image loads
                 setTimeout(() => {
                     if (cropper) cropper.destroy();
                     cropper = new Cropper(cropperImage, {
-                        aspectRatio: 1, // Force square aspect ratio
-                        viewMode: 1, // Prevent the cropper from moving outside the image
-                        autoCropArea: 1, // Automatically use the entire image as the initial crop area
+                        aspectRatio: 1,
+                        viewMode: 1,
+                        autoCropArea: 0.8,
                         responsive: true,
                         restore: true,
                         guides: true,
@@ -4003,28 +3876,50 @@
                         highlight: true,
                         cropBoxMovable: true,
                         cropBoxResizable: true,
-                        toggleDragModeOnDblclick: true // Enable double click to toggle drag mode
+                        toggleDragModeOnDblclick: false
                     });
+
+                    // Initialize zoom slider
+                    const zoomSlider = document.getElementById('zoomSlider');
+                    if (zoomSlider) {
+                        zoomSlider.value = 1;
+                        currentZoom = 1;
+                    }
+
                     document.getElementById('cropperModal').classList.add('active');
                 }, 100);
             };
             reader.readAsDataURL(file);
         }
 
-        function rotateCropper(degree) {
-            if (cropper) cropper.rotate(degree);
-        }
-
-        function flipCropperX() {
-            if (cropper) cropper.scaleX(-(cropper.getData().scaleX || -1));
-        }
-
-        function flipCropperY() {
-            if (cropper) cropper.scaleY(-(cropper.getData().scaleY || -1));
-        }
 
         function resetCropper() {
-            if (cropper) cropper.reset();
+            if (cropper) {
+                cropper.reset();
+                const zoomSlider = document.getElementById('zoomSlider');
+                if (zoomSlider) {
+                    zoomSlider.value = 1;
+                    currentZoom = 1;
+                }
+            }
+        }
+
+        function zoomCropper(amount) {
+            if (cropper) {
+                currentZoom = Math.max(0.1, Math.min(3, currentZoom + amount));
+                cropper.zoomTo(currentZoom);
+                const zoomSlider = document.getElementById('zoomSlider');
+                if (zoomSlider) {
+                    zoomSlider.value = currentZoom;
+                }
+            }
+        }
+
+        function updateZoom(value) {
+            if (cropper) {
+                currentZoom = parseFloat(value);
+                cropper.zoomTo(currentZoom);
+            }
         }
 
         function closeCropperModal() {
@@ -4037,6 +3932,7 @@
             selectedAvatarFile = null;
         }
 
+
         async function saveCroppedImage() {
             if (!cropper || !selectedAvatarFile) {
                 showAlert('Please crop an image first', 'error');
@@ -4044,7 +3940,6 @@
             }
 
             try {
-                // Get cropped canvas
                 const canvas = cropper.getCroppedCanvas({
                     width: 400,
                     height: 400,
@@ -4053,7 +3948,6 @@
                     imageSmoothingQuality: 'high'
                 });
 
-                // Convert canvas to blob and upload
                 canvas.toBlob(async (blob) => {
                     const formData = new FormData();
                     formData.append('avatar', blob, 'profile-picture.png');
@@ -4071,12 +3965,11 @@
                             showAlert('Profile picture updated successfully!', 'success');
                             closeCropperModal();
 
-                            // Update local user data with new avatar URL
                             currentUser.avatar_url = data.avatar_url;
                             localStorage.setItem('employee_user', JSON.stringify(currentUser));
 
-                            loadProfile(); // Reload profile to reflect changes
-                            updateHeaderAvatar(); // Update header avatar as well
+                            loadProfile();
+                            updateHeaderAvatar();
                         } else {
                             const error = await response.json();
                             showAlert(error.error || 'Failed to upload image', 'error');
@@ -4144,13 +4037,11 @@
                     const data = await response.json();
                     showAlert('Profile updated successfully!', 'success');
 
-                    // Update current user data
                     currentUser.phone = phone;
                     currentUser.department = department;
                     currentUser.bio = bio;
                     localStorage.setItem('employee_user', JSON.stringify(currentUser));
 
-                    // Update displayed info
                     updateUserInfo();
                 } else {
                     const error = await response.json();
@@ -4175,27 +4066,22 @@
             if (query.length >= 2) {
                 try {
                     const token = localStorage.getItem("employee_token");
-                    const response = await fetch(
-                        `${API_BASE}/search?q=${encodeURIComponent(query)}`,
-                        {
-                            method: "GET",
-                            headers: {
-                                Authorization: `Bearer ${token}`,
-                                "Content-Type": "application/json",
-                            },
+                    const response = await fetch(`${API_BASE}/search?q=${encodeURIComponent(query)}`, {
+                        method: "GET",
+                        headers: {
+                            Authorization: `Bearer ${token}`,
+                            "Content-Type": "application/json",
                         },
-                    );
+                    });
 
                     if (response.ok) {
                         const data = await response.json();
                         displaySearchResults(data.results || []);
                     } else {
-                        console.error("Search failed");
                         searchResultsDiv.innerHTML = '<div class="search-result-item">Error searching</div>';
                         searchResultsDiv.style.display = "block";
                     }
                 } catch (error) {
-                    console.error("Search error:", error);
                     searchResultsDiv.innerHTML = '<div class="search-result-item">Error searching</div>';
                     searchResultsDiv.style.display = "block";
                 }
@@ -4216,8 +4102,7 @@
             }
 
             if (results.length === 0) {
-                resultsDiv.innerHTML =
-                    '<div class="search-result-item">No results found</div>';
+                resultsDiv.innerHTML = '<div class="search-result-item">No results found</div>';
                 resultsDiv.style.display = "block";
                 return;
             }
@@ -4293,7 +4178,6 @@
                 });
             }
 
-            // Scroll to the specific item if needed
             setTimeout(() => {
                 const element = document.querySelector(`[data-id="${id}"]`);
                 if (element) {
@@ -4306,7 +4190,7 @@
             }, 300);
         }
 
-        // Additional helper functions for drag and drop
+        // Drag and drop functions
         function handleDragOver(event) {
             event.preventDefault();
             event.stopPropagation();
@@ -4342,8 +4226,6 @@
         }
 
         function uploadAvatarFile() {
-            // This function would handle direct upload without cropping
-            // For now, we'll use the cropper approach
             triggerAvatarInput();
             closeAvatarModal();
         }
@@ -4352,14 +4234,11 @@
             const token = localStorage.getItem('employee_token');
             if (!token) return;
 
-            // Initial load
             updateRealTimeProjectStatus();
-
             setInterval(() => {
                 updateRealTimeProjectStatus();
-            }, 5000);  // Changed from presumably longer interval for real-time
+            }, 5000);
         }
-
 
         function updateRealTimeProjectStatus() {
             const token = localStorage.getItem('employee_token');
@@ -4371,7 +4250,6 @@
                 .then(response => {
                     if (!response.ok) {
                         if (response.status === 401) {
-                            // Token expired, redirect to login
                             localStorage.removeItem('employee_token');
                             localStorage.removeItem('employee_user');
                             window.location.href = '/';
@@ -4478,7 +4356,6 @@
             `).join('');
         }
 
-
         function updateProgressElements(projects) {
             if (!projects || projects.length === 0) return;
 
@@ -4491,7 +4368,6 @@
                     const milestonesCompleted = document.getElementById(`milestones-completed-${p.id}`);
                     const milestonesTotal = document.getElementById(`milestones-total-${p.id}`);
 
-                    // Only update if elements exist
                     if (bar) {
                         bar.style.transition = 'width 0.6s ease';
                         bar.style.width = (p.progress || 0) + '%';
@@ -4519,27 +4395,25 @@
         }
 
         function updateProjectTimers() {
-            // Update countdown timers for deadlines
             const countdownElements = document.querySelectorAll('.countdown');
             countdownElements.forEach(element => {
-                if (!element) return; // Skip if element doesn't exist
+                if (!element) return;
                 const deadline = element.getAttribute('data-deadline');
                 if (deadline) {
                     const timeLeft = calculateTimeLeft(deadline);
                     element.innerHTML = timeLeft;
-                    if (element.style) { // Added null check for style
+                    if (element.style) {
                         element.style.color = timeLeft.includes('Overdue') ? '#f56565' : '#48bb78';
                     }
                 }
             });
 
-            // Update reporting time indicators
             const now = new Date();
             const currentTime = now.getHours() + ':' + (now.getMinutes() < 10 ? '0' : '') + now.getMinutes();
 
             const timeDisplays = document.querySelectorAll('.time-display:not(.countdown)');
             timeDisplays.forEach(element => {
-                if (!element || !element.style) return; // Added safety check
+                if (!element || !element.style) return;
                 if (element.textContent.includes(':')) {
                     const [hours, minutes] = element.textContent.split(':').map(Number);
                     const reportingTime = new Date();
@@ -4608,7 +4482,6 @@
             }
         }
 
-        // Activity Details Functions
         async function showProjectsDetails() {
             const modal = document.getElementById('activityDetailsModal');
             const title = document.getElementById('activityDetailsTitle');
@@ -4631,7 +4504,6 @@
                     content.innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-triangle"></i><h4>Error</h4><p>Failed to load project details.</p></div>';
                 }
             } catch (error) {
-                console.error('Error loading projects:', error);
                 content.innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-triangle"></i><h4>Error</h4><p>Failed to load project details.</p></div>';
             }
         }
@@ -4658,7 +4530,6 @@
                     content.innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-triangle"></i><h4>Error</h4><p>Failed to load completed tasks.</p></div>';
                 }
             } catch (error) {
-                console.error('Error loading completed tasks:', error);
                 content.innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-triangle"></i><h4>Error</h4><p>Failed to load completed tasks.</p></div>';
             }
         }
@@ -4685,7 +4556,6 @@
                     content.innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-triangle"></i><h4>Error</h4><p>Failed to load pending tasks.</p></div>';
                 }
             } catch (error) {
-                console.error('Error loading pending tasks:', error);
                 content.innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-triangle"></i><h4>Error</h4><p>Failed to load pending tasks.</p></div>';
             }
         }
@@ -4712,7 +4582,6 @@
                     content.innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-triangle"></i><h4>Error</h4><p>Failed to load milestones.</p></div>';
                 }
             } catch (error) {
-                console.error('Error loading milestones:', error);
                 content.innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-triangle"></i><h4>Error</h4><p>Failed to load milestones.</p></div>';
             }
         }
@@ -4788,16 +4657,13 @@
                     return;
                 }
 
-                const response = await fetch(
-                    `${API_BASE}/employee/projects/${projectId}/complete`,
-                    {
-                        method: "POST",
-                        headers: {
-                            "Authorization": `Bearer ${token}`,
-                            "Content-Type": "application/json"
-                        }
+                const response = await fetch(`${API_BASE}/employee/projects/${projectId}/complete`, {
+                    method: "POST",
+                    headers: {
+                        "Authorization": `Bearer ${token}`,
+                        "Content-Type": "application/json"
                     }
-                );
+                });
 
                 if (!response.ok) {
                     const errorData = await response.json().catch(() => ({}));
@@ -4825,16 +4691,13 @@
                     return;
                 }
 
-                const response = await fetch(
-                    `${API_BASE}/employee/tasks/${taskId}/complete`,
-                    {
-                        method: "POST",
-                        headers: {
-                            "Authorization": `Bearer ${token}`,
-                            "Content-Type": "application/json"
-                        }
+                const response = await fetch(`${API_BASE}/employee/tasks/${taskId}/complete`, {
+                    method: "POST",
+                    headers: {
+                        "Authorization": `Bearer ${token}`,
+                        "Content-Type": "application/json"
                     }
-                );
+                });
 
                 if (!response.ok) {
                     const errorData = await response.json().catch(() => ({}));
@@ -4861,16 +4724,13 @@
                     return;
                 }
 
-                const response = await fetch(
-                    `${API_BASE}/employee/milestones/${milestoneId}/complete`,
-                    {
-                        method: "POST",
-                        headers: {
-                            "Authorization": `Bearer ${token}`,
-                            "Content-Type": "application/json"
-                        }
+                const response = await fetch(`${API_BASE}/employee/milestones/${milestoneId}/complete`, {
+                    method: "POST",
+                    headers: {
+                        "Authorization": `Bearer ${token}`,
+                        "Content-Type": "application/json"
                     }
-                );
+                });
 
                 if (!response.ok) {
                     const errorData = await response.json().catch(() => ({}));
@@ -4887,9 +4747,6 @@
             }
         }
 
-
-
-
         // Theme toggle functionality
         function toggleTheme() {
             const body = document.body;
@@ -4903,15 +4760,6 @@
             const isDark = document.body.classList.contains('dark-mode');
             icon.className = isDark ? 'fas fa-sun' : 'fas fa-moon';
         }
-
-        document.addEventListener('DOMContentLoaded', function () {
-            const savedTheme = localStorage.getItem('theme');
-            if (savedTheme === 'dark') {
-                document.body.classList.add('dark-mode');
-            }
-            updateThemeIcon();
-        });
-
     </script>
 </body>
 

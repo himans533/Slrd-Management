@@ -2274,25 +2274,107 @@
             });
         }
 
-        function showDetailModal(type) {
+           async function showDetailModal(type) {
             const modal = document.getElementById('detailModal');
             const title = document.getElementById('detailModalTitle');
             const body = document.getElementById('detailModalBody');
+            const token = getAdminToken();
 
-            const details = {
-                active_projects: { title: 'Active Projects', content: '<p>5 active projects are currently running.</p>' },
-                completed_tasks: { title: 'Completed Tasks', content: '<p>42 tasks have been completed.</p>' },
-                active_tasks: { title: 'Active Tasks', content: '<p>18 tasks are currently in progress.</p>' },
-                overdue_tasks: { title: 'Overdue Tasks', content: '<p>2 tasks are overdue.</p>' },
-                pending_approvals: { title: 'Pending Approvals', content: '<p>7 items are pending approval.</p>' }
-            };
+            body.innerHTML = '<p style="text-align: center; color: var(--text-secondary);">Loading...</p>';
+            modal.style.display = 'block';
 
-            if (details[type]) {
-                title.textContent = details[type].title;
-                body.innerHTML = details[type].content;
-                modal.style.display = 'block';
+            try {
+                let items = [];
+                let itemTitle = '';
+
+                if (type === 'active_projects') {
+                    itemTitle = 'Active Projects';
+                    // Corrected API endpoint for active projects
+                    const res = await fetch(`${API_BASE}/api/admin/dashboard/projects?status=Active`, {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+                    if (res.ok) {
+                        items = await res.json();
+                    }
+                } else if (type === 'completed_tasks') {
+                    itemTitle = 'Completed Tasks';
+                    // Corrected API endpoint for completed tasks
+                    const res = await fetch(`${API_BASE}/api/tasks?status=Completed`, {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    }).catch(() => null);
+
+                    if (res && res.ok) {
+                        items = await res.json();
+                    } else {
+                        items = [];
+                    }
+                } else if (type === 'active_tasks') {
+                    itemTitle = 'Active Tasks';
+                    // Corrected API endpoint for active tasks
+                    const res = await fetch(`${API_BASE}/api/tasks?status=In Progress`, {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    }).catch(() => null);
+
+                    if (res && res.ok) {
+                        items = await res.json();
+                    }
+                } else if (type === 'overdue_tasks') {
+                    itemTitle = 'Overdue Tasks';
+                    // Corrected API endpoint for overdue tasks
+                    const res = await fetch(`${API_BASE}/api/admin/dashboard/overdue-items`, {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+
+                    if (res.ok) {
+                        const data = await res.json();
+                        items = data.overdue_tasks || [];
+                    }
+                } else if (type === 'pending_approvals') {
+                    itemTitle = 'Pending Approvals';
+                    // Corrected API endpoint for pending approvals
+                    const res = await fetch(`${API_BASE}/api/tasks?approval_status=pending`, {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    }).catch(() => null);
+
+                    if (res && res.ok) {
+                        items = await res.json();
+                    }
+                }
+
+                title.innerText = itemTitle;
+
+                if (!items || items.length === 0) {
+                    body.innerHTML = `
+                        <div class="no-data">
+                            <i class="fas fa-inbox" style="font-size: 48px; color: var(--text-secondary); margin-bottom: 15px;"></i>
+                            <p>No ${itemTitle.toLowerCase()} found</p>
+                        </div>
+                    `;
+                } else {
+                    body.innerHTML = items.map(item => `
+                        <div class="item-row">
+                            <h4>${item.title || item.name || 'Untitled'}</h4>
+                            <p>${item.description || item.detail || 'No description'}</p>
+                            ${item.status ? `<span class="status-badge ${item.status.toLowerCase().replace(' ', '-')}">${item.status}</span>` : ''}
+                            ${item.deadline ? `<p><i class="fas fa-calendar"></i> Due: ${new Date(item.deadline).toLocaleDateString()}</p>` : ''}
+                            ${item.created_by_name ? `<p><i class="fas fa-user"></i> Created by: ${item.created_by_name}</p>` : ''}
+                            ${item.assigned_to_name ? `<p><i class="fas fa-user-check"></i> Assigned to: ${item.assigned_to_name}</p>` : ''}
+                        </div>
+                    `).join('');
+                }
+            } catch (error) {
+                console.error('[v0] Error loading items:', error);
+                body.innerHTML = `
+                    <div class="no-data">
+                        <i class="fas fa-exclamation-circle" style="font-size: 48px; color: var(--danger); margin-bottom: 15px;"></i>
+                        <p>Error loading data. Please check your backend connection.</p>
+                        <p style="font-size: 12px; margin-top: 10px;">${error.message}</p>
+                    </div>
+                `;
             }
         }
+
+
 
         function closeDetailModal() {
             document.getElementById('detailModal').style.display = 'none';

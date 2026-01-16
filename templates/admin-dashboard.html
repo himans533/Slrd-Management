@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Dashboard - SLRD System (Complete Upgrade)</title>
+    <title>Admin Dashboard - SLRD System</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css">
     <style>
@@ -882,14 +882,12 @@
                 </button>
             </div>
         </div>
-
-        <!-- Enhanced notification system for Phase 1-4 features -->
+        
         <div id="successMessage" class="notification success"></div>
         <div id="errorMessage" class="notification error"></div>
         <div id="infoMessage" class="notification info"></div>
 
-        <!-- Permission denied message for RBAC -->
-        <div id="permissionDenied" class="permission-denied" style="display: none;">
+         <div id="permissionDenied" class="permission-denied" style="display: none;">
             <i class="fas fa-lock"></i> You don't have permission to perform this action.
         </div>
 
@@ -899,12 +897,12 @@
                 <p>View project statistics and task analytics</p>
                 <button class="btn btn-primary" onclick="selectTab('overview-tab')">View Dashboard</button>
             </div>
-            <div class="action-card" id="manageUserTypesCard">
+            <div class="action-card">
                 <h3><i class="fas fa-users-cog"></i> Manage User Types</h3>
                 <p>Create and manage employee roles</p>
                 <button class="btn btn-primary" onclick="selectTab('usertypes-tab')">Manage Types</button>
             </div>
-            <div class="action-card" id="createEmployeeCard">
+            <div class="action-card">
                 <h3><i class="fas fa-user-plus"></i> Create Employee</h3>
                 <p>Add new employees to the system</p>
                 <button class="btn btn-primary" onclick="openUserModal()">Create Employee</button>
@@ -914,7 +912,6 @@
                 <p>Manage all system employees</p>
                 <button class="btn btn-primary" onclick="selectTab('users-tab')">View Employees</button>
             </div>
-            <!-- Add audit logs card for Phase 2 RBAC -->
             <div class="action-card" id="auditLogsCard">
                 <h3><i class="fas fa-history"></i> Audit Logs</h3>
                 <p>View system activity and changes</p>
@@ -925,13 +922,12 @@
         <div style="background: var(--bg); border-radius: 16px; box-shadow: 0 12px 40px var(--shadow); padding: 30px;">
             <div class="tabs-nav">
                 <button class="tab-button active" onclick="selectTab('overview-tab')">Dashboard Overview</button>
-                <button class="tab-button" onclick="selectTab('usertypes-tab')" id="userTypesTab">User Types</button>
+                <button class="tab-button" onclick="selectTab('usertypes-tab')">User Types</button>
                 <button class="tab-button" onclick="selectTab('users-tab')">Employees</button>
-                <!-- Add audit logs tab for Phase 2 -->
                 <button class="tab-button" onclick="selectTab('audit-tab')" id="auditTab">Audit Logs</button>
             </div>
 
-            <div id="overview-tab" class="tab-content active">
+               <div id="overview-tab" class="tab-content active">
                 <div class="dashboard-stats">
                     <div class="stat-card primary" onclick="showDetailModal('active_projects')">
                         <div style="text-align: center; font-size: 24px; color: #667eea;"><i class="fas fa-folder"></i>
@@ -971,7 +967,7 @@
                         <h3 style="color: var(--primary); margin-bottom: 20px;"><i class="fas fa-folder"></i> Recent
                             Projects</h3>
                         <div class="projects-list" id="projectsList"></div>
-                        <div id="noProjects" class="no-data">No projects available yet</div>
+                        <!-- <div id="noProjects" class="no-data">No projects available yet</div> -->
                     </div>
 
                     <div
@@ -979,108 +975,60 @@
                         <h3 style="color: var(--primary); margin-bottom: 20px;"><i class="fas fa-calendar"></i> Upcoming
                             Deadlines</h3>
                         <div class="deadlines-list" id="deadlinesList"></div>
-                        <div id="noDeadlines" class="no-data">No upcoming deadlines</div>
+                        <!-- <div id="noDeadlines" class="no-data">No upcoming deadlines</div> -->
                     </div>
                 </div>
             </div>
 
+
             <div id="usertypes-tab" class="tab-content">
                 <div style="margin-bottom: 20px;">
-                    <button class="btn btn-primary" onclick="openUserTypeModal()" id="createUserTypeBtn">+ Create User
-                        Type</button>
-                </div>
-                <!-- Add search and filter for Phase 4 -->
-                <div class="search-filter-container">
-                    <div class="search-input-group">
-                        <i class="fas fa-search" style="color: var(--text-secondary);"></i>
-                        <input type="text" id="userTypesSearch" placeholder="Search user types..."
-                            onkeyup="filterUserTypes()">
-                    </div>
+                    <button class="btn btn-primary" onclick="openUserTypeModal()">+ Create User Type</button>
                 </div>
                 <table class="table">
                     <thead>
                         <tr>
-                            <th onclick="sortUserTypes('id')">ID <span class="sort-indicator"></span></th>
-                            <th onclick="sortUserTypes('role')">User Role <span class="sort-indicator"></span></th>
-                            <th onclick="sortUserTypes('created')">Created At <span class="sort-indicator"></span></th>
+                            <th>ID</th>
+                            <th>User Role</th>
+                            <th>Created At</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody id="usertypesList"></tbody>
                 </table>
                 <div id="noUserTypes" class="no-data">No user types available</div>
-                <!-- Add pagination and export for Phase 4 -->
-                <div class="pagination-controls">
-                    <select id="userTypesPerPage" onchange="changeUserTypesPerPage()">
-                        <option value="10">10 per page</option>
-                        <option value="25">25 per page</option>
-                        <option value="50">50 per page</option>
-                    </select>
-                    <button class="pagination-btn" onclick="previousUserTypesPage()">&lt; Previous</button>
-                    <span class="pagination-info" id="userTypesPaginationInfo">Page 1</span>
-                    <button class="pagination-btn" onclick="nextUserTypesPage()">Next &gt;</button>
-                    <button class="btn btn-secondary btn-sm" onclick="exportUserTypesCSV()"
-                        id="exportUserTypesBtn"><i class="fas fa-download"></i> Export CSV</button>
-                </div>
             </div>
 
             <div id="users-tab" class="tab-content">
-                <div style="margin-bottom: 20px; display: flex; gap: 10px; flex-wrap: wrap;">
-                    <button class="btn btn-primary" onclick="openUserModal()" id="createUserBtn">+ Create Employee</button>
-                    <!-- Add export button for Phase 4 -->
-                    <button class="btn btn-secondary" onclick="exportUsersCSV()" id="exportUsersBtn"><i
-                            class="fas fa-download"></i> Export CSV</button>
-                </div>
-                <!-- Add search and filter for Phase 4 -->
-                <div class="search-filter-container">
-                    <div class="search-input-group">
-                        <i class="fas fa-search" style="color: var(--text-secondary);"></i>
-                        <input type="text" id="usersSearch" placeholder="Search by name, email, or role..."
-                            onkeyup="filterUsers()">
-                    </div>
-                    <select class="filter-select" id="roleFilter" onchange="filterUsers()">
-                        <option value="">All Roles</option>
-                    </select>
+                <div style="margin-bottom: 20px;">
+                    <button class="btn btn-primary" onclick="openUserModal()">+ Create Employee</button>
                 </div>
                 <table class="table">
                     <thead>
                         <tr>
-                            <th onclick="sortUsers('id')">ID <span class="sort-indicator"></span></th>
-                            <th onclick="sortUsers('username')">Username <span class="sort-indicator"></span></th>
-                            <th onclick="sortUsers('email')">Email <span class="sort-indicator"></span></th>
-                            <th onclick="sortUsers('usertype')">User Type <span class="sort-indicator"></span></th>
-                            <th onclick="sortUsers('created')">Created At <span class="sort-indicator"></span></th>
+                            <th>ID</th>
+                            <th>Username</th>
+                            <th>Email</th>
+                            <th>User Type</th>
+                            <th>Created At</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody id="usersList"></tbody>
                 </table>
                 <div id="noUsers" class="no-data">No employees available</div>
-                <!-- Add pagination controls for Phase 4 -->
-                <div class="pagination-controls">
-                    <select id="itemsPerPage" onchange="changeItemsPerPage()">
-                        <option value="10">10 per page</option>
-                        <option value="25">25 per page</option>
-                        <option value="50">50 per page</option>
-                    </select>
-                    <button class="pagination-btn" onclick="previousPage()">&lt; Previous</button>
-                    <span class="pagination-info" id="paginationInfo">Page 1 of 1</span>
-                    <button class="pagination-btn" onclick="nextPage()">Next &gt;</button>
-                </div>
             </div>
 
-            <!-- Add audit logs tab for Phase 2 RBAC -->
             <div id="audit-tab" class="tab-content">
                 <div style="margin-bottom: 20px; display: flex; gap: 10px; flex-wrap: wrap;">
-                    <button class="btn btn-secondary" onclick="exportAuditLogsCSV()"><i
-                            class="fas fa-download"></i> Export CSV</button>
+                    <button class="btn btn-secondary" onclick="exportAuditLogsCSV()"><i class="fas fa-download"></i>
+                        Export CSV</button>
                     <button class="btn btn-danger" onclick="clearAuditLogs()" id="clearAuditBtn">Clear Logs</button>
                 </div>
                 <div class="search-filter-container">
                     <div class="search-input-group">
                         <i class="fas fa-search" style="color: var(--text-secondary);"></i>
-                        <input type="text" id="auditSearch" placeholder="Search logs..."
-                            onkeyup="filterAuditLogs()">
+                        <input type="text" id="auditSearch" placeholder="Search logs..." onkeyup="filterAuditLogs()">
                     </div>
                     <select class="filter-select" id="actionFilter" onchange="filterAuditLogs()">
                         <option value="">All Actions</option>
@@ -1120,7 +1068,6 @@
         </div>
     </div>
 
-    <!-- Modals remain the same -->
     <div id="userTypeModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -1180,10 +1127,8 @@
                     </div>
                     <div class="form-group">
                         <label for="usrPassword">Password *</label>
-                        <input type="password" id="usrPassword" required placeholder="Min 8 characters, 2 special chars"
-                            onkeyup="checkPasswordStrength()">
-                        <!-- Add password strength indicator -->
-                        <div id="passwordStrength"></div>
+                        <input type="password" id="usrPassword" required
+                            placeholder="Min 8 characters, 2 special chars">
                     </div>
                     <div class="form-group">
                         <label for="usrConfirmPassword">Confirm Password *</label>
@@ -1317,980 +1262,206 @@
                 <span class="close" onclick="closeUpdateUserModal()">&times;</span>
             </div>
             <form onsubmit="updateUser(event)">
-                <div id="updateUserError"></div>
-                <input type="hidden" id="updateUserId">
-                <div class="form-group">
-                    <label for="updateUsername">Username</label>
-                    <input type="text" id="updateUsername" readonly>
-                </div>
-                <div class="form-group">
-                    <label for="updateEmail">Email Address</label>
-                    <input type="email" id="updateEmail" readonly>
-                </div>
-                <div class="form-group">
-                    <label for="updateUserType">User Type</label>
-                    <select id="updateUserType"></select>
+                <div class="modal-body">
+                    <input type="hidden" id="updateUsrId">
+                    <div id="updateUserError"></div>
+                    <div class="form-group">
+                        <label for="updateUsrUsername">Username *</label>
+                        <input type="text" id="updateUsrUsername" required placeholder="Enter username">
+                    </div>
+                    <div class="form-group">
+                        <label for="updateUsrEmail">Email Address *</label>
+                        <input type="email" id="updateUsrEmail" required placeholder="employee@example.com">
+                    </div>
+                    <div class="form-group">
+                        <label for="updateUsrPassword">New Password (leave blank to keep current)</label>
+                        <input type="password" id="updateUsrPassword" placeholder="Min 8 characters, 2 special chars">
+                    </div>
+                    <div class="form-group">
+                        <label for="updateUsrUserType">User Type *</label>
+                        <select id="updateUsrUserType" required>
+                            <option value="">Select a user type</option>
+                        </select>
+                    </div>
+
+                    <h4 style="margin-top: 20px; margin-bottom: 15px; color: #667eea;">Module Permissions</h4>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                        <div style="margin-bottom: 0; padding-bottom: 0;">
+                            <div style="font-weight: 600; color: #2d3748; margin-bottom: 8px;"><i
+                                    class="fas fa-folder"></i> Projects</div>
+                            <div class="checkbox-group">
+                                <div class="checkbox-item"><input type="checkbox" id="updatePermProjView"
+                                        data-module="Proj" data-action="View"><label for="updatePermProjView"
+                                        style="margin: 0;">View</label></div>
+                                <div class="checkbox-item"><input type="checkbox" id="updatePermProjAdd"
+                                        data-module="Proj" data-action="Add"><label for="updatePermProjAdd"
+                                        style="margin: 0;">Add</label></div>
+                                <div class="checkbox-item"><input type="checkbox" id="updatePermProjEdit"
+                                        data-module="Proj" data-action="Edit"><label for="updatePermProjEdit"
+                                        style="margin: 0;">Edit</label></div>
+                                <div class="checkbox-item"><input type="checkbox" id="updatePermProjDelete"
+                                        data-module="Proj" data-action="Delete"><label for="updatePermProjDelete"
+                                        style="margin: 0;">Delete</label></div>
+                            </div>
+                        </div>
+                        <div style="margin-bottom: 0; padding-bottom: 0;">
+                            <div style="font-weight: 600; color: #2d3748; margin-bottom: 8px;"><i
+                                    class="fas fa-users"></i> Project Team</div>
+                            <div class="checkbox-group">
+                                <div class="checkbox-item"><input type="checkbox" id="updatePermProjTeamView"
+                                        data-module="Proj_team" data-action="View"><label for="updatePermProjTeamView"
+                                        style="margin: 0;">View</label></div>
+                                <div class="checkbox-item"><input type="checkbox" id="updatePermProjTeamAdd"
+                                        data-module="Proj_team" data-action="Add"><label for="updatePermProjTeamAdd"
+                                        style="margin: 0;">Add</label></div>
+                                <div class="checkbox-item"><input type="checkbox" id="updatePermProjTeamEdit"
+                                        data-module="Proj_team" data-action="Edit"><label for="updatePermProjTeamEdit"
+                                        style="margin: 0;">Edit</label></div>
+                                <div class="checkbox-item"><input type="checkbox" id="updatePermProjTeamDelete"
+                                        data-module="Proj_team" data-action="Delete"><label
+                                        for="updatePermProjTeamDelete" style="margin: 0;">Delete</label></div>
+                            </div>
+                        </div>
+                        <div style="margin-bottom: 0; padding-bottom: 0;">
+                            <div style="font-weight: 600; color: #2d3748; margin-bottom: 8px;"><i
+                                    class="fas fa-file-alt"></i> Documents</div>
+                            <div class="checkbox-group">
+                                <div class="checkbox-item"><input type="checkbox" id="updatePermProjDocView"
+                                        data-module="Proj_doc" data-action="View"><label for="updatePermProjDocView"
+                                        style="margin: 0;">View</label></div>
+                                <div class="checkbox-item"><input type="checkbox" id="updatePermProjDocAdd"
+                                        data-module="Proj_doc" data-action="Add"><label for="updatePermProjDocAdd"
+                                        style="margin: 0;">Add</label></div>
+                                <div class="checkbox-item"><input type="checkbox" id="updatePermProjDocEdit"
+                                        data-module="Proj_doc" data-action="Edit"><label for="updatePermProjDocEdit"
+                                        style="margin: 0;">Edit</label></div>
+                                <div class="checkbox-item"><input type="checkbox" id="updatePermProjDocDelete"
+                                        data-module="Proj_doc" data-action="Delete"><label for="updatePermProjDocDelete"
+                                        style="margin: 0;">Delete</label></div>
+                                <div class="checkbox-item"><input type="checkbox" id="updatePermProjDocDownload"
+                                        data-module="Proj_doc" data-action="Download"><label
+                                        for="updatePermProjDocDownload" style="margin: 0;">Download</label></div>
+                            </div>
+                        </div>
+                        <div style="margin-bottom: 0; padding-bottom: 0;">
+                            <div style="font-weight: 600; color: #2d3748; margin-bottom: 8px;"><i
+                                    class="fas fa-comments"></i> Discussion</div>
+                            <div class="checkbox-group">
+                                <div class="checkbox-item"><input type="checkbox" id="updatePermProjDisView"
+                                        data-module="Proj_Dis_" data-action="View"><label for="updatePermProjDisView"
+                                        style="margin: 0;">View</label></div>
+                                <div class="checkbox-item"><input type="checkbox" id="updatePermProjDisAdd"
+                                        data-module="Proj_Dis_" data-action="Add"><label for="updatePermProjDisAdd"
+                                        style="margin: 0;">Add</label></div>
+                                <div class="checkbox-item"><input type="checkbox" id="updatePermProjDisEdit"
+                                        data-module="Proj_Dis_" data-action="Edit"><label for="updatePermProjDisEdit"
+                                        style="margin: 0;">Edit</label></div>
+                                <div class="checkbox-item"><input type="checkbox" id="updatePermProjDisDelete"
+                                        data-module="Proj_Dis_" data-action="Delete"><label
+                                        for="updatePermProjDisDelete" style="margin: 0;">Delete</label></div>
+                            </div>
+                        </div>
+                        <div style="margin-bottom: 0; padding-bottom: 0;">
+                            <div style="font-weight: 600; color: #2d3748; margin-bottom: 8px;"><i
+                                    class="fas fa-tasks"></i> Tasks</div>
+                            <div class="checkbox-group">
+                                <div class="checkbox-item"><input type="checkbox" id="updatePermTaskView"
+                                        data-module="task" data-action="View"><label for="updatePermTaskView"
+                                        style="margin: 0;">View</label></div>
+                                <div class="checkbox-item"><input type="checkbox" id="updatePermTaskAdd"
+                                        data-module="task" data-action="Add"><label for="updatePermTaskAdd"
+                                        style="margin: 0;">Add</label></div>
+                                <div class="checkbox-item"><input type="checkbox" id="updatePermTaskEdit"
+                                        data-module="task" data-action="Edit"><label for="updatePermTaskEdit"
+                                        style="margin: 0;">Edit</label></div>
+                                <div class="checkbox-item"><input type="checkbox" id="updatePermTaskDelete"
+                                        data-module="task" data-action="Delete"><label for="updatePermTaskDelete"
+                                        style="margin: 0;">Delete</label></div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" onclick="closeUpdateUserModal()">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Update</button>
+                    <button type="submit" class="btn btn-primary">Update Employee</button>
                 </div>
             </form>
         </div>
     </div>
 
+    <div id="taskDetailModal" class="modal">
+        <div class="modal-content" style="width: 700px; max-height: 80vh; overflow-y: auto;">
+            <div class="modal-header">
+                <h3 id="modalTitle">Task Details</h3>
+                <span class="close" onclick="hideTaskModal()">&times;</span>
+            </div>
+            <div class="modal-body" id="modalBody"></div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="hideTaskModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // ============================================
-        // PHASE 1: SECURITY UTILITIES & FUNCTIONS
-        // ============================================
+        const API_BASE = window.location.origin + '/api';
 
-        function sanitizeInput(input) {
-            const div = document.createElement('div');
-            div.textContent = input;
-            return div.innerHTML;
-        }
-
-        function isValidEmail(email) {
-            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-            return emailRegex.test(email);
-        }
-
-        function validatePasswordStrength(password) {
-            const minLength = password.length >= 8;
-            const hasUpperCase = /[A-Z]/.test(password);
-            const hasLowerCase = /[a-z]/.test(password);
-            const hasNumbers = /\d/.test(password);
-            const hasSpecialChars = /[!@#$%^&*()_+=\-\[\]{};:'",.<>?/\\|`~]/.test(password);
-
-            // <CHANGE> Relaxed password requirements from 2 special characters to 1, making it more reasonable while maintaining security
-            return minLength && hasUpperCase && hasLowerCase && hasNumbers && hasSpecialChars;
-        }
-
-        function generateCSRFToken() {
-            const token = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-                const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
-                return v.toString(16);
-            });
-            sessionStorage.setItem('csrfToken', token);
-            return token;
-        }
-
-        function checkPasswordStrength() {
-            const password = document.getElementById('usrPassword').value;
-            const strengthDiv = document.getElementById('passwordStrength');
-
-            if (!password) {
-                strengthDiv.innerHTML = '';
-                return;
-            }
-
-            const minLength = password.length >= 8;
-            const hasUpperCase = /[A-Z]/.test(password);
-            const hasLowerCase = /[a-z]/.test(password);
-            const hasNumbers = /\d/.test(password);
-            const hasSpecialChars = /[!@#$%^&*()_+=\-\[\]{};:'",.<>?/\\|`~]/.test(password);
-
-            let strength = 'weak';
-            let criteria = 0;
-
-            if (minLength) criteria++;
-            if (hasUpperCase) criteria++;
-            if (hasLowerCase) criteria++;
-            if (hasNumbers) criteria++;
-            if (hasSpecialChars) criteria++;
-
-            if (criteria >= 4) {
-                strength = 'strong';
-            } else if (criteria >= 3) {
-                strength = 'medium';
-            }
-
-            const messages = {
-                weak: '❌ Weak: Add uppercase, lowercase, numbers, and special characters',
-                medium: '⚠️ Medium: Password is acceptable',
-                strong: '✓ Strong: Password meets security requirements'
-            };
-
-            strengthDiv.className = `password-strength ${strength}`;
-            strengthDiv.innerHTML = messages[strength];
-        }
-
-        // ============================================
-        // PHASE 2: RBAC & AUDIT LOGGING SYSTEM
-        // ============================================
-
-        const rbacSystem = {
-            currentRole: 'Super Admin',
-            roles: {
-                'Super Admin': {
-                    permissions: {
-                        users: ['create', 'read', 'update', 'delete', 'export'],
-                        userTypes: ['create', 'read', 'update', 'delete'],
-                        auditLogs: ['read', 'export', 'delete'],
-                        dashboard: ['read']
-                    }
-                },
-                'Admin': {
-                    permissions: {
-                        users: ['read', 'update'],
-                        userTypes: ['read'],
-                        auditLogs: ['read'],
-                        dashboard: ['read']
-                    }
-                },
-                'Manager': {
-                    permissions: {
-                        users: ['read'],
-                        userTypes: ['read'],
-                        auditLogs: [],
-                        dashboard: ['read']
-                    }
-                },
-                'Viewer': {
-                    permissions: {
-                        users: ['read'],
-                        userTypes: [],
-                        auditLogs: [],
-                        dashboard: ['read']
-                    }
-                }
-            },
-
-            hasPermission(resource, action) {
-                const perms = this.roles[this.currentRole]?.permissions[resource] || [];
-                return perms.includes(action);
-            },
-
-            checkPermission(resource, action) {
-                if (!this.hasPermission(resource, action)) {
-                    showNotification('You don\'t have permission to perform this action', 'error');
-                    return false;
-                }
-                return true;
-            }
-        };
-
-        const auditLog = {
-            logs: JSON.parse(localStorage.getItem('auditLogs')) || [],
-            maxLogs: 1000,
-
-            addEntry(action, resource, details = '') {
-                const entry = {
-                    timestamp: new Date().toLocaleString(),
-                    user: document.getElementById('adminName').textContent || 'Unknown',
-                    role: rbacSystem.currentRole,
-                    action: action,
-                    resource: resource,
-                    details: sanitizeInput(details),
-                    id: Date.now()
-                };
-
-                this.logs.unshift(entry);
-
-                if (this.logs.length > this.maxLogs) {
-                    this.logs.pop();
-                }
-
-                localStorage.setItem('auditLogs', JSON.stringify(this.logs));
-
-                // Send to server
-                fetch('/api/audit-log', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-Token': sessionStorage.getItem('csrfToken')
-                    },
-                    body: JSON.stringify(entry)
-                }).catch(() => { /* Silent fail - log stored locally */ });
-            },
-
-            getFilteredLogs(searchTerm = '', actionFilter = '') {
-                return this.logs.filter(log => {
-                    const matchesSearch = !searchTerm || 
-                        log.user.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                        log.resource.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                        log.details.toLowerCase().includes(searchTerm.toLowerCase());
-                    
-                    const matchesAction = !actionFilter || log.action === actionFilter;
-                    
-                    return matchesSearch && matchesAction;
-                });
-            },
-
-            clear() {
-                if (confirm('Are you sure you want to clear all audit logs? This cannot be undone.')) {
-                    this.logs = [];
-                    localStorage.setItem('auditLogs', JSON.stringify(this.logs));
-                    displayAuditLogs();
-                    showNotification('Audit logs cleared', 'success');
-                    auditLog.addEntry('DELETE', 'Audit Logs', 'All logs cleared');
-                }
-            }
-        };
-
-        // ============================================
-        // PHASE 3-4: NOTIFICATION & UI ENHANCEMENTS
-        // ============================================
-
-        function showNotification(message, type = 'success', duration = 4000) {
-            const notificationEl = document.getElementById(type === 'success' ? 'successMessage' : 
-                                                          type === 'error' ? 'errorMessage' :
-                                                          type === 'info' ? 'infoMessage' : 'successMessage');
-            
-            notificationEl.textContent = message;
-            notificationEl.style.display = 'block';
-
-            setTimeout(() => {
-                notificationEl.style.animation = 'slideOut 0.3s ease forwards';
-                setTimeout(() => {
-                    notificationEl.style.display = 'none';
-                    notificationEl.style.animation = '';
-                }, 300);
-            }, duration);
-        }
-
+        // Theme toggle functionality
         function toggleTheme() {
-            document.body.classList.toggle('dark-mode');
-            localStorage.setItem('darkMode', document.body.classList.contains('dark-mode'));
+            const body = document.body;
+            const isDark = body.classList.toggle('dark-mode');
+            localStorage.setItem('theme', isDark ? 'dark' : 'light');
+            updateThemeIcon();
         }
 
-        function initializeDarkMode() {
-            if (localStorage.getItem('darkMode') === 'true') {
+        function updateThemeIcon() {
+            const icon = document.querySelector('#themeToggle i');
+            const isDark = document.body.classList.contains('dark-mode');
+            icon.className = isDark ? 'fas fa-sun' : 'fas fa-moon';
+        }
+
+        // Load saved theme
+        document.addEventListener('DOMContentLoaded', function () {
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme === 'dark') {
                 document.body.classList.add('dark-mode');
-                document.getElementById('themeToggle').innerHTML = '<i class="fas fa-sun"></i>';
+            }
+            updateThemeIcon();
+        });
+
+        window.addEventListener('DOMContentLoaded', function () { loadPageData(); });
+
+        function selectTab(tabName) {
+            document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+            const tab = document.getElementById(tabName);
+            if (tab) {
+                tab.classList.add('active');
+                event.target.classList.add('active');
+                if (tabName === 'overview-tab') loadDashboardOverview();
+                else if (tabName === 'users-tab') loadUsers();
+                else if (tabName === 'usertypes-tab') loadUserTypes();
             }
         }
 
-        function applyRBACVisibility() {
-            const userTypesCard = document.getElementById('manageUserTypesCard');
-            const createEmployeeCard = document.getElementById('createEmployeeCard');
-            const auditLogsCard = document.getElementById('auditLogsCard');
-            const createUserTypeBtn = document.getElementById('createUserTypeBtn');
-            const createUserBtn = document.getElementById('createUserBtn');
-            const exportUserTypesBtn = document.getElementById('exportUserTypesBtn');
-            const exportUsersBtn = document.getElementById('exportUsersBtn');
-            const userTypesTab = document.getElementById('userTypesTab');
-            const auditTab = document.getElementById('auditTab');
-            const clearAuditBtn = document.getElementById('clearAuditBtn');
-
-            // Super Admin: All features visible
-            if (rbacSystem.currentRole === 'Super Admin') {
-                document.getElementById('roleDisplay').textContent = 'Super Admin';
-                return;
-            }
-
-            // Admin: Limited features
-            if (rbacSystem.currentRole === 'Admin') {
-                userTypesCard?.classList.add('rbac-hidden');
-                createUserTypeBtn?.classList.add('rbac-hidden');
-                userTypesTab?.classList.add('rbac-hidden');
-                auditLogsCard?.classList.add('rbac-hidden');
-                auditTab?.classList.add('rbac-hidden');
-                clearAuditBtn?.classList.add('rbac-hidden');
-                document.getElementById('roleDisplay').textContent = 'Admin';
-                return;
-            }
-
-            // Manager & Viewer: Very limited
-            userTypesCard?.classList.add('rbac-hidden');
-            createEmployeeCard?.classList.add('rbac-hidden');
-            createUserTypeBtn?.classList.add('rbac-hidden');
-            createUserBtn?.classList.add('rbac-hidden');
-            exportUserTypesBtn?.classList.add('rbac-hidden');
-            exportUsersBtn?.classList.add('rbac-hidden');
-            userTypesTab?.classList.add('rbac-hidden');
-            auditLogsCard?.classList.add('rbac-hidden');
-            auditTab?.classList.add('rbac-hidden');
-
-            document.getElementById('roleDisplay').textContent = rbacSystem.currentRole;
+        function loadPageData() {
+            const token = localStorage.getItem('admin_session_token');
+            if (!token) { window.location.href = '/'; return; }
+            const adminName = localStorage.getItem('admin_name') || 'Super Admin';
+            document.getElementById('adminName').textContent = adminName;
+            loadUserTypes();
+            loadUsers();
+            loadDashboardOverview();
         }
 
-        // ============================================
-        // PHASE 4: SEARCH, SORT, FILTER & PAGINATION
-        // ============================================
-
-        let currentUserPage = 1;
-        let itemsPerPage = 10;
-        let sortConfig = { field: 'id', direction: 'asc' };
-        let filteredUsers = [];
-
-        let currentUserTypePage = 1;
-        let userTypesPerPage = 10;
-        let userTypesSortConfig = { field: 'id', direction: 'asc' };
-        let filteredUserTypes = [];
-
-        let currentAuditPage = 1;
-        let auditPerPage = 10;
-        let filteredAuditLogs = [];
-
-        function filterUsers() {
-            const searchTerm = document.getElementById('usersSearch').value;
-            const roleFilter = document.getElementById('roleFilter').value;
-            const allUsers = JSON.parse(localStorage.getItem('users')) || [];
-
-            filteredUsers = allUsers.filter(user => {
-                const matchesSearch = !searchTerm || 
-                    user.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                    user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                    user.userType.toLowerCase().includes(searchTerm.toLowerCase());
-                
-                const matchesRole = !roleFilter || user.userType === roleFilter;
-                
-                return matchesSearch && matchesRole;
-            });
-
-            currentUserPage = 1;
-            displayUsers();
-        }
-
-        function sortUsers(field) {
-            if (sortConfig.field === field) {
-                sortConfig.direction = sortConfig.direction === 'asc' ? 'desc' : 'asc';
-            } else {
-                sortConfig.field = field;
-                sortConfig.direction = 'asc';
-            }
-
-            filteredUsers.sort((a, b) => {
-                let aVal = a[field];
-                let bVal = b[field];
-
-                if (typeof aVal === 'string') {
-                    aVal = aVal.toLowerCase();
-                    bVal = bVal.toLowerCase();
+        function performAdminSearch(event) {
+            if (event.key === 'Enter') {
+                const searchTerm = document.getElementById('adminSearchInput').value.trim();
+                if (searchTerm) {
+                    alert(`Searching for: ${searchTerm}`);
+                    // Implement actual search logic here
                 }
-
-                const comparison = aVal > bVal ? 1 : aVal < bVal ? -1 : 0;
-                return sortConfig.direction === 'asc' ? comparison : -comparison;
-            });
-
-            currentUserPage = 1;
-            displayUsers();
-            updateSortIndicators();
-        }
-
-        function updateSortIndicators() {
-            document.querySelectorAll('.table th .sort-indicator').forEach(el => {
-                el.textContent = '';
-            });
-
-            const headerMap = {
-                'id': 0,
-                'username': 1,
-                'email': 2,
-                'usertype': 3,
-                'created': 4
-            };
-
-            const columnIndex = headerMap[sortConfig.field];
-            if (columnIndex !== undefined) {
-                const header = document.querySelectorAll('.table th')[columnIndex];
-                if (header) {
-                    const indicator = header.querySelector('.sort-indicator');
-                    if (indicator) {
-                        indicator.textContent = sortConfig.direction === 'asc' ? ' ▲' : ' ▼';
-                    }
-                }
-            }
-        }
-
-        function changeItemsPerPage() {
-            itemsPerPage = parseInt(document.getElementById('itemsPerPage').value);
-            currentUserPage = 1;
-            displayUsers();
-        }
-
-        function nextPage() {
-            const maxPages = Math.ceil(filteredUsers.length / itemsPerPage);
-            if (currentUserPage < maxPages) {
-                currentUserPage++;
-                displayUsers();
-            }
-        }
-
-        function previousPage() {
-            if (currentUserPage > 1) {
-                currentUserPage--;
-                displayUsers();
-            }
-        }
-
-        function exportUsersCSV() {
-            if (!rbacSystem.checkPermission('users', 'export')) return;
-
-            const headers = ['ID', 'Username', 'Email', 'User Type', 'Created At'];
-            const rows = filteredUsers.map(user => [
-                user.id,
-                user.username,
-                user.email,
-                user.userType,
-                user.createdAt
-            ]);
-
-            const csv = [
-                headers.join(','),
-                ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
-            ].join('\n');
-
-            const blob = new Blob([csv], { type: 'text/csv' });
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `users_export_${new Date().toISOString().split('T')[0]}.csv`;
-            a.click();
-            window.URL.revokeObjectURL(url);
-
-            auditLog.addEntry('EXPORT', 'Users', `Exported ${filteredUsers.length} users`);
-            showNotification(`Exported ${filteredUsers.length} users to CSV`, 'success');
-        }
-
-        function filterUserTypes() {
-            const searchTerm = document.getElementById('userTypesSearch').value;
-            const allUserTypes = JSON.parse(localStorage.getItem('userTypes')) || [];
-
-            filteredUserTypes = allUserTypes.filter(type => 
-                !searchTerm || type.role.toLowerCase().includes(searchTerm.toLowerCase())
-            );
-
-            currentUserTypePage = 1;
-            displayUserTypes();
-        }
-
-        function sortUserTypes(field) {
-            if (userTypesSortConfig.field === field) {
-                userTypesSortConfig.direction = userTypesSortConfig.direction === 'asc' ? 'desc' : 'asc';
-            } else {
-                userTypesSortConfig.field = field;
-                userTypesSortConfig.direction = 'asc';
-            }
-
-            filteredUserTypes.sort((a, b) => {
-                let aVal = a[field === 'role' ? 'role' : field];
-                let bVal = b[field === 'role' ? 'role' : field];
-
-                if (typeof aVal === 'string') {
-                    aVal = aVal.toLowerCase();
-                    bVal = bVal.toLowerCase();
-                }
-
-                const comparison = aVal > bVal ? 1 : aVal < bVal ? -1 : 0;
-                return userTypesSortConfig.direction === 'asc' ? comparison : -comparison;
-            });
-
-            displayUserTypes();
-        }
-
-        function changeUserTypesPerPage() {
-            userTypesPerPage = parseInt(document.getElementById('userTypesPerPage').value);
-            currentUserTypePage = 1;
-            displayUserTypes();
-        }
-
-        function nextUserTypesPage() {
-            const maxPages = Math.ceil(filteredUserTypes.length / userTypesPerPage);
-            if (currentUserTypePage < maxPages) {
-                currentUserTypePage++;
-                displayUserTypes();
-            }
-        }
-
-        function previousUserTypesPage() {
-            if (currentUserTypePage > 1) {
-                currentUserTypePage--;
-                displayUserTypes();
-            }
-        }
-
-        function exportUserTypesCSV() {
-            if (!rbacSystem.checkPermission('userTypes', 'export')) return;
-
-            const headers = ['ID', 'User Role', 'Created At'];
-            const rows = filteredUserTypes.map(type => [
-                type.id,
-                type.role,
-                type.createdAt
-            ]);
-
-            const csv = [
-                headers.join(','),
-                ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
-            ].join('\n');
-
-            const blob = new Blob([csv], { type: 'text/csv' });
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `user_types_export_${new Date().toISOString().split('T')[0]}.csv`;
-            a.click();
-            window.URL.revokeObjectURL(url);
-
-            auditLog.addEntry('EXPORT', 'User Types', `Exported ${filteredUserTypes.length} user types`);
-            showNotification(`Exported ${filteredUserTypes.length} user types to CSV`, 'success');
-        }
-
-        function filterAuditLogs() {
-            const searchTerm = document.getElementById('auditSearch').value;
-            const actionFilter = document.getElementById('actionFilter').value;
-
-            filteredAuditLogs = auditLog.getFilteredLogs(searchTerm, actionFilter);
-            currentAuditPage = 1;
-            displayAuditLogs();
-        }
-
-        function changeAuditPerPage() {
-            auditPerPage = parseInt(document.getElementById('auditPerPage').value);
-            currentAuditPage = 1;
-            displayAuditLogs();
-        }
-
-        function nextAuditPage() {
-            const maxPages = Math.ceil(filteredAuditLogs.length / auditPerPage);
-            if (currentAuditPage < maxPages) {
-                currentAuditPage++;
-                displayAuditLogs();
-            }
-        }
-
-        function previousAuditPage() {
-            if (currentAuditPage > 1) {
-                currentAuditPage--;
-                displayAuditLogs();
-            }
-        }
-
-        function exportAuditLogsCSV() {
-            if (!rbacSystem.checkPermission('auditLogs', 'export')) return;
-
-            const headers = ['Timestamp', 'User', 'Role', 'Action', 'Resource', 'Details'];
-            const rows = filteredAuditLogs.map(log => [
-                log.timestamp,
-                log.user,
-                log.role,
-                log.action,
-                log.resource,
-                log.details
-            ]);
-
-            const csv = [
-                headers.join(','),
-                ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
-            ].join('\n');
-
-            const blob = new Blob([csv], { type: 'text/csv' });
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `audit_logs_export_${new Date().toISOString().split('T')[0]}.csv`;
-            a.click();
-            window.URL.revokeObjectURL(url);
-
-            auditLog.addEntry('EXPORT', 'Audit Logs', `Exported ${filteredAuditLogs.length} audit logs`);
-            showNotification(`Exported ${filteredAuditLogs.length} audit logs to CSV`, 'success');
-        }
-
-        function clearAuditLogs() {
-            if (!rbacSystem.checkPermission('auditLogs', 'delete')) return;
-            auditLog.clear();
-        }
-
-        // ============================================
-        // CORE DASHBOARD FUNCTIONS
-        // ============================================
-
-        function selectTab(tabId) {
-            const tabs = document.querySelectorAll('.tab-content');
-            const buttons = document.querySelectorAll('.tab-button');
-
-            tabs.forEach(tab => tab.classList.remove('active'));
-            buttons.forEach(btn => btn.classList.remove('active'));
-
-            document.getElementById(tabId).classList.add('active');
-            event.target.classList.add('active');
-
-            if (tabId === 'users-tab') {
-                if (filteredUsers.length === 0) {
-                    filterUsers();
-                }
-                displayUsers();
-            } else if (tabId === 'usertypes-tab') {
-                if (filteredUserTypes.length === 0) {
-                    filterUserTypes();
-                }
-                displayUserTypes();
-            } else if (tabId === 'audit-tab') {
-                if (filteredAuditLogs.length === 0) {
-                    filterAuditLogs();
-                }
-                displayAuditLogs();
-            }
-        }
-
-        function displayUsers() {
-            if (!filteredUsers.length) {
-                filterUsers();
-                return;
-            }
-
-            const start = (currentUserPage - 1) * itemsPerPage;
-            const end = start + itemsPerPage;
-            const paginatedUsers = filteredUsers.slice(start, end);
-
-            const usersList = document.getElementById('usersList');
-            const noUsers = document.getElementById('noUsers');
-
-            if (paginatedUsers.length === 0) {
-                usersList.innerHTML = '';
-                noUsers.style.display = 'block';
-                document.getElementById('paginationInfo').textContent = 'No users found';
-                return;
-            }
-
-            noUsers.style.display = 'none';
-            usersList.innerHTML = paginatedUsers.map(user => `
-                <tr>
-                    <td>${sanitizeInput(user.id)}</td>
-                    <td>${sanitizeInput(user.username)}</td>
-                    <td>${sanitizeInput(user.email)}</td>
-                    <td><span class="status-badge status-active">${sanitizeInput(user.userType)}</span></td>
-                    <td>${sanitizeInput(user.createdAt)}</td>
-                    <td>
-                        <div class="table-actions">
-                            ${rbacSystem.hasPermission('users', 'update') ? `<button class="btn btn-secondary btn-sm" onclick="openUpdateUserModal(${user.id})"><i class="fas fa-edit"></i></button>` : ''}
-                            ${rbacSystem.hasPermission('users', 'delete') ? `<button class="btn btn-danger btn-sm" onclick="deleteUser(${user.id})"><i class="fas fa-trash"></i></button>` : ''}
-                        </div>
-                    </td>
-                </tr>
-            `).join('');
-
-            const maxPages = Math.ceil(filteredUsers.length / itemsPerPage);
-            document.getElementById('paginationInfo').textContent = 
-                `Page ${currentUserPage} of ${maxPages} (Showing ${start + 1}-${Math.min(end, filteredUsers.length)} of ${filteredUsers.length})`;
-
-            document.querySelector('[onclick="previousPage()"]').disabled = currentUserPage === 1;
-            document.querySelector('[onclick="nextPage()"]').disabled = currentUserPage === maxPages;
-        }
-
-        function displayUserTypes() {
-            if (!filteredUserTypes.length) {
-                filterUserTypes();
-                return;
-            }
-
-            const start = (currentUserTypePage - 1) * userTypesPerPage;
-            const end = start + userTypesPerPage;
-            const paginatedTypes = filteredUserTypes.slice(start, end);
-
-            const userTypesList = document.getElementById('usertypesList');
-            const noUserTypes = document.getElementById('noUserTypes');
-
-            if (paginatedTypes.length === 0) {
-                userTypesList.innerHTML = '';
-                noUserTypes.style.display = 'block';
-                document.getElementById('userTypesPaginationInfo').textContent = 'No user types found';
-                return;
-            }
-
-            noUserTypes.style.display = 'none';
-            userTypesList.innerHTML = paginatedTypes.map(type => `
-                <tr>
-                    <td>${sanitizeInput(type.id)}</td>
-                    <td>${sanitizeInput(type.role)}</td>
-                    <td>${sanitizeInput(type.createdAt)}</td>
-                    <td>
-                        <div class="table-actions">
-                            ${rbacSystem.hasPermission('userTypes', 'update') ? `<button class="btn btn-secondary btn-sm" onclick="openUpdateUserTypeModal(${type.id})"><i class="fas fa-edit"></i></button>` : ''}
-                            ${rbacSystem.hasPermission('userTypes', 'delete') ? `<button class="btn btn-danger btn-sm" onclick="deleteUserType(${type.id})"><i class="fas fa-trash"></i></button>` : ''}
-                        </div>
-                    </td>
-                </tr>
-            `).join('');
-
-            const maxPages = Math.ceil(filteredUserTypes.length / userTypesPerPage);
-            document.getElementById('userTypesPaginationInfo').textContent = 
-                `Page ${currentUserTypePage} of ${maxPages}`;
-
-            document.querySelector('[onclick="previousUserTypesPage()"]').disabled = currentUserTypePage === 1;
-            document.querySelector('[onclick="nextUserTypesPage()"]').disabled = currentUserTypePage === maxPages;
-        }
-
-        function displayAuditLogs() {
-            const start = (currentAuditPage - 1) * auditPerPage;
-            const end = start + auditPerPage;
-            const paginatedLogs = filteredAuditLogs.slice(start, end);
-
-            const auditList = document.getElementById('auditList');
-            const noAuditLogs = document.getElementById('noAuditLogs');
-
-            if (paginatedLogs.length === 0) {
-                auditList.innerHTML = '';
-                noAuditLogs.style.display = 'block';
-                document.getElementById('auditPaginationInfo').textContent = 'No audit logs found';
-                return;
-            }
-
-            noAuditLogs.style.display = 'none';
-            auditList.innerHTML = paginatedLogs.map(log => `
-                <tr>
-                    <td>${sanitizeInput(log.timestamp)}</td>
-                    <td>${sanitizeInput(log.user)}</td>
-                    <td>${sanitizeInput(log.role)}</td>
-                    <td><span class="status-badge status-active">${sanitizeInput(log.action)}</span></td>
-                    <td>${sanitizeInput(log.resource)}</td>
-                    <td>${sanitizeInput(log.details)}</td>
-                </tr>
-            `).join('');
-
-            const maxPages = Math.ceil(filteredAuditLogs.length / auditPerPage);
-            document.getElementById('auditPaginationInfo').textContent = 
-                `Page ${currentAuditPage} of ${maxPages}`;
-
-            document.querySelector('[onclick="previousAuditPage()"]').disabled = currentAuditPage === 1;
-            document.querySelector('[onclick="nextAuditPage()"]').disabled = currentAuditPage === maxPages;
-        }
-
-        function openUserModal() {
-            if (!rbacSystem.checkPermission('users', 'create')) return;
-            document.getElementById('userModal').style.display = 'block';
-        }
-
-        function closeUserModal() {
-            document.getElementById('userModal').style.display = 'none';
-        }
-
-        function createUser(event) {
-            event.preventDefault();
-
-            if (!rbacSystem.checkPermission('users', 'create')) return;
-
-            const username = document.getElementById('usrUsername').value;
-            const email = document.getElementById('usrEmail').value;
-            const password = document.getElementById('usrPassword').value;
-            const confirmPassword = document.getElementById('usrConfirmPassword').value;
-            const userType = document.getElementById('usrUserType').value;
-
-            if (!isValidEmail(email)) {
-                showNotification('Invalid email format', 'error');
-                return;
-            }
-
-            if (password !== confirmPassword) {
-                showNotification('Passwords do not match', 'error');
-                return;
-            }
-          
-            const users = JSON.parse(localStorage.getItem('users')) || [];
-            const newUser = {
-                id: Date.now(),
-                username: sanitizeInput(username),
-                email: sanitizeInput(email),
-                password: password, // In production, hash this server-side
-                userType: sanitizeInput(userType),
-                createdAt: new Date().toLocaleDateString()
-            };
-
-            users.push(newUser);
-            localStorage.setItem('users', JSON.stringify(users));
-
-            auditLog.addEntry('CREATE', 'User', `Created new user: ${username}`);
-            showNotification('Employee created successfully', 'success');
-            closeUserModal();
-            filterUsers();
-        }
-
-        function openUpdateUserModal(userId) {
-            if (!rbacSystem.checkPermission('users', 'update')) return;
-
-            const users = JSON.parse(localStorage.getItem('users')) || [];
-            const user = users.find(u => u.id === userId);
-
-            if (user) {
-                document.getElementById('updateUserId').value = user.id;
-                document.getElementById('updateUsername').value = user.username;
-                document.getElementById('updateEmail').value = user.email;
-                document.getElementById('updateUserType').value = user.userType;
-                document.getElementById('updateUserModal').style.display = 'block';
-            }
-        }
-
-        function closeUpdateUserModal() {
-            document.getElementById('updateUserModal').style.display = 'none';
-        }
-
-        function updateUser(event) {
-            event.preventDefault();
-
-            if (!rbacSystem.checkPermission('users', 'update')) return;
-
-            const userId = parseInt(document.getElementById('updateUserId').value);
-            const newUserType = document.getElementById('updateUserType').value;
-
-            const users = JSON.parse(localStorage.getItem('users')) || [];
-            const userIndex = users.findIndex(u => u.id === userId);
-
-            if (userIndex !== -1) {
-                const oldUserType = users[userIndex].userType;
-                users[userIndex].userType = sanitizeInput(newUserType);
-                localStorage.setItem('users', JSON.stringify(users));
-
-                auditLog.addEntry('UPDATE', 'User', `Updated user type from ${oldUserType} to ${newUserType}`);
-                showNotification('Employee updated successfully', 'success');
-                closeUpdateUserModal();
-                filterUsers();
-            }
-        }
-
-        function deleteUser(userId) {
-            if (!rbacSystem.checkPermission('users', 'delete')) return;
-
-            if (confirm('Are you sure you want to delete this employee?')) {
-                const users = JSON.parse(localStorage.getItem('users')) || [];
-                const user = users.find(u => u.id === userId);
-                const filteredList = users.filter(u => u.id !== userId);
-                localStorage.setItem('users', JSON.stringify(filteredList));
-
-                auditLog.addEntry('DELETE', 'User', `Deleted user: ${user.username}`);
-                showNotification('Employee deleted successfully', 'success');
-                filterUsers();
-            }
-        }
-
-        function openUserTypeModal() {
-            if (!rbacSystem.checkPermission('userTypes', 'create')) return;
-            document.getElementById('userTypeModal').style.display = 'block';
-        }
-
-        function closeUserTypeModal() {
-            document.getElementById('userTypeModal').style.display = 'none';
-        }
-
-        function createUserType(event) {
-            event.preventDefault();
-
-            if (!rbacSystem.checkPermission('userTypes', 'create')) return;
-
-            const role = document.getElementById('typRole').value;
-
-            const userTypes = JSON.parse(localStorage.getItem('userTypes')) || [];
-            const newUserType = {
-                id: Date.now(),
-                role: sanitizeInput(role),
-                createdAt: new Date().toLocaleDateString()
-            };
-
-            userTypes.push(newUserType);
-            localStorage.setItem('userTypes', JSON.stringify(userTypes));
-
-            // Update user type select dropdowns
-            updateUserTypeSelects();
-
-            auditLog.addEntry('CREATE', 'User Type', `Created new user type: ${role}`);
-            showNotification('User type created successfully', 'success');
-            closeUserTypeModal();
-            filterUserTypes();
-        }
-
-        function openUpdateUserTypeModal(typeId) {
-            if (!rbacSystem.checkPermission('userTypes', 'update')) return;
-
-            const userTypes = JSON.parse(localStorage.getItem('userTypes')) || [];
-            const userType = userTypes.find(t => t.id === typeId);
-
-            if (userType) {
-                document.getElementById('updateTypId').value = userType.id;
-                document.getElementById('updateTypRole').value = userType.role;
-                document.getElementById('updateUserTypeModal').style.display = 'block';
-            }
-        }
-
-        function closeUpdateUserTypeModal() {
-            document.getElementById('updateUserTypeModal').style.display = 'none';
-        }
-
-        function updateUserType(event) {
-            event.preventDefault();
-
-            if (!rbacSystem.checkPermission('userTypes', 'update')) return;
-
-            const typeId = parseInt(document.getElementById('updateTypId').value);
-            const newRole = document.getElementById('updateTypRole').value;
-
-            const userTypes = JSON.parse(localStorage.getItem('userTypes')) || [];
-            const typeIndex = userTypes.findIndex(t => t.id === typeId);
-
-            if (typeIndex !== -1) {
-                const oldRole = userTypes[typeIndex].role;
-                userTypes[typeIndex].role = sanitizeInput(newRole);
-                localStorage.setItem('userTypes', JSON.stringify(userTypes));
-
-                updateUserTypeSelects();
-
-                auditLog.addEntry('UPDATE', 'User Type', `Updated from ${oldRole} to ${newRole}`);
-                showNotification('User type updated successfully', 'success');
-                closeUpdateUserTypeModal();
-                filterUserTypes();
-            }
-        }
-
-        function deleteUserType(typeId) {
-            if (!rbacSystem.checkPermission('userTypes', 'delete')) return;
-
-            if (confirm('Are you sure you want to delete this user type?')) {
-                const userTypes = JSON.parse(localStorage.getItem('userTypes')) || [];
-                const userType = userTypes.find(t => t.id === typeId);
-                const filteredList = userTypes.filter(t => t.id !== typeId);
-                localStorage.setItem('userTypes', JSON.stringify(filteredList));
-
-                auditLog.addEntry('DELETE', 'User Type', `Deleted user type: ${userType.role}`);
-                showNotification('User type deleted successfully', 'success');
-                filterUserTypes();
-            }
-        }
-
-        function updateUserTypeSelects() {
-            const userTypes = JSON.parse(localStorage.getItem('userTypes')) || [];
-            const select = document.getElementById('usrUserType');
-            const updateSelect = document.getElementById('updateUserType');
-            const roleFilter = document.getElementById('roleFilter');
-
-            select.innerHTML = '<option value="">Select a user type</option>';
-            updateSelect.innerHTML = '';
-            roleFilter.innerHTML = '<option value="">All Roles</option>';
-
-            userTypes.forEach(type => {
-                const option1 = document.createElement('option');
-                option1.value = type.role;
-                option1.textContent = type.role;
-                select.appendChild(option1);
-
-                const option2 = document.createElement('option');
-                option2.value = type.role;
-                option2.textContent = type.role;
-                updateSelect.appendChild(option2);
-
-                const option3 = document.createElement('option');
-                option3.value = type.role;
-                option3.textContent = type.role;
-                roleFilter.appendChild(option3);
-            });
-        }
-
-        function showDetailModal(type) {
-            const modal = document.getElementById('detailModal');
-            const title = document.getElementById('detailModalTitle');
-            const body = document.getElementById('detailModalBody');
-
-            const details = {
-                active_projects: { title: 'Active Projects', content: '<p>5 active projects are currently running.</p>' },
-                completed_tasks: { title: 'Completed Tasks', content: '<p>42 tasks have been completed.</p>' },
-                active_tasks: { title: 'Active Tasks', content: '<p>18 tasks are currently in progress.</p>' },
-                overdue_tasks: { title: 'Overdue Tasks', content: '<p>2 tasks are overdue.</p>' },
-                pending_approvals: { title: 'Pending Approvals', content: '<p>7 items are pending approval.</p>' }
-            };
-
-            if (details[type]) {
-                title.textContent = details[type].title;
-                body.innerHTML = details[type].content;
-                modal.style.display = 'block';
             }
         }
 
@@ -2298,39 +1469,567 @@
             document.getElementById('detailModal').style.display = 'none';
         }
 
-        function performAdminSearch(event) {
-            const searchTerm = event.target.value.toLowerCase();
-            console.log('[v0] Admin search:', searchTerm);
+        function closeTaskModal() {
+            document.getElementById('taskDetailModal').style.display = 'none';
         }
 
-        function logout() {
-            auditLog.addEntry('LOGOUT', 'Session', 'User logged out');
-            showNotification('Logged out successfully', 'success');
-            setTimeout(() => {
-                window.location.href = '/login';
-            }, 1500);
+        async function loadDashboardOverview() {
+            try {
+                const token = localStorage.getItem('admin_session_token');
+                if (!token) { window.location.href = '/'; return; }
+                const response = await fetch(`${API_BASE}/admin/dashboard/stats`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (!response.ok) {
+                    if (response.status === 401) {
+                        localStorage.removeItem('admin_session_token');
+                        window.location.href = '/';
+                    }
+                    console.error('Failed to load dashboard stats');
+                    return;
+                }
+                const stats = await response.json();
+                document.getElementById('activeProjectsCount').textContent = stats.active_projects || 0;
+                document.getElementById('completedTasksCount').textContent = stats.completed_tasks || 0;
+                document.getElementById('activeTasksCount').textContent = stats.active_tasks || 0;
+                document.getElementById('overdueTasksCount').textContent = stats.overdue_tasks || 0;
+                document.getElementById('pendingApprovalsCount').textContent = stats.pending_approvals || 0;
+
+                const projectsResponse = await fetch(`${API_BASE}/admin/projects`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${localStorage.getItem('admin_session_token')}`
+                    }
+                });
+                if (projectsResponse.ok) {
+                    const projects = await projectsResponse.json();
+                    const projectsList = document.getElementById('projectsList');
+                    if (projects.length === 0) {
+                        projectsList.innerHTML = '<p style="color: #718096;">No projects created yet</p>';
+                    } else {
+                        projectsList.innerHTML = projects.slice(0, 5).map(project => `
+                            <div class="project-item">
+                                <h4>${project.title}</h4>
+                                <p>${project.description || 'No description'} - ${project.progress || 0}% Complete</p>
+                                <div class="progress">
+                                    <div class="progress-bar" style="width: ${project.progress || 0}%"></div>
+                                </div>
+                                <p style="font-size: 12px; color: #718096;">
+                                    Created by: ${project.creator_name || 'N/A'} | Team: ${project.team_count} members | Tasks: ${project.task_count}
+                                </p>
+                            </div>
+                        `).join('');
+                    }
+                }
+
+                const tasksResponse = await fetch(`${API_BASE}/admin/tasks`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${localStorage.getItem('admin_session_token')}`
+                    }
+                });
+                if (tasksResponse.ok) {
+                    const tasks = await tasksResponse.json();
+                    const deadlinesList = document.getElementById('deadlinesList');
+                    if (tasks.length === 0) {
+                        deadlinesList.innerHTML = '<p style="color: #718096;">No tasks created yet</p>';
+                    } else {
+                        deadlinesList.innerHTML = tasks.slice(0, 5).map(task => {
+                            const dueDate = new Date(task.deadline);
+                            const today = new Date();
+                            const diffTime = dueDate - today;
+                            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                            let dueDateStr = 'No deadline';
+                            if (diffDays < 0) dueDateStr = 'Overdue';
+                            else if (diffDays === 0) dueDateStr = 'Today';
+                            else if (diffDays === 1) dueDateStr = 'Tomorrow';
+                            else dueDateStr = `${diffDays} days`;
+                            const priorityColor = { 'High': '#ffc107', 'Medium': '#28a745', 'Low': '#6c757d' };
+                            const statusColor = { 'Overdue': '#dc3545', 'In Progress': '#ffc107', 'Completed': '#28a745' };
+                            return `
+                                <div class="deadline-item" onclick="alert('Task: ${task.title}\\nStatus: ${task.status}\\nAssigned to: ${task.assigned_to_name || 'Unassigned'}')">
+                                    <h5>${task.title}</h5>
+                                    <p style="margin: 0; font-size: 12px; color: var(--text-secondary);">Due: ${dueDateStr}</p>
+                                    <p style="margin: 5px 0 0 0; font-size: 11px;">
+                                        <span style="background: ${priorityColor[task.priority] || '#6c757d'}; color: white; padding: 2px 6px; border-radius: 3px;">${task.priority} Priority</span>
+                                        <span style="background: ${statusColor[task.status] || '#6c757d'}; color: white; padding: 2px 6px; border-radius: 3px; margin-left: 5px;">${task.status}</span>
+                                    </p>
+                                </div>
+                            `;
+                        }).join('');
+                    }
+                }
+            } catch (error) {
+                console.error('[v0] Error loading dashboard:', error);
+            }
+        }
+        async function showDetailModal(type) {
+            const modal = document.getElementById('taskDetailModal');
+            const modalTitle = document.getElementById('modalTitle');
+            const modalBody = document.getElementById('modalBody');
+            const titles = {
+                'active_projects': 'Active Projects',
+                'completed_tasks': 'Completed Tasks',
+                'active_tasks': 'Active Tasks',
+                'overdue_tasks': 'Overdue Tasks',
+                'pending_approvals': 'Pending Approvals'
+            };
+            modalTitle.textContent = titles[type] || 'Details';
+            modalBody.innerHTML = '<div class="text-center"><i class="fas fa-spinner fa-spin"></i> Loading...</div>';
+            modal.style.display = 'block';
+
+            try {
+                let data = [];
+                let content = '';
+
+                switch (type) {
+                    case 'active_projects':
+                        const projectsResponse = await fetch(`${API_BASE}/admin/projects`, {
+                            method: 'GET',
+                            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${sessionStorage.getItem('admin_session_token')}` }
+                        });
+                        if (projectsResponse.ok) {
+                            data = await projectsResponse.json();
+                            content = data.map(project => `
+                                <div class="project-detail-card">
+                                    <h4><i class="fas fa-folder"></i> ${project.title}</h4>
+                                    <p>${project.description || 'No description'}</p>
+                                    <div class="project-info">
+                                        <div class="info-item">
+                                            <span class="label">Creator:</span>
+                                            <span class="value">${project.creator_name || 'N/A'}</span>
+                                        </div>
+                                        <div class="info-item">
+                                            <span class="label">Status:</span>
+                                            <span class="value"><span class="status-badge status-active">${project.status}</span></span>
+                                        </div>
+                                        <div class="info-item">
+                                            <span class="label">Team:</span>
+                                            <span class="value">${project.team_count} members</span>
+                                        </div>
+                                        <div class="info-item">
+                                            <span class="label">Tasks:</span>
+                                            <span class="value">${project.task_count}</span>
+                                        </div>
+                                        <div class="info-item">
+                                            <span class="label">Created:</span>
+                                            <span class="value">${new Date(project.created_at).toLocaleDateString()}</span>
+                                        </div>
+                                        <div class="info-item">
+                                            <span class="label">Deadline:</span>
+                                            <span class="value">${project.deadline ? new Date(project.deadline).toLocaleDateString() : 'No deadline'}</span>
+                                        </div>
+                                    </div>
+                                    <div class="progress-container">
+                                        <p>Progress: ${project.progress || 0}%</p>
+                                        <div class="progress">
+                                            <div class="progress-bar" style="width: ${project.progress || 0}%"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            `).join('');
+                        }
+                        break;
+
+                    case 'completed_tasks':
+                        const completedTasksResponse = await fetch(`${API_BASE}/admin/tasks`, {
+                            method: 'GET',
+                            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${sessionStorage.getItem('admin_session_token')}` }
+                        });
+                        if (completedTasksResponse.ok) {
+                            const allTasks = await completedTasksResponse.json();
+                            data = allTasks.filter(task => task.status === 'Completed');
+                            content = data.map(task => `
+                                <div class="deadline-item">
+                                    <h5><i class="fas fa-check-circle text-success"></i> ${task.title}</h5>
+                                    <p><strong>Project:</strong> ${task.project_name || 'N/A'}</p>
+                                    <p><strong>Assigned to:</strong> ${task.assigned_to_name || 'Unassigned'}</p>
+                                    <p><strong>Completed:</strong> ${new Date(task.created_at).toLocaleDateString()}</p>
+                                    <span class="badge bg-success">Completed</span>
+                                </div>
+                            `).join('');
+                        }
+                        break;
+
+                    case 'active_tasks':
+                        const activeTasksResponse = await fetch(`${API_BASE}/admin/tasks`, {
+                            method: 'GET',
+                            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${sessionStorage.getItem('admin_session_token')}` }
+                        });
+                        if (activeTasksResponse.ok) {
+                            const allTasks = await activeTasksResponse.json();
+                            data = allTasks.filter(task => task.status === 'In Progress');
+                            content = data.map(task => `
+                                <div class="deadline-item">
+                                    <h5><i class="fas fa-clock text-warning"></i> ${task.title}</h5>
+                                    <p><strong>Project:</strong> ${task.project_name || 'N/A'}</p>
+                                    <p><strong>Assigned to:</strong> ${task.assigned_to_name || 'Unassigned'}</p>
+                                    <p><strong>Priority:</strong> <span class="badge bg-${task.priority === 'High' ? 'danger' : task.priority === 'Medium' ? 'warning' : 'info'}">${task.priority}</span></p>
+                                    <p><strong>Deadline:</strong> ${task.deadline ? new Date(task.deadline).toLocaleDateString() : 'No deadline'}</p>
+                                    <span class="badge bg-warning">In Progress</span>
+                                </div>
+                            `).join('');
+                        }
+                        break;
+
+                    case 'overdue_tasks':
+                        const overdueTasksResponse = await fetch(`${API_BASE}/admin/tasks`, {
+                            method: 'GET',
+                            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${sessionStorage.getItem('admin_session_token')}` }
+                        });
+                        if (overdueTasksResponse.ok) {
+                            const allTasks = await overdueTasksResponse.json();
+                            const today = new Date();
+                            data = allTasks.filter(task => {
+                                if (!task.deadline || task.status === 'Completed') return false;
+                                const deadline = new Date(task.deadline);
+                                return deadline < today;
+                            });
+                            content = data.map(task => `
+                                <div class="deadline-item">
+                                    <h5><i class="fas fa-exclamation-triangle text-danger"></i> ${task.title}</h5>
+                                    <p><strong>Project:</strong> ${task.project_name || 'N/A'}</p>
+                                    <p><strong>Assigned to:</strong> ${task.assigned_to_name || 'Unassigned'}</p>
+                                    <p><strong>Overdue by:</strong> ${Math.ceil((today - new Date(task.deadline)) / (1000 * 60 * 60 * 24))} days</p>
+                                    <p><strong>Priority:</strong> <span class="badge bg-${task.priority === 'High' ? 'danger' : task.priority === 'Medium' ? 'warning' : 'info'}">${task.priority}</span></p>
+                                    <p><strong>Document:</strong> ${task.document_id ? `<a class="btn btn-sm btn-primary" 
+                                     href="${API_BASE}/admin/documents/${task.document_id}/download">
+                                     <i class="fas fa-download"></i> Download
+                                     </a>`
+                                    : 'No document'}
+                                    </p>
+                                    <span class="badge bg-danger">Overdue</span>
+                                </div>
+                            `).join('');
+                        }
+                        break;
+
+                    case 'pending_approvals':
+                        const pendingTasksResponse = await fetch(`${API_BASE}/admin/tasks`, {
+                            method: 'GET',
+                            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${sessionStorage.getItem('admin_session_token')}` }
+                        });
+                        if (pendingTasksResponse.ok) {
+                            const allTasks = await pendingTasksResponse.json();
+                            data = allTasks.filter(task => task.approval_status === 'pending');
+                            content = data.map(task => `
+                                <div class="deadline-item">
+                                    <h5><i class="fas fa-clipboard-check text-info"></i> ${task.title}</h5>
+                                    <p><strong>Project:</strong> ${task.project_name || 'N/A'}</p>
+                                    <p><strong>Created by:</strong> ${task.created_by_name || 'N/A'}</p>
+                                    <p><strong>Assigned to:</strong> ${task.assigned_to_name || 'Unassigned'}</p>
+                                    <p><strong>Priority:</strong> <span class="badge bg-${task.priority === 'High' ? 'danger' : task.priority === 'Medium' ? 'warning' : 'info'}">${task.priority}</span></p>
+                                    <span class="badge bg-info">Pending Approval</span>
+                                </div>
+                            `).join('');
+                        }
+                        break;
+                    case 'live_updates':
+                        const docsResponse = await fetch(`${API_BASE}/admin/documents`, {
+                            method: 'GET',
+                            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${sessionStorage.getItem('admin_session_token')}` }
+                        });
+
+                        if (docsResponse.ok) {
+                            data = await docsResponse.json();
+
+                            content = data.map(doc => `
+            <div class="deadline-item">
+                <h5><i class="fas fa-file-alt text-primary"></i> ${doc.original_filename}</h5>
+                <p><strong>Project:</strong> ${doc.project_name || 'N/A'}</p>
+                <p><strong>Uploaded by:</strong> ${doc.uploaded_by_name}</p>
+                <p><strong>Uploaded at:</strong> ${new Date(doc.uploaded_at).toLocaleString()}</p>
+
+                <a href="${API_BASE}/admin/documents/${doc.id}/download" 
+                   class="btn btn-sm btn-primary" target="_blank">
+                   <i class="fas fa-download"></i> Download
+                </a>
+            </div>
+                  `).join('');
+                        }
+                        break;
+
+                }
+
+                if (content) {
+                    modalBody.innerHTML = content;
+                } else {
+                    modalBody.innerHTML = '<div class="text-center text-muted"><p>No data available</p></div>';
+                }
+
+            } catch (error) {
+                console.error('Error loading detail data:', error);
+                modalBody.innerHTML = '<div class="text-center text-danger"><p>Error loading data</p></div>';
+            }
+        }
+        function hideTaskModal() { document.getElementById('taskDetailModal').style.display = 'none'; }
+        window.onclick = function (event) { document.querySelectorAll('.modal').forEach(modal => { if (event.target === modal) modal.style.display = 'none'; }); };
+
+        async function loadUserTypes() {
+            try {
+                const token = localStorage.getItem('admin_session_token');
+                if (!token) { window.location.href = '/'; return; }
+                const response = await fetch(`${API_BASE}/usertypes`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (!response.ok) {
+                    if (response.status === 401) {
+                        localStorage.removeItem('admin_session_token');
+                        window.location.href = '/';
+                    }
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                const usertypes = await response.json();
+                if (!Array.isArray(usertypes)) {
+                    console.error('Invalid usertypes response:', usertypes);
+                    return;
+                }
+                const tbody = document.getElementById('usertypesList');
+                const noData = document.getElementById('noUserTypes');
+                if (usertypes.length === 0) { tbody.innerHTML = ''; noData.style.display = 'block'; }
+                else {
+                    noData.style.display = 'none';
+                    tbody.innerHTML = usertypes.map(ut => `<tr><td>${ut.id}</td><td><strong>${ut.user_role}</strong></td><td>${new Date(ut.created_at).toLocaleDateString()}</td><td><div class="table-actions"><button class="btn btn-sm btn-primary" onclick="openUpdateUserTypeModal(${ut.id}, '${ut.user_role}')">Edit</button><button class="btn btn-sm btn-danger" onclick="deleteUserType(${ut.id})">Delete</button></div></td></tr>`).join('');
+                }
+                loadUserTypesForUserForm(usertypes);
+            } catch (error) { console.error('Error:', error); }
         }
 
-        window.addEventListener('DOMContentLoaded', () => {
-            initializeDarkMode();
-            generateCSRFToken();
-            applyRBACVisibility();
-            updateUserTypeSelects();
-            filterUsers();
-            filterUserTypes();
-            filterAuditLogs();
-            
-            auditLog.addEntry('LOGIN', 'Session', 'User logged in');
-        });
+        async function loadUsers() {
+            try {
+                const token = localStorage.getItem('admin_session_token');
+                if (!token) { window.location.href = '/'; return; }
+                const response = await fetch(`${API_BASE}/users`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (!response.ok) {
+                    if (response.status === 401) {
+                        localStorage.removeItem('admin_session_token');
+                        window.location.href = '/';
+                    }
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                const users = await response.json();
+                if (!Array.isArray(users)) {
+                    console.error('Invalid users response:', users);
+                    return;
+                }
+                const tbody = document.getElementById('usersList');
+                const noData = document.getElementById('noUsers');
+                if (users.length === 0) { tbody.innerHTML = ''; noData.style.display = 'block'; }
+                else {
+                    noData.style.display = 'none';
+                    tbody.innerHTML = users.map(user => `<tr><td>${user.id}</td><td><strong>${user.username}</strong></td><td>${user.email}</td><td>${user.user_role || 'N/A'}</td><td>${new Date(user.created_at).toLocaleDateString()}</td><td><div class="table-actions"><button class="btn btn-sm btn-primary" onclick="openUpdateUserModal(${user.id})">Edit</button><button class="btn btn-sm btn-danger" onclick="deleteUser(${user.id})">Delete</button></div></td></tr>`).join('');
+                }
+            } catch (error) { console.error('Error:', error); }
+        }
 
-        window.addEventListener('click', (event) => {
-            const modals = document.querySelectorAll('.modal');
-            modals.forEach(modal => {
-                if (event.target === modal) {
-                    modal.style.display = 'none';
+        async function loadUserTypesForUserForm(usertypes) {
+            if (!Array.isArray(usertypes)) return;
+            const selects = [document.getElementById('usrUserType'), document.getElementById('updateUsrUserType')];
+            selects.forEach(select => { const currentValue = select.value; select.innerHTML = '<option value="">Select a user type</option>' + usertypes.map(ut => `<option value="${ut.id}">${ut.user_role}</option>`).join(''); select.value = currentValue; });
+        }
+
+        function openUserTypeModal() { document.getElementById('userTypeModal').style.display = 'block'; document.getElementById('typRole').value = ''; document.getElementById('usertypeError').innerHTML = ''; }
+        function closeUserTypeModal() { document.getElementById('userTypeModal').style.display = 'none'; }
+        function openUpdateUserTypeModal(id, role) { document.getElementById('updateTypId').value = id; document.getElementById('updateTypRole').value = role; document.getElementById('updateUserTypeModal').style.display = 'block'; }
+        function closeUpdateUserTypeModal() { document.getElementById('updateUserTypeModal').style.display = 'none'; }
+        function openUserModal() { document.getElementById('userModal').style.display = 'block'; document.getElementById('usrUsername').value = ''; document.getElementById('usrEmail').value = ''; document.getElementById('usrPassword').value = ''; document.getElementById('usrConfirmPassword').value = ''; document.getElementById('usrUserType').value = ''; document.getElementById('userError').innerHTML = ''; document.querySelectorAll('#userModal [data-module][data-action]').forEach(cb => cb.checked = false); }
+        function closeUserModal() { document.getElementById('userModal').style.display = 'none'; }
+        function closeUpdateUserModal() { document.getElementById('updateUserModal').style.display = 'none'; }
+        function showSuccessMessage(message) { const el = document.getElementById('successMessage'); el.textContent = message; el.style.display = 'block'; setTimeout(() => { el.style.display = 'none'; }, 3000); }
+
+        async function createUserType(event) {
+            event.preventDefault();
+            const userRole = document.getElementById('typRole').value.trim();
+            if (!userRole || userRole.length < 3) { alert('User role must be at least 3 characters'); return; }
+            try {
+                const token = localStorage.getItem('admin_session_token');
+                const response = await fetch(`${API_BASE}/usertypes`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ user_role: userRole })
+                });
+                const data = await response.json();
+                if (!response.ok) { document.getElementById('usertypeError').innerHTML = `<div style="background: #f8d7da; color: #721c24; padding: 12px; border-radius: 8px;">${data.error}</div>`; return; }
+                showSuccessMessage('User type created successfully!');
+                closeUserTypeModal();
+                loadUserTypes();
+            } catch (error) { alert('Error creating user type'); }
+        }
+
+        async function updateUserType(event) {
+            event.preventDefault();
+            const id = document.getElementById('updateTypId').value;
+            const userRole = document.getElementById('updateTypRole').value.trim();
+            if (!userRole || userRole.length < 3) { alert('User role must be at least 3 characters'); return; }
+            try {
+                const token = localStorage.getItem('admin_session_token');
+                const response = await fetch(`${API_BASE}/usertypes/${id}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ user_role: userRole })
+                });
+                const data = await response.json();
+                if (!response.ok) { alert(data.error); return; }
+                showSuccessMessage('User type updated successfully!');
+                closeUpdateUserTypeModal();
+                loadUserTypes();
+            } catch (error) { alert('Error updating user type'); }
+        }
+
+        async function deleteUserType(id) {
+            if (!confirm('Are you sure you want to delete this user type?')) return;
+            try {
+                const token = localStorage.getItem('admin_session_token');
+                const response = await fetch(`${API_BASE}/usertypes/${id}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (response.ok) { showSuccessMessage('User type deleted successfully!'); loadUserTypes(); }
+                else { alert('Error deleting user type'); }
+            } catch (error) { alert('Error deleting user type'); }
+        }
+
+        async function createUser(event) {
+            event.preventDefault();
+            const username = document.getElementById('usrUsername').value.trim();
+            const email = document.getElementById('usrEmail').value.trim();
+            const password = document.getElementById('usrPassword').value;
+            const confirmPassword = document.getElementById('usrConfirmPassword').value;
+            const userTypeId = document.getElementById('usrUserType').value;
+            const errorDiv = document.getElementById('userError');
+            errorDiv.innerHTML = '';
+            if (!username || username.length < 3) { errorDiv.innerHTML = '<div style="background: #f8d7da; color: #721c24; padding: 12px; border-radius: 8px;">Username must be at least 3 characters</div>'; return; }
+            if (!email || !email.includes('@')) { errorDiv.innerHTML = '<div style="background: #f8d7da; color: #721c24; padding: 12px; border-radius: 8px;">Please enter a valid email address</div>'; return; }
+            if (!password || password.length < 8) { errorDiv.innerHTML = '<div style="background: #f8d7da; color: #721c24; padding: 12px; border-radius: 8px;">Password must be at least 8 characters</div>'; return; }
+            if (password !== confirmPassword) { errorDiv.innerHTML = '<div style="background: #f8d7da; color: #721c24; padding: 12px; border-radius: 8px;">Passwords do not match</div>'; return; }
+            if (!userTypeId) { errorDiv.innerHTML = '<div style="background: #f8d7da; color: #721c24; padding: 12px; border-radius: 8px;">Please select a user type</div>'; return; }
+            const permissions = {};
+            document.querySelectorAll('#userModal [data-module][data-action]').forEach(checkbox => {
+                if (checkbox.checked) {
+                    const moduleName = checkbox.getAttribute('data-module');
+                    const actionName = checkbox.getAttribute('data-action');
+                    if (!permissions[moduleName]) permissions[moduleName] = {};
+                    permissions[moduleName][actionName] = true;
                 }
             });
-        });
+            try {
+                const token = localStorage.getItem('admin_session_token');
+                const response = await fetch(`${API_BASE}/users`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        username,
+                        email,
+                        password,
+                        confirm_password: confirmPassword,
+                        user_type_id: parseInt(userTypeId),
+                        permissions
+                    })
+                });
+                const data = await response.json();
+                if (!response.ok) { errorDiv.innerHTML = `<div style="background: #f8d7da; color: #721c24; padding: 12px; border-radius: 8px;">${data.error}</div>`; return; }
+                showSuccessMessage('Employee created successfully!');
+                closeUserModal();
+                loadUsers();
+            } catch (error) { alert('Error creating employee'); }
+        }
+
+        async function openUpdateUserModal(userId) {
+            try {
+                const token = localStorage.getItem('admin_session_token');
+                const response = await fetch(`${API_BASE}/users/${userId}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (!response.ok) { alert('Failed to load user data'); return; }
+                const user = await response.json();
+                document.getElementById('updateUsrId').value = user.id;
+                document.getElementById('updateUsrUsername').value = user.username;
+                document.getElementById('updateUsrEmail').value = user.email;
+                document.getElementById('updateUsrPassword').value = '';
+                document.getElementById('updateUsrUserType').value = user.user_type_id;
+                document.querySelectorAll('#updateUserModal [data-module][data-action]').forEach(cb => cb.checked = false);
+                if (user.permissions) {
+                    for (const [module, actions] of Object.entries(user.permissions)) {
+                        for (const [action, granted] of Object.entries(actions)) {
+                            if (granted) {
+                                const checkbox = document.querySelector(`#updateUserModal [data-module="${module}"][data-action="${action}"]`);
+                                if (checkbox) checkbox.checked = true;
+                            }
+                        }
+                    }
+                }
+                document.getElementById('updateUserModal').style.display = 'block';
+            } catch (error) { alert('Error loading user data'); }
+        }
+
+        async function updateUser(event) {
+            event.preventDefault();
+            const userId = document.getElementById('updateUsrId').value;
+            const username = document.getElementById('updateUsrUsername').value.trim();
+            const email = document.getElementById('updateUsrEmail').value.trim();
+            const password = document.getElementById('updateUsrPassword').value;
+            const userTypeId = document.getElementById('updateUsrUserType').value;
+            const errorDiv = document.getElementById('updateUserError');
+            errorDiv.innerHTML = '';
+            if (!username || username.length < 3) { errorDiv.innerHTML = '<div style="background: #f8d7da; color: #721c24; padding: 12px; border-radius: 8px;">Username must be at least 3 characters</div>'; return; }
+            if (!email || !email.includes('@')) { errorDiv.innerHTML = '<div style="background: #f8d7da; color: #721c24; padding: 12px; border-radius: 8px;">Please enter a valid email address</div>'; return; }
+            if (!userTypeId) { errorDiv.innerHTML = '<div style="background: #f8d7da; color: #721c24; padding: 12px; border-radius: 8px;">Please select a user type</div>'; return; }
+            const permissions = {};
+            document.querySelectorAll('#updateUserModal [data-module][data-action]').forEach(checkbox => {
+                if (checkbox.checked) {
+                    const moduleName = checkbox.getAttribute('data-module');
+                    const actionName = checkbox.getAttribute('data-action');
+                    if (!permissions[moduleName]) permissions[moduleName] = {};
+                    permissions[moduleName][actionName] = true;
+                }
+            });
+            const payload = { username, email, user_type_id: parseInt(userTypeId), permissions };
+            if (password) payload.password = password;
+            try {
+                const token = localStorage.getItem('admin_session_token');
+                const response = await fetch(`${API_BASE}/users/${userId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify(payload)
+                });
+                const data = await response.json();
+                if (!response.ok) { errorDiv.innerHTML = `<div style="background: #f8d7da; color: #721c24; padding: 12px; border-radius: 8px;">${data.error}</div>`; return; }
+                showSuccessMessage('Employee updated successfully!');
+                closeUpdateUserModal();
+                loadUsers();
+            } catch (error) { alert('Error updating employee'); }
+        }
+
+        async function deleteUser(userId) {
+            if (!confirm('Are you sure you want to delete this employee?')) return;
+            try {
+                const token = localStorage.getItem('admin_session_token');
+                const response = await fetch(`${API_BASE}/users/${userId}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (response.ok) { showSuccessMessage('Employee deleted successfully!'); loadUsers(); }
+                else { alert('Error deleting employee'); }
+            } catch (error) { alert('Error deleting employee'); }
+        }
+
+        function logout() { localStorage.removeItem('admin_session_token'); localStorage.removeItem('admin_name'); localStorage.removeItem('userRole'); window.location.href = '/'; }
     </script>
 </body>
 

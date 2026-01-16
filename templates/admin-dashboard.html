@@ -384,16 +384,42 @@
             width: 100%;
             height: 100%;
             background-color: rgba(0, 0, 0, 0.5);
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
         }
 
         .modal-content {
             background-color: var(--bg);
-            margin: 10% auto;
+            margin: 5% auto;
             padding: 30px;
             border-radius: 12px;
-            width: 500px;
-            max-width: 95%;
+            width: 90%;
+            max-width: 800px;
+            max-height: 85vh;
+            overflow-y: auto;
             box-shadow: 0 10px 30px var(--shadow);
+            animation: slideUp 0.3s ease;
+        }
+
+        @keyframes slideUp {
+            from {
+                transform: translateY(30px);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
         }
 
         .modal-header {
@@ -414,10 +440,188 @@
             font-size: 24px;
             cursor: pointer;
             color: var(--text-secondary);
+            border: none;
+            background: none;
+            transition: all 0.2s ease;
         }
 
         .close:hover {
             color: var(--text);
+            transform: scale(1.2);
+        }
+
+        /* New styles for project and deadline detail modals */
+        .project-detail-modal .modal-content {
+            max-width: 900px;
+        }
+
+        .deadline-detail-modal .modal-content {
+            max-width: 600px;
+        }
+
+        .detail-section {
+            margin-bottom: 25px;
+            background: var(--bg-secondary);
+            padding: 20px;
+            border-radius: 10px;
+            border-left: 4px solid var(--primary);
+        }
+
+        .detail-section h4 {
+            color: var(--primary);
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .detail-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 12px;
+        }
+
+        .detail-item {
+            padding: 10px;
+            background: var(--bg);
+            border-radius: 6px;
+        }
+
+        .detail-label {
+            font-weight: 600;
+            color: var(--text-secondary);
+            font-size: 12px;
+            text-transform: uppercase;
+            margin-bottom: 5px;
+        }
+
+        .detail-value {
+            color: var(--text);
+            font-size: 15px;
+        }
+
+        .progress-container {
+            margin: 15px 0;
+        }
+
+        .progress-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .progress {
+            background: var(--border);
+            height: 8px;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 12px;
+        }
+
+        .progress-bar {
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            height: 100%;
+            transition: width 0.3s ease;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .status-badge.success {
+            background: rgba(72, 187, 120, 0.2);
+            color: var(--success);
+        }
+
+        .status-badge.warning {
+            background: rgba(237, 137, 54, 0.2);
+            color: var(--warning);
+        }
+
+        .status-badge.danger {
+            background: rgba(245, 101, 101, 0.2);
+            color: var(--danger);
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .info-card {
+            background: var(--bg);
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .info-card-icon {
+            font-size: 24px;
+            color: var(--primary);
+            margin-bottom: 8px;
+        }
+
+        .info-card-label {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-bottom: 5px;
+            text-transform: uppercase;
+            font-weight: 600;
+        }
+
+        .info-card-value {
+            font-size: 18px;
+            color: var(--text);
+            font-weight: 700;
+        }
+
+        .tasks-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        .tasks-list li {
+            padding: 12px;
+            background: var(--bg);
+            border-radius: 6px;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            border-left: 3px solid var(--primary);
+        }
+
+        .tasks-list li i {
+            color: var(--primary);
+            flex-shrink: 0;
+        }
+
+        .milestone-item {
+            padding: 15px;
+            background: var(--bg);
+            border-radius: 8px;
+            margin-bottom: 10px;
+            border-left: 4px solid var(--success);
+        }
+
+        .milestone-item h5 {
+            margin: 0 0 5px 0;
+            color: var(--text);
+        }
+
+        .milestone-item p {
+            margin: 5px 0;
+            color: var(--text-secondary);
+            font-size: 13px;
         }
 
         .form-group {
@@ -678,6 +882,7 @@
             border-left: 4px solid var(--primary);
             box-shadow: 0 4px 12px var(--shadow);
             transition: all 0.3s ease;
+            cursor: pointer;
         }
 
         .project-item:hover {
@@ -694,20 +899,6 @@
             color: var(--text-secondary);
             font-size: 13px;
             margin-bottom: 12px;
-        }
-
-        .progress {
-            background: var(--border);
-            height: 6px;
-            border-radius: 3px;
-            overflow: hidden;
-            margin-bottom: 12px;
-        }
-
-        .progress-bar {
-            background: linear-gradient(90deg, var(--primary), var(--secondary));
-            height: 100%;
-            transition: width 0.3s ease;
         }
 
         .deadlines-list {
@@ -816,6 +1007,10 @@
             .action-buttons {
                 grid-template-columns: 1fr;
             }
+
+            .detail-row {
+                grid-template-columns: 1fr;
+            }
         }
 
         @media (max-width: 768px) {
@@ -828,8 +1023,9 @@
             }
 
             .modal-content {
-                width: 90%;
-                margin: 20% auto;
+                width: 95%;
+                margin: 10% auto;
+                padding: 20px;
             }
 
             .pagination-controls {
@@ -850,6 +1046,22 @@
             .tab-button.active {
                 border-bottom: none;
                 border-left-color: var(--primary);
+            }
+
+            .projects-list {
+                grid-template-columns: 1fr;
+            }
+
+            .info-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .modal-footer {
+                flex-direction: column-reverse;
+            }
+
+            .modal-footer .btn {
+                width: 100%;
             }
         }
     </style>
@@ -980,7 +1192,6 @@
                 </div>
             </div>
 
-
             <div id="usertypes-tab" class="tab-content">
                 <div style="margin-bottom: 20px;">
                     <button class="btn btn-primary" onclick="openUserTypeModal()">+ Create User Type</button>
@@ -1068,337 +1279,30 @@
         </div>
     </div>
 
-    <div id="userTypeModal" class="modal">
+    <!-- New modal for project details with comprehensive information -->
+    <div id="projectDetailModal" class="modal project-detail-modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h3>Create User Type</h3>
-                <span class="close" onclick="closeUserTypeModal()">&times;</span>
+                <h3><i class="fas fa-folder-open"></i> Project Details</h3>
+                <button class="close" onclick="closeProjectDetailModal()">&times;</button>
             </div>
-            <form onsubmit="createUserType(event)">
-                <div id="usertypeError"></div>
-                <div class="form-group">
-                    <label for="typRole">User Role Name *</label>
-                    <input type="text" id="typRole" required placeholder="e.g., Manager, Supervisor">
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" onclick="closeUserTypeModal()">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Create</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <div id="updateUserTypeModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>Update User Type</h3>
-                <span class="close" onclick="closeUpdateUserTypeModal()">&times;</span>
-            </div>
-            <form onsubmit="updateUserType(event)">
-                <input type="hidden" id="updateTypId">
-                <div class="form-group">
-                    <label for="updateTypRole">User Role Name *</label>
-                    <input type="text" id="updateTypRole" required placeholder="e.g., Manager, Supervisor">
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" onclick="closeUpdateUserTypeModal()">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Update</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <div id="userModal" class="modal">
-        <div class="modal-content" style="width: 700px; max-height: 80vh; overflow-y: auto;">
-            <div class="modal-header">
-                <h3>Create New Employee</h3>
-                <span class="close" onclick="closeUserModal()">&times;</span>
-            </div>
-            <form onsubmit="createUser(event)">
-                <div class="modal-body">
-                    <div id="userError"></div>
-                    <div class="form-group">
-                        <label for="usrUsername">Username *</label>
-                        <input type="text" id="usrUsername" required placeholder="Enter username">
-                    </div>
-                    <div class="form-group">
-                        <label for="usrEmail">Email Address *</label>
-                        <input type="email" id="usrEmail" required placeholder="employee@example.com">
-                    </div>
-                    <div class="form-group">
-                        <label for="usrPassword">Password *</label>
-                        <input type="password" id="usrPassword" required
-                            placeholder="Min 8 characters, 2 special chars">
-                    </div>
-                    <div class="form-group">
-                        <label for="usrConfirmPassword">Confirm Password *</label>
-                        <input type="password" id="usrConfirmPassword" required placeholder="Confirm password">
-                    </div>
-                    <div class="form-group">
-                        <label for="usrUserType">User Type *</label>
-                        <select id="usrUserType" required>
-                            <option value="">Select a user type</option>
-                        </select>
-                    </div>
-
-                    <h4 style="margin-top: 20px; margin-bottom: 15px; color: #667eea;">Module Permissions</h4>
-
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-                        <div style="margin-bottom: 0; padding-bottom: 0;">
-                            <div style="font-weight: 600; color: #2d3748; margin-bottom: 8px;"><i
-                                    class="fas fa-folder"></i> Projects</div>
-                            <div class="checkbox-group">
-                                <div class="checkbox-item"><input type="checkbox" id="permProjView" data-module="Proj"
-                                        data-action="View"><label for="permProjView" style="margin: 0;">View</label>
-                                </div>
-                                <div class="checkbox-item"><input type="checkbox" id="permProjAdd" data-module="Proj"
-                                        data-action="Add"><label for="permProjAdd" style="margin: 0;">Add</label></div>
-                                <div class="checkbox-item"><input type="checkbox" id="permProjEdit" data-module="Proj"
-                                        data-action="Edit"><label for="permProjEdit" style="margin: 0;">Edit</label>
-                                </div>
-                                <div class="checkbox-item"><input type="checkbox" id="permProjDelete" data-module="Proj"
-                                        data-action="Delete"><label for="permProjDelete"
-                                        style="margin: 0;">Delete</label></div>
-                            </div>
-                        </div>
-                        <div style="margin-bottom: 0; padding-bottom: 0;">
-                            <div style="font-weight: 600; color: #2d3748; margin-bottom: 8px;"><i
-                                    class="fas fa-users"></i> Project Team</div>
-                            <div class="checkbox-group">
-                                <div class="checkbox-item"><input type="checkbox" id="permProjTeamView"
-                                        data-module="Proj_team" data-action="View"><label for="permProjTeamView"
-                                        style="margin: 0;">View</label></div>
-                                <div class="checkbox-item"><input type="checkbox" id="permProjTeamAdd"
-                                        data-module="Proj_team" data-action="Add"><label for="permProjTeamAdd"
-                                        style="margin: 0;">Add</label></div>
-                                <div class="checkbox-item"><input type="checkbox" id="permProjTeamEdit"
-                                        data-module="Proj_team" data-action="Edit"><label for="permProjTeamEdit"
-                                        style="margin: 0;">Edit</label></div>
-                                <div class="checkbox-item"><input type="checkbox" id="permProjTeamDelete"
-                                        data-module="Proj_team" data-action="Delete"><label for="permProjTeamDelete"
-                                        style="margin: 0;">Delete</label></div>
-                            </div>
-                        </div>
-                        <div style="margin-bottom: 0; padding-bottom: 0;">
-                            <div style="font-weight: 600; color: #2d3748; margin-bottom: 8px;"><i
-                                    class="fas fa-file-alt"></i> Documents</div>
-                            <div class="checkbox-group">
-                                <div class="checkbox-item"><input type="checkbox" id="permProjDocView"
-                                        data-module="Proj_doc" data-action="View"><label for="permProjDocView"
-                                        style="margin: 0;">View</label></div>
-                                <div class="checkbox-item"><input type="checkbox" id="permProjDocAdd"
-                                        data-module="Proj_doc" data-action="Add"><label for="permProjDocAdd"
-                                        style="margin: 0;">Add</label></div>
-                                <div class="checkbox-item"><input type="checkbox" id="permProjDocEdit"
-                                        data-module="Proj_doc" data-action="Edit"><label for="permProjDocEdit"
-                                        style="margin: 0;">Edit</label></div>
-                                <div class="checkbox-item"><input type="checkbox" id="permProjDocDelete"
-                                        data-module="Proj_doc" data-action="Delete"><label for="permProjDocDelete"
-                                        style="margin: 0;">Delete</label></div>
-                                <div class="checkbox-item"><input type="checkbox" id="permProjDocDownload"
-                                        data-module="Proj_doc" data-action="Download"><label for="permProjDocDownload"
-                                        style="margin: 0;">Download</label></div>
-                            </div>
-                        </div>
-                        <div style="margin-bottom: 0; padding-bottom: 0;">
-                            <div style="font-weight: 600; color: #2d3748; margin-bottom: 8px;"><i
-                                    class="fas fa-comments"></i> Discussion</div>
-                            <div class="checkbox-group">
-                                <div class="checkbox-item"><input type="checkbox" id="permProjDisView"
-                                        data-module="Proj_Dis_" data-action="View"><label for="permProjDisView"
-                                        style="margin: 0;">View</label></div>
-                                <div class="checkbox-item"><input type="checkbox" id="permProjDisAdd"
-                                        data-module="Proj_Dis_" data-action="Add"><label for="permProjDisAdd"
-                                        style="margin: 0;">Add</label></div>
-                                <div class="checkbox-item"><input type="checkbox" id="permProjDisEdit"
-                                        data-module="Proj_Dis_" data-action="Edit"><label for="permProjDisEdit"
-                                        style="margin: 0;">Edit</label></div>
-                                <div class="checkbox-item"><input type="checkbox" id="permProjDisDelete"
-                                        data-module="Proj_Dis_" data-action="Delete"><label for="permProjDisDelete"
-                                        style="margin: 0;">Delete</label></div>
-                            </div>
-                        </div>
-                        <div style="margin-bottom: 0; padding-bottom: 0;">
-                            <div style="font-weight: 600; color: #2d3748; margin-bottom: 8px;"><i
-                                    class="fas fa-tasks"></i> Tasks</div>
-                            <div class="checkbox-group">
-                                <div class="checkbox-item"><input type="checkbox" id="permTaskView" data-module="task"
-                                        data-action="View"><label for="permTaskView" style="margin: 0;">View</label>
-                                </div>
-                                <div class="checkbox-item"><input type="checkbox" id="permTaskAdd" data-module="task"
-                                        data-action="Add"><label for="permTaskAdd" style="margin: 0;">Add</label></div>
-                                <div class="checkbox-item"><input type="checkbox" id="permTaskEdit" data-module="task"
-                                        data-action="Edit"><label for="permTaskEdit" style="margin: 0;">Edit</label>
-                                </div>
-                                <div class="checkbox-item"><input type="checkbox" id="permTaskDelete" data-module="task"
-                                        data-action="Delete"><label for="permTaskDelete"
-                                        style="margin: 0;">Delete</label></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" onclick="closeUserModal()">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Create Employee</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <div id="detailModal" class="modal">
-        <div class="modal-content" style="width: 600px; max-height: 80vh; overflow-y: auto;">
-            <div class="modal-header">
-                <h3 id="detailModalTitle">Active Projects</h3>
-                <span class="close" onclick="closeDetailModal()">&times;</span>
-            </div>
-            <div id="detailModalBody" style="padding: 20px;"></div>
-        </div>
-    </div>
-
-    <div id="updateUserModal" class="modal">
-        <div class="modal-content" style="width: 700px; max-height: 80vh; overflow-y: auto;">
-            <div class="modal-header">
-                <h3>Update Employee</h3>
-                <span class="close" onclick="closeUpdateUserModal()">&times;</span>
-            </div>
-            <form onsubmit="updateUser(event)">
-                <div class="modal-body">
-                    <input type="hidden" id="updateUsrId">
-                    <div id="updateUserError"></div>
-                    <div class="form-group">
-                        <label for="updateUsrUsername">Username *</label>
-                        <input type="text" id="updateUsrUsername" required placeholder="Enter username">
-                    </div>
-                    <div class="form-group">
-                        <label for="updateUsrEmail">Email Address *</label>
-                        <input type="email" id="updateUsrEmail" required placeholder="employee@example.com">
-                    </div>
-                    <div class="form-group">
-                        <label for="updateUsrPassword">New Password (leave blank to keep current)</label>
-                        <input type="password" id="updateUsrPassword" placeholder="Min 8 characters, 2 special chars">
-                    </div>
-                    <div class="form-group">
-                        <label for="updateUsrUserType">User Type *</label>
-                        <select id="updateUsrUserType" required>
-                            <option value="">Select a user type</option>
-                        </select>
-                    </div>
-
-                    <h4 style="margin-top: 20px; margin-bottom: 15px; color: #667eea;">Module Permissions</h4>
-
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-                        <div style="margin-bottom: 0; padding-bottom: 0;">
-                            <div style="font-weight: 600; color: #2d3748; margin-bottom: 8px;"><i
-                                    class="fas fa-folder"></i> Projects</div>
-                            <div class="checkbox-group">
-                                <div class="checkbox-item"><input type="checkbox" id="updatePermProjView"
-                                        data-module="Proj" data-action="View"><label for="updatePermProjView"
-                                        style="margin: 0;">View</label></div>
-                                <div class="checkbox-item"><input type="checkbox" id="updatePermProjAdd"
-                                        data-module="Proj" data-action="Add"><label for="updatePermProjAdd"
-                                        style="margin: 0;">Add</label></div>
-                                <div class="checkbox-item"><input type="checkbox" id="updatePermProjEdit"
-                                        data-module="Proj" data-action="Edit"><label for="updatePermProjEdit"
-                                        style="margin: 0;">Edit</label></div>
-                                <div class="checkbox-item"><input type="checkbox" id="updatePermProjDelete"
-                                        data-module="Proj" data-action="Delete"><label for="updatePermProjDelete"
-                                        style="margin: 0;">Delete</label></div>
-                            </div>
-                        </div>
-                        <div style="margin-bottom: 0; padding-bottom: 0;">
-                            <div style="font-weight: 600; color: #2d3748; margin-bottom: 8px;"><i
-                                    class="fas fa-users"></i> Project Team</div>
-                            <div class="checkbox-group">
-                                <div class="checkbox-item"><input type="checkbox" id="updatePermProjTeamView"
-                                        data-module="Proj_team" data-action="View"><label for="updatePermProjTeamView"
-                                        style="margin: 0;">View</label></div>
-                                <div class="checkbox-item"><input type="checkbox" id="updatePermProjTeamAdd"
-                                        data-module="Proj_team" data-action="Add"><label for="updatePermProjTeamAdd"
-                                        style="margin: 0;">Add</label></div>
-                                <div class="checkbox-item"><input type="checkbox" id="updatePermProjTeamEdit"
-                                        data-module="Proj_team" data-action="Edit"><label for="updatePermProjTeamEdit"
-                                        style="margin: 0;">Edit</label></div>
-                                <div class="checkbox-item"><input type="checkbox" id="updatePermProjTeamDelete"
-                                        data-module="Proj_team" data-action="Delete"><label
-                                        for="updatePermProjTeamDelete" style="margin: 0;">Delete</label></div>
-                            </div>
-                        </div>
-                        <div style="margin-bottom: 0; padding-bottom: 0;">
-                            <div style="font-weight: 600; color: #2d3748; margin-bottom: 8px;"><i
-                                    class="fas fa-file-alt"></i> Documents</div>
-                            <div class="checkbox-group">
-                                <div class="checkbox-item"><input type="checkbox" id="updatePermProjDocView"
-                                        data-module="Proj_doc" data-action="View"><label for="updatePermProjDocView"
-                                        style="margin: 0;">View</label></div>
-                                <div class="checkbox-item"><input type="checkbox" id="updatePermProjDocAdd"
-                                        data-module="Proj_doc" data-action="Add"><label for="updatePermProjDocAdd"
-                                        style="margin: 0;">Add</label></div>
-                                <div class="checkbox-item"><input type="checkbox" id="updatePermProjDocEdit"
-                                        data-module="Proj_doc" data-action="Edit"><label for="updatePermProjDocEdit"
-                                        style="margin: 0;">Edit</label></div>
-                                <div class="checkbox-item"><input type="checkbox" id="updatePermProjDocDelete"
-                                        data-module="Proj_doc" data-action="Delete"><label for="updatePermProjDocDelete"
-                                        style="margin: 0;">Delete</label></div>
-                                <div class="checkbox-item"><input type="checkbox" id="updatePermProjDocDownload"
-                                        data-module="Proj_doc" data-action="Download"><label
-                                        for="updatePermProjDocDownload" style="margin: 0;">Download</label></div>
-                            </div>
-                        </div>
-                        <div style="margin-bottom: 0; padding-bottom: 0;">
-                            <div style="font-weight: 600; color: #2d3748; margin-bottom: 8px;"><i
-                                    class="fas fa-comments"></i> Discussion</div>
-                            <div class="checkbox-group">
-                                <div class="checkbox-item"><input type="checkbox" id="updatePermProjDisView"
-                                        data-module="Proj_Dis_" data-action="View"><label for="updatePermProjDisView"
-                                        style="margin: 0;">View</label></div>
-                                <div class="checkbox-item"><input type="checkbox" id="updatePermProjDisAdd"
-                                        data-module="Proj_Dis_" data-action="Add"><label for="updatePermProjDisAdd"
-                                        style="margin: 0;">Add</label></div>
-                                <div class="checkbox-item"><input type="checkbox" id="updatePermProjDisEdit"
-                                        data-module="Proj_Dis_" data-action="Edit"><label for="updatePermProjDisEdit"
-                                        style="margin: 0;">Edit</label></div>
-                                <div class="checkbox-item"><input type="checkbox" id="updatePermProjDisDelete"
-                                        data-module="Proj_Dis_" data-action="Delete"><label
-                                        for="updatePermProjDisDelete" style="margin: 0;">Delete</label></div>
-                            </div>
-                        </div>
-                        <div style="margin-bottom: 0; padding-bottom: 0;">
-                            <div style="font-weight: 600; color: #2d3748; margin-bottom: 8px;"><i
-                                    class="fas fa-tasks"></i> Tasks</div>
-                            <div class="checkbox-group">
-                                <div class="checkbox-item"><input type="checkbox" id="updatePermTaskView"
-                                        data-module="task" data-action="View"><label for="updatePermTaskView"
-                                        style="margin: 0;">View</label></div>
-                                <div class="checkbox-item"><input type="checkbox" id="updatePermTaskAdd"
-                                        data-module="task" data-action="Add"><label for="updatePermTaskAdd"
-                                        style="margin: 0;">Add</label></div>
-                                <div class="checkbox-item"><input type="checkbox" id="updatePermTaskEdit"
-                                        data-module="task" data-action="Edit"><label for="updatePermTaskEdit"
-                                        style="margin: 0;">Edit</label></div>
-                                <div class="checkbox-item"><input type="checkbox" id="updatePermTaskDelete"
-                                        data-module="task" data-action="Delete"><label for="updatePermTaskDelete"
-                                        style="margin: 0;">Delete</label></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" onclick="closeUpdateUserModal()">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Update Employee</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <div id="taskDetailModal" class="modal">
-        <div class="modal-content" style="width: 700px; max-height: 80vh; overflow-y: auto;">
-            <div class="modal-header">
-                <h3 id="modalTitle">Task Details</h3>
-                <span class="close" onclick="hideTaskModal()">&times;</span>
-            </div>
-            <div class="modal-body" id="modalBody"></div>
+            <div id="projectDetailContent"></div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" onclick="hideTaskModal()">Close</button>
+                <button type="button" class="btn btn-secondary" onclick="closeProjectDetailModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- New modal for deadline details with comprehensive information -->
+    <div id="deadlineDetailModal" class="modal deadline-detail-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-calendar-alt"></i> Deadline Details</h3>
+                <button class="close" onclick="closeDeadlineDetailModal()">&times;</button>
+            </div>
+            <div id="deadlineDetailContent"></div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeDeadlineDetailModal()">Close</button>
             </div>
         </div>
     </div>
@@ -1465,12 +1369,225 @@
             }
         }
 
-        function closeDetailModal() {
-            document.getElementById('detailModal').style.display = 'none';
+        function closeProjectDetailModal() {
+            document.getElementById('projectDetailModal').style.display = 'none';
         }
 
-        function closeTaskModal() {
-            document.getElementById('taskDetailModal').style.display = 'none';
+        function closeDeadlineDetailModal() {
+            document.getElementById('deadlineDetailModal').style.display = 'none';
+        }
+
+        function showProjectDetails(projectId, projectData) {
+            const modal = document.getElementById('projectDetailModal');
+            const content = document.getElementById('projectDetailContent');
+            
+            const progressPercent = projectData.progress || 0;
+            const taskStats = projectData.task_stats || { total: 0, completed: 0, pending: 0 };
+            const createdDate = new Date(projectData.created_at).toLocaleDateString();
+            const deadline = projectData.deadline ? new Date(projectData.deadline).toLocaleDateString() : 'No deadline set';
+            
+            content.innerHTML = `
+                <div class="detail-section">
+                    <h4><i class="fas fa-info-circle"></i> Project Overview</h4>
+                    <div class="detail-row">
+                        <div class="detail-item">
+                            <div class="detail-label">Project Name</div>
+                            <div class="detail-value">${projectData.title}</div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">Status</div>
+                            <div class="detail-value">
+                                <span class="status-badge ${projectData.status === 'Completed' ? 'success' : projectData.status === 'In Progress' ? 'warning' : 'danger'}">
+                                    ${projectData.status}
+                                </span>
+                            </div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">Created By</div>
+                            <div class="detail-value">${projectData.creator_name || 'N/A'}</div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">Created Date</div>
+                            <div class="detail-value">${createdDate}</div>
+                        </div>
+                    </div>
+                    <p style="color: var(--text-secondary); margin-top: 12px;">${projectData.description || 'No description provided'}</p>
+                </div>
+
+                <div class="detail-section">
+                    <h4><i class="fas fa-tasks"></i> Project Progress</h4>
+                    <div class="progress-container">
+                        <div class="progress-label">
+                            <span>Overall Progress</span>
+                            <strong>${progressPercent}%</strong>
+                        </div>
+                        <div class="progress">
+                            <div class="progress-bar" style="width: ${progressPercent}%"></div>
+                        </div>
+                    </div>
+                    <div class="info-grid">
+                        <div class="info-card">
+                            <div class="info-card-icon"><i class="fas fa-list-check"></i></div>
+                            <div class="info-card-label">Total Tasks</div>
+                            <div class="info-card-value">${taskStats.total || 0}</div>
+                        </div>
+                        <div class="info-card">
+                            <div class="info-card-icon"><i class="fas fa-check-circle"></i></div>
+                            <div class="info-card-label">Completed</div>
+                            <div class="info-card-value">${taskStats.completed || 0}</div>
+                        </div>
+                        <div class="info-card">
+                            <div class="info-card-icon"><i class="fas fa-hourglass-half"></i></div>
+                            <div class="info-card-label">Pending</div>
+                            <div class="info-card-value">${taskStats.pending || 0}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="detail-section">
+                    <h4><i class="fas fa-users-gear"></i> Team Information</h4>
+                    <div class="info-grid">
+                        <div class="info-card">
+                            <div class="info-card-icon"><i class="fas fa-users"></i></div>
+                            <div class="info-card-label">Team Members</div>
+                            <div class="info-card-value">${projectData.team_count || 0}</div>
+                        </div>
+                        <div class="info-card">
+                            <div class="info-card-icon"><i class="fas fa-calendar-check"></i></div>
+                            <div class="info-card-label">Deadline</div>
+                            <div class="info-card-value" style="font-size: 14px;">${deadline}</div>
+                        </div>
+                    </div>
+                </div>
+
+                ${projectData.milestones && projectData.milestones.length > 0 ? `
+                <div class="detail-section">
+                    <h4><i class="fas fa-flag"></i> Milestones</h4>
+                    ${projectData.milestones.map(milestone => `
+                        <div class="milestone-item">
+                            <h5><i class="fas fa-circle" style="color: var(--primary); font-size: 8px; margin-right: 8px;"></i>${milestone.name}</h5>
+                            <p>${milestone.description || 'No description'}</p>
+                            <p><strong>Due:</strong> ${new Date(milestone.due_date).toLocaleDateString()}</p>
+                        </div>
+                    `).join('')}
+                </div>
+                ` : ''}
+
+                ${projectData.documents && projectData.documents.length > 0 ? `
+                <div class="detail-section">
+                    <h4><i class="fas fa-file-upload"></i> Documents</h4>
+                    <ul class="tasks-list">
+                        ${projectData.documents.map(doc => `
+                            <li>
+                                <i class="fas fa-file-pdf"></i>
+                                <div>
+                                    <div style="color: var(--text); font-weight: 600;">${doc.name}</div>
+                                    <div style="color: var(--text-secondary); font-size: 12px;">Uploaded: ${new Date(doc.created_at).toLocaleDateString()}</div>
+                                </div>
+                            </li>
+                        `).join('')}
+                    </ul>
+                </div>
+                ` : ''}
+            `;
+            
+            modal.style.display = 'block';
+        }
+
+        function showDeadlineDetails(taskId, taskData) {
+            const modal = document.getElementById('deadlineDetailModal');
+            const content = document.getElementById('deadlineDetailContent');
+            
+            const deadline = new Date(taskData.deadline);
+            const today = new Date();
+            const diffTime = deadline - today;
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            
+            let urgencyLabel = 'On Track';
+            let urgencyClass = 'success';
+            if (diffDays < 0) {
+                urgencyLabel = 'Overdue';
+                urgencyClass = 'danger';
+            } else if (diffDays <= 3) {
+                urgencyLabel = 'Due Soon';
+                urgencyClass = 'warning';
+            }
+            
+            content.innerHTML = `
+                <div class="detail-section">
+                    <h4><i class="fas fa-exclamation-circle"></i> Task Information</h4>
+                    <div class="detail-row">
+                        <div class="detail-item">
+                            <div class="detail-label">Task Title</div>
+                            <div class="detail-value">${taskData.title}</div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">Status</div>
+                            <div class="detail-value">
+                                <span class="status-badge ${taskData.status === 'Completed' ? 'success' : taskData.status === 'In Progress' ? 'warning' : 'danger'}">
+                                    ${taskData.status}
+                                </span>
+                            </div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">Priority</div>
+                            <div class="detail-value">
+                                <span class="status-badge ${taskData.priority === 'High' ? 'danger' : taskData.priority === 'Medium' ? 'warning' : 'success'}">
+                                    ${taskData.priority}
+                                </span>
+                            </div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">Project</div>
+                            <div class="detail-value">${taskData.project_name || 'N/A'}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="detail-section">
+                    <h4><i class="fas fa-calendar-days"></i> Deadline Information</h4>
+                    <div class="detail-row">
+                        <div class="detail-item">
+                            <div class="detail-label">Due Date</div>
+                            <div class="detail-value">${deadline.toLocaleDateString()}</div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">Days Remaining</div>
+                            <div class="detail-value">
+                                <span class="status-badge ${urgencyClass}">
+                                    ${diffDays < 0 ? Math.abs(diffDays) + ' days overdue' : diffDays + ' days left'}
+                                </span>
+                            </div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">Urgency</div>
+                            <div class="detail-value">
+                                <span class="status-badge ${urgencyClass}">${urgencyLabel}</span>
+                            </div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">Assigned To</div>
+                            <div class="detail-value">${taskData.assigned_to_name || 'Unassigned'}</div>
+                        </div>
+                    </div>
+                </div>
+
+                ${taskData.description ? `
+                <div class="detail-section">
+                    <h4><i class="fas fa-align-left"></i> Description</h4>
+                    <p style="color: var(--text); line-height: 1.6;">${taskData.description}</p>
+                </div>
+                ` : ''}
+
+                ${taskData.notes ? `
+                <div class="detail-section">
+                    <h4><i class="fas fa-sticky-note"></i> Notes</h4>
+                    <p style="color: var(--text); line-height: 1.6;">${taskData.notes}</p>
+                </div>
+                ` : ''}
+            `;
+            
+            modal.style.display = 'block';
         }
 
         async function loadDashboardOverview() {
@@ -1509,7 +1626,7 @@
                         projectsList.innerHTML = '<p style="color: #718096;">No projects created yet</p>';
                     } else {
                         projectsList.innerHTML = projects.slice(0, 5).map(project => `
-                            <div class="project-item">
+                            <div class="project-item" onclick="showProjectDetails(${project.id}, ${JSON.stringify(project).replace(/"/g, '&quot;')})">
                                 <h4>${project.title}</h4>
                                 <p>${project.description || 'No description'} - ${project.progress || 0}% Complete</p>
                                 <div class="progress">
@@ -1549,7 +1666,7 @@
                             const priorityColor = { 'High': '#ffc107', 'Medium': '#28a745', 'Low': '#6c757d' };
                             const statusColor = { 'Overdue': '#dc3545', 'In Progress': '#ffc107', 'Completed': '#28a745' };
                             return `
-                                <div class="deadline-item" onclick="alert('Task: ${task.title}\\nStatus: ${task.status}\\nAssigned to: ${task.assigned_to_name || 'Unassigned'}')">
+                                <div class="deadline-item" onclick="showDeadlineDetails(${task.id}, ${JSON.stringify(task).replace(/"/g, '&quot;')})">
                                     <h5>${task.title}</h5>
                                     <p style="margin: 0; font-size: 12px; color: var(--text-secondary);">Due: ${dueDateStr}</p>
                                     <p style="margin: 5px 0 0 0; font-size: 11px;">
@@ -1565,207 +1682,218 @@
                 console.error('[v0] Error loading dashboard:', error);
             }
         }
-        async function showDetailModal(type) {
-            const modal = document.getElementById('taskDetailModal');
-            const modalTitle = document.getElementById('modalTitle');
-            const modalBody = document.getElementById('modalBody');
-            const titles = {
-                'active_projects': 'Active Projects',
-                'completed_tasks': 'Completed Tasks',
-                'active_tasks': 'Active Tasks',
-                'overdue_tasks': 'Overdue Tasks',
-                'pending_approvals': 'Pending Approvals'
-            };
-            modalTitle.textContent = titles[type] || 'Details';
-            modalBody.innerHTML = '<div class="text-center"><i class="fas fa-spinner fa-spin"></i> Loading...</div>';
-            modal.style.display = 'block';
 
-            try {
-                let data = [];
-                let content = '';
-
-                switch (type) {
-                    case 'active_projects':
-                        const projectsResponse = await fetch(`${API_BASE}/admin/projects`, {
-                            method: 'GET',
-                            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${sessionStorage.getItem('admin_session_token')}` }
-                        });
-                        if (projectsResponse.ok) {
-                            data = await projectsResponse.json();
-                            content = data.map(project => `
-                                <div class="project-detail-card">
-                                    <h4><i class="fas fa-folder"></i> ${project.title}</h4>
-                                    <p>${project.description || 'No description'}</p>
-                                    <div class="project-info">
-                                        <div class="info-item">
-                                            <span class="label">Creator:</span>
-                                            <span class="value">${project.creator_name || 'N/A'}</span>
-                                        </div>
-                                        <div class="info-item">
-                                            <span class="label">Status:</span>
-                                            <span class="value"><span class="status-badge status-active">${project.status}</span></span>
-                                        </div>
-                                        <div class="info-item">
-                                            <span class="label">Team:</span>
-                                            <span class="value">${project.team_count} members</span>
-                                        </div>
-                                        <div class="info-item">
-                                            <span class="label">Tasks:</span>
-                                            <span class="value">${project.task_count}</span>
-                                        </div>
-                                        <div class="info-item">
-                                            <span class="label">Created:</span>
-                                            <span class="value">${new Date(project.created_at).toLocaleDateString()}</span>
-                                        </div>
-                                        <div class="info-item">
-                                            <span class="label">Deadline:</span>
-                                            <span class="value">${project.deadline ? new Date(project.deadline).toLocaleDateString() : 'No deadline'}</span>
-                                        </div>
-                                    </div>
-                                    <div class="progress-container">
-                                        <p>Progress: ${project.progress || 0}%</p>
-                                        <div class="progress">
-                                            <div class="progress-bar" style="width: ${project.progress || 0}%"></div>
-                                        </div>
-                                    </div>
-                                </div>
-                            `).join('');
-                        }
-                        break;
-
-                    case 'completed_tasks':
-                        const completedTasksResponse = await fetch(`${API_BASE}/admin/tasks`, {
-                            method: 'GET',
-                            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${sessionStorage.getItem('admin_session_token')}` }
-                        });
-                        if (completedTasksResponse.ok) {
-                            const allTasks = await completedTasksResponse.json();
-                            data = allTasks.filter(task => task.status === 'Completed');
-                            content = data.map(task => `
-                                <div class="deadline-item">
-                                    <h5><i class="fas fa-check-circle text-success"></i> ${task.title}</h5>
-                                    <p><strong>Project:</strong> ${task.project_name || 'N/A'}</p>
-                                    <p><strong>Assigned to:</strong> ${task.assigned_to_name || 'Unassigned'}</p>
-                                    <p><strong>Completed:</strong> ${new Date(task.created_at).toLocaleDateString()}</p>
-                                    <span class="badge bg-success">Completed</span>
-                                </div>
-                            `).join('');
-                        }
-                        break;
-
-                    case 'active_tasks':
-                        const activeTasksResponse = await fetch(`${API_BASE}/admin/tasks`, {
-                            method: 'GET',
-                            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${sessionStorage.getItem('admin_session_token')}` }
-                        });
-                        if (activeTasksResponse.ok) {
-                            const allTasks = await activeTasksResponse.json();
-                            data = allTasks.filter(task => task.status === 'In Progress');
-                            content = data.map(task => `
-                                <div class="deadline-item">
-                                    <h5><i class="fas fa-clock text-warning"></i> ${task.title}</h5>
-                                    <p><strong>Project:</strong> ${task.project_name || 'N/A'}</p>
-                                    <p><strong>Assigned to:</strong> ${task.assigned_to_name || 'Unassigned'}</p>
-                                    <p><strong>Priority:</strong> <span class="badge bg-${task.priority === 'High' ? 'danger' : task.priority === 'Medium' ? 'warning' : 'info'}">${task.priority}</span></p>
-                                    <p><strong>Deadline:</strong> ${task.deadline ? new Date(task.deadline).toLocaleDateString() : 'No deadline'}</p>
-                                    <span class="badge bg-warning">In Progress</span>
-                                </div>
-                            `).join('');
-                        }
-                        break;
-
-                    case 'overdue_tasks':
-                        const overdueTasksResponse = await fetch(`${API_BASE}/admin/tasks`, {
-                            method: 'GET',
-                            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${sessionStorage.getItem('admin_session_token')}` }
-                        });
-                        if (overdueTasksResponse.ok) {
-                            const allTasks = await overdueTasksResponse.json();
-                            const today = new Date();
-                            data = allTasks.filter(task => {
-                                if (!task.deadline || task.status === 'Completed') return false;
-                                const deadline = new Date(task.deadline);
-                                return deadline < today;
-                            });
-                            content = data.map(task => `
-                                <div class="deadline-item">
-                                    <h5><i class="fas fa-exclamation-triangle text-danger"></i> ${task.title}</h5>
-                                    <p><strong>Project:</strong> ${task.project_name || 'N/A'}</p>
-                                    <p><strong>Assigned to:</strong> ${task.assigned_to_name || 'Unassigned'}</p>
-                                    <p><strong>Overdue by:</strong> ${Math.ceil((today - new Date(task.deadline)) / (1000 * 60 * 60 * 24))} days</p>
-                                    <p><strong>Priority:</strong> <span class="badge bg-${task.priority === 'High' ? 'danger' : task.priority === 'Medium' ? 'warning' : 'info'}">${task.priority}</span></p>
-                                    <p><strong>Document:</strong> ${task.document_id ? `<a class="btn btn-sm btn-primary" 
-                                     href="${API_BASE}/admin/documents/${task.document_id}/download">
-                                     <i class="fas fa-download"></i> Download
-                                     </a>`
-                                    : 'No document'}
-                                    </p>
-                                    <span class="badge bg-danger">Overdue</span>
-                                </div>
-                            `).join('');
-                        }
-                        break;
-
-                    case 'pending_approvals':
-                        const pendingTasksResponse = await fetch(`${API_BASE}/admin/tasks`, {
-                            method: 'GET',
-                            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${sessionStorage.getItem('admin_session_token')}` }
-                        });
-                        if (pendingTasksResponse.ok) {
-                            const allTasks = await pendingTasksResponse.json();
-                            data = allTasks.filter(task => task.approval_status === 'pending');
-                            content = data.map(task => `
-                                <div class="deadline-item">
-                                    <h5><i class="fas fa-clipboard-check text-info"></i> ${task.title}</h5>
-                                    <p><strong>Project:</strong> ${task.project_name || 'N/A'}</p>
-                                    <p><strong>Created by:</strong> ${task.created_by_name || 'N/A'}</p>
-                                    <p><strong>Assigned to:</strong> ${task.assigned_to_name || 'Unassigned'}</p>
-                                    <p><strong>Priority:</strong> <span class="badge bg-${task.priority === 'High' ? 'danger' : task.priority === 'Medium' ? 'warning' : 'info'}">${task.priority}</span></p>
-                                    <span class="badge bg-info">Pending Approval</span>
-                                </div>
-                            `).join('');
-                        }
-                        break;
-                    case 'live_updates':
-                        const docsResponse = await fetch(`${API_BASE}/admin/documents`, {
-                            method: 'GET',
-                            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${sessionStorage.getItem('admin_session_token')}` }
-                        });
-
-                        if (docsResponse.ok) {
-                            data = await docsResponse.json();
-
-                            content = data.map(doc => `
-            <div class="deadline-item">
-                <h5><i class="fas fa-file-alt text-primary"></i> ${doc.original_filename}</h5>
-                <p><strong>Project:</strong> ${doc.project_name || 'N/A'}</p>
-                <p><strong>Uploaded by:</strong> ${doc.uploaded_by_name}</p>
-                <p><strong>Uploaded at:</strong> ${new Date(doc.uploaded_at).toLocaleString()}</p>
-
-                <a href="${API_BASE}/admin/documents/${doc.id}/download" 
-                   class="btn btn-sm btn-primary" target="_blank">
-                   <i class="fas fa-download"></i> Download
-                </a>
-            </div>
-                  `).join('');
-                        }
-                        break;
-
-                }
-
-                if (content) {
-                    modalBody.innerHTML = content;
-                } else {
-                    modalBody.innerHTML = '<div class="text-center text-muted"><p>No data available</p></div>';
-                }
-
-            } catch (error) {
-                console.error('Error loading detail data:', error);
-                modalBody.innerHTML = '<div class="text-center text-danger"><p>Error loading data</p></div>';
-            }
+        function closeDetailModal() {
+            document.getElementById('detailModal').style.display = 'none';
         }
-        function hideTaskModal() { document.getElementById('taskDetailModal').style.display = 'none'; }
-        window.onclick = function (event) { document.querySelectorAll('.modal').forEach(modal => { if (event.target === modal) modal.style.display = 'none'; }); };
+
+        function closeTaskModal() {
+            document.getElementById('taskDetailModal').style.display = 'none';
+        }
+
+        
+        // This function is not used in the current updates, but keeping it for reference
+        // async function showDetailModal(type) {
+        //     const modal = document.getElementById('taskDetailModal');
+        //     const modalTitle = document.getElementById('modalTitle');
+        //     const modalBody = document.getElementById('modalBody');
+        //     const titles = {
+        //         'active_projects': 'Active Projects',
+        //         'completed_tasks': 'Completed Tasks',
+        //         'active_tasks': 'Active Tasks',
+        //         'overdue_tasks': 'Overdue Tasks',
+        //         'pending_approvals': 'Pending Approvals'
+        //     };
+        //     modalTitle.textContent = titles[type] || 'Details';
+        //     modalBody.innerHTML = '<div class="text-center"><i class="fas fa-spinner fa-spin"></i> Loading...</div>';
+        //     modal.style.display = 'block';
+
+        //     try {
+        //         let data = [];
+        //         let content = '';
+
+        //         switch (type) {
+        //             case 'active_projects':
+        //                 const projectsResponse = await fetch(`${API_BASE}/admin/projects`, {
+        //                     method: 'GET',
+        //                     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${sessionStorage.getItem('admin_session_token')}` }
+        //                 });
+        //                 if (projectsResponse.ok) {
+        //                     data = await projectsResponse.json();
+        //                     content = data.map(project => `
+        //                         <div class="project-detail-card">
+        //                             <h4><i class="fas fa-folder"></i> ${project.title}</h4>
+        //                             <p>${project.description || 'No description'}</p>
+        //                             <div class="project-info">
+        //                                 <div class="info-item">
+        //                                     <span class="label">Creator:</span>
+        //                                     <span class="value">${project.creator_name || 'N/A'}</span>
+        //                                 </div>
+        //                                 <div class="info-item">
+        //                                     <span class="label">Status:</span>
+        //                                     <span class="value"><span class="status-badge status-active">${project.status}</span></span>
+        //                                 </div>
+        //                                 <div class="info-item">
+        //                                     <span class="label">Team:</span>
+        //                                     <span class="value">${project.team_count} members</span>
+        //                                 </div>
+        //                                 <div class="info-item">
+        //                                     <span class="label">Tasks:</span>
+        //                                     <span class="value">${project.task_count}</span>
+        //                                 </div>
+        //                                 <div class="info-item">
+        //                                     <span class="label">Created:</span>
+        //                                     <span class="value">${new Date(project.created_at).toLocaleDateString()}</span>
+        //                                 </div>
+        //                                 <div class="info-item">
+        //                                     <span class="label">Deadline:</span>
+        //                                     <span class="value">${project.deadline ? new Date(project.deadline).toLocaleDateString() : 'No deadline'}</span>
+        //                                 </div>
+        //                             </div>
+        //                             <div class="progress-container">
+        //                                 <p>Progress: ${project.progress || 0}%</p>
+        //                                 <div class="progress">
+        //                                     <div class="progress-bar" style="width: ${project.progress || 0}%"></div>
+        //                                 </div>
+        //                             </div>
+        //                         </div>
+        //                     `).join('');
+        //                 }
+        //                 break;
+
+        //             case 'completed_tasks':
+        //                 const completedTasksResponse = await fetch(`${API_BASE}/admin/tasks`, {
+        //                     method: 'GET',
+        //                     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${sessionStorage.getItem('admin_session_token')}` }
+        //                 });
+        //                 if (completedTasksResponse.ok) {
+        //                     const allTasks = await completedTasksResponse.json();
+        //                     data = allTasks.filter(task => task.status === 'Completed');
+        //                     content = data.map(task => `
+        //                         <div class="deadline-item">
+        //                             <h5><i class="fas fa-check-circle text-success"></i> ${task.title}</h5>
+        //                             <p><strong>Project:</strong> ${task.project_name || 'N/A'}</p>
+        //                             <p><strong>Assigned to:</strong> ${task.assigned_to_name || 'Unassigned'}</p>
+        //                             <p><strong>Completed:</strong> ${new Date(task.created_at).toLocaleDateString()}</p>
+        //                             <span class="badge bg-success">Completed</span>
+        //                         </div>
+        //                     `).join('');
+        //                 }
+        //                 break;
+
+        //             case 'active_tasks':
+        //                 const activeTasksResponse = await fetch(`${API_BASE}/admin/tasks`, {
+        //                     method: 'GET',
+        //                     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${sessionStorage.getItem('admin_session_token')}` }
+        //                 });
+        //                 if (activeTasksResponse.ok) {
+        //                     const allTasks = await activeTasksResponse.json();
+        //                     data = allTasks.filter(task => task.status === 'In Progress');
+        //                     content = data.map(task => `
+        //                         <div class="deadline-item">
+        //                             <h5><i class="fas fa-clock text-warning"></i> ${task.title}</h5>
+        //                             <p><strong>Project:</strong> ${task.project_name || 'N/A'}</p>
+        //                             <p><strong>Assigned to:</strong> ${task.assigned_to_name || 'Unassigned'}</p>
+        //                             <p><strong>Priority:</strong> <span class="badge bg-${task.priority === 'High' ? 'danger' : task.priority === 'Medium' ? 'warning' : 'info'}">${task.priority}</span></p>
+        //                             <p><strong>Deadline:</strong> ${task.deadline ? new Date(task.deadline).toLocaleDateString() : 'No deadline'}</p>
+        //                             <span class="badge bg-warning">In Progress</span>
+        //                         </div>
+        //                     `).join('');
+        //                 }
+        //                 break;
+
+        //             case 'overdue_tasks':
+        //                 const overdueTasksResponse = await fetch(`${API_BASE}/admin/tasks`, {
+        //                     method: 'GET',
+        //                     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${sessionStorage.getItem('admin_session_token')}` }
+        //                 });
+        //                 if (overdueTasksResponse.ok) {
+        //                     const allTasks = await overdueTasksResponse.json();
+        //                     const today = new Date();
+        //                     data = allTasks.filter(task => {
+        //                         if (!task.deadline || task.status === 'Completed') return false;
+        //                         const deadline = new Date(task.deadline);
+        //                         return deadline < today;
+        //                     });
+        //                     content = data.map(task => `
+        //                         <div class="deadline-item">
+        //                             <h5><i class="fas fa-exclamation-triangle text-danger"></i> ${task.title}</h5>
+        //                             <p><strong>Project:</strong> ${task.project_name || 'N/A'}</p>
+        //                             <p><strong>Assigned to:</strong> ${task.assigned_to_name || 'Unassigned'}</p>
+        //                             <p><strong>Overdue by:</strong> ${Math.ceil((today - new Date(task.deadline)) / (1000 * 60 * 60 * 24))} days</p>
+        //                             <p><strong>Priority:</strong> <span class="badge bg-${task.priority === 'High' ? 'danger' : task.priority === 'Medium' ? 'warning' : 'info'}">${task.priority}</span></p>
+        //                             <p><strong>Document:</strong> ${task.document_id ? `<a class="btn btn-sm btn-primary" 
+        //                              href="${API_BASE}/admin/documents/${task.document_id}/download">
+        //                              <i class="fas fa-download"></i> Download
+        //                              </a>`
+        //                             : 'No document'}
+        //                             </p>
+        //                             <span class="badge bg-danger">Overdue</span>
+        //                         </div>
+        //                     `).join('');
+        //                 }
+        //                 break;
+
+        //             case 'pending_approvals':
+        //                 const pendingTasksResponse = await fetch(`${API_BASE}/admin/tasks`, {
+        //                     method: 'GET',
+        //                     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${sessionStorage.getItem('admin_session_token')}` }
+        //                 });
+        //                 if (pendingTasksResponse.ok) {
+        //                     const allTasks = await pendingTasksResponse.json();
+        //                     data = allTasks.filter(task => task.approval_status === 'pending');
+        //                     content = data.map(task => `
+        //                         <div class="deadline-item">
+        //                             <h5><i class="fas fa-clipboard-check text-info"></i> ${task.title}</h5>
+        //                             <p><strong>Project:</strong> ${task.project_name || 'N/A'}</p>
+        //                             <p><strong>Created by:</strong> ${task.created_by_name || 'N/A'}</p>
+        //                             <p><strong>Assigned to:</strong> ${task.assigned_to_name || 'Unassigned'}</p>
+        //                             <p><strong>Priority:</strong> <span class="badge bg-${task.priority === 'High' ? 'danger' : task.priority === 'Medium' ? 'warning' : 'info'}">${task.priority}</span></p>
+        //                             <span class="badge bg-info">Pending Approval</span>
+        //                         </div>
+        //                     `).join('');
+        //                 }
+        //                 break;
+        //             case 'live_updates':
+        //                 const docsResponse = await fetch(`${API_BASE}/admin/documents`, {
+        //                     method: 'GET',
+        //                     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${sessionStorage.getItem('admin_session_token')}` }
+        //                 });
+
+        //                 if (docsResponse.ok) {
+        //                     data = await docsResponse.json();
+
+        //                     content = data.map(doc => `
+        //   <div class="deadline-item">
+        //       <h5><i class="fas fa-file-alt text-primary"></i> ${doc.original_filename}</h5>
+        //       <p><strong>Project:</strong> ${doc.project_name || 'N/A'}</p>
+        //       <p><strong>Uploaded by:</strong> ${doc.uploaded_by_name}</p>
+        //       <p><strong>Uploaded at:</strong> ${new Date(doc.uploaded_at).toLocaleString()}</p>
+
+        //       <a href="${API_BASE}/admin/documents/${doc.id}/download" 
+        //          class="btn btn-sm btn-primary" target="_blank">
+        //          <i class="fas fa-download"></i> Download
+        //       </a>
+        //   </div>
+        //                 `).join('');
+        //                 }
+        //                 break;
+
+        //         }
+
+        //         if (content) {
+        //             modalBody.innerHTML = content;
+        //         } else {
+        //             modalBody.innerHTML = '<div class="text-center text-muted"><p>No data available</p></div>';
+        //         }
+
+        //     } catch (error) {
+        //         console.error('Error loading detail data:', error);
+        //         modalBody.innerHTML = '<div class="text-center text-danger"><p>Error loading data</p></div>';
+        //     }
+        // }
+        // function hideTaskModal() { document.getElementById('taskDetailModal').style.display = 'none'; }
+        // window.onclick = function (event) { document.querySelectorAll('.modal').forEach(modal => { if (event.target === modal) modal.style.display = 'none'; }); };
 
         async function loadUserTypes() {
             try {

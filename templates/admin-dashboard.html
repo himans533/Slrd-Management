@@ -1691,9 +1691,8 @@
             document.getElementById('taskDetailModal').style.display = 'none';
         }
 
-        
-        // This function is not used in the current updates, but keeping it for reference
-        async function showDetailModal(type) {
+     
+             async function showDetailModal(type) {
             const modal = document.getElementById('taskDetailModal');
             const modalTitle = document.getElementById('modalTitle');
             const modalBody = document.getElementById('modalBody');
@@ -1864,18 +1863,18 @@
                             data = await docsResponse.json();
 
                             content = data.map(doc => `
-          <div class="deadline-item">
-              <h5><i class="fas fa-file-alt text-primary"></i> ${doc.original_filename}</h5>
-              <p><strong>Project:</strong> ${doc.project_name || 'N/A'}</p>
-              <p><strong>Uploaded by:</strong> ${doc.uploaded_by_name}</p>
-              <p><strong>Uploaded at:</strong> ${new Date(doc.uploaded_at).toLocaleString()}</p>
+            <div class="deadline-item">
+                <h5><i class="fas fa-file-alt text-primary"></i> ${doc.original_filename}</h5>
+                <p><strong>Project:</strong> ${doc.project_name || 'N/A'}</p>
+                <p><strong>Uploaded by:</strong> ${doc.uploaded_by_name}</p>
+                <p><strong>Uploaded at:</strong> ${new Date(doc.uploaded_at).toLocaleString()}</p>
 
-              <a href="${API_BASE}/admin/documents/${doc.id}/download" 
-                 class="btn btn-sm btn-primary" target="_blank">
-                 <i class="fas fa-download"></i> Download
-              </a>
-          </div>
-                        `).join('');
+                <a href="${API_BASE}/admin/documents/${doc.id}/download" 
+                   class="btn btn-sm btn-primary" target="_blank">
+                   <i class="fas fa-download"></i> Download
+                </a>
+            </div>
+                  `).join('');
                         }
                         break;
 
@@ -1894,6 +1893,7 @@
         }
         function hideTaskModal() { document.getElementById('taskDetailModal').style.display = 'none'; }
         window.onclick = function (event) { document.querySelectorAll('.modal').forEach(modal => { if (event.target === modal) modal.style.display = 'none'; }); };
+
 
         async function loadUserTypes() {
             try {

@@ -1693,207 +1693,207 @@
 
         
         // This function is not used in the current updates, but keeping it for reference
-        // async function showDetailModal(type) {
-        //     const modal = document.getElementById('taskDetailModal');
-        //     const modalTitle = document.getElementById('modalTitle');
-        //     const modalBody = document.getElementById('modalBody');
-        //     const titles = {
-        //         'active_projects': 'Active Projects',
-        //         'completed_tasks': 'Completed Tasks',
-        //         'active_tasks': 'Active Tasks',
-        //         'overdue_tasks': 'Overdue Tasks',
-        //         'pending_approvals': 'Pending Approvals'
-        //     };
-        //     modalTitle.textContent = titles[type] || 'Details';
-        //     modalBody.innerHTML = '<div class="text-center"><i class="fas fa-spinner fa-spin"></i> Loading...</div>';
-        //     modal.style.display = 'block';
+        async function showDetailModal(type) {
+            const modal = document.getElementById('taskDetailModal');
+            const modalTitle = document.getElementById('modalTitle');
+            const modalBody = document.getElementById('modalBody');
+            const titles = {
+                'active_projects': 'Active Projects',
+                'completed_tasks': 'Completed Tasks',
+                'active_tasks': 'Active Tasks',
+                'overdue_tasks': 'Overdue Tasks',
+                'pending_approvals': 'Pending Approvals'
+            };
+            modalTitle.textContent = titles[type] || 'Details';
+            modalBody.innerHTML = '<div class="text-center"><i class="fas fa-spinner fa-spin"></i> Loading...</div>';
+            modal.style.display = 'block';
 
-        //     try {
-        //         let data = [];
-        //         let content = '';
+            try {
+                let data = [];
+                let content = '';
 
-        //         switch (type) {
-        //             case 'active_projects':
-        //                 const projectsResponse = await fetch(`${API_BASE}/admin/projects`, {
-        //                     method: 'GET',
-        //                     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${sessionStorage.getItem('admin_session_token')}` }
-        //                 });
-        //                 if (projectsResponse.ok) {
-        //                     data = await projectsResponse.json();
-        //                     content = data.map(project => `
-        //                         <div class="project-detail-card">
-        //                             <h4><i class="fas fa-folder"></i> ${project.title}</h4>
-        //                             <p>${project.description || 'No description'}</p>
-        //                             <div class="project-info">
-        //                                 <div class="info-item">
-        //                                     <span class="label">Creator:</span>
-        //                                     <span class="value">${project.creator_name || 'N/A'}</span>
-        //                                 </div>
-        //                                 <div class="info-item">
-        //                                     <span class="label">Status:</span>
-        //                                     <span class="value"><span class="status-badge status-active">${project.status}</span></span>
-        //                                 </div>
-        //                                 <div class="info-item">
-        //                                     <span class="label">Team:</span>
-        //                                     <span class="value">${project.team_count} members</span>
-        //                                 </div>
-        //                                 <div class="info-item">
-        //                                     <span class="label">Tasks:</span>
-        //                                     <span class="value">${project.task_count}</span>
-        //                                 </div>
-        //                                 <div class="info-item">
-        //                                     <span class="label">Created:</span>
-        //                                     <span class="value">${new Date(project.created_at).toLocaleDateString()}</span>
-        //                                 </div>
-        //                                 <div class="info-item">
-        //                                     <span class="label">Deadline:</span>
-        //                                     <span class="value">${project.deadline ? new Date(project.deadline).toLocaleDateString() : 'No deadline'}</span>
-        //                                 </div>
-        //                             </div>
-        //                             <div class="progress-container">
-        //                                 <p>Progress: ${project.progress || 0}%</p>
-        //                                 <div class="progress">
-        //                                     <div class="progress-bar" style="width: ${project.progress || 0}%"></div>
-        //                                 </div>
-        //                             </div>
-        //                         </div>
-        //                     `).join('');
-        //                 }
-        //                 break;
+                switch (type) {
+                    case 'active_projects':
+                        const projectsResponse = await fetch(`${API_BASE}/admin/projects`, {
+                            method: 'GET',
+                            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${sessionStorage.getItem('admin_session_token')}` }
+                        });
+                        if (projectsResponse.ok) {
+                            data = await projectsResponse.json();
+                            content = data.map(project => `
+                                <div class="project-detail-card">
+                                    <h4><i class="fas fa-folder"></i> ${project.title}</h4>
+                                    <p>${project.description || 'No description'}</p>
+                                    <div class="project-info">
+                                        <div class="info-item">
+                                            <span class="label">Creator:</span>
+                                            <span class="value">${project.creator_name || 'N/A'}</span>
+                                        </div>
+                                        <div class="info-item">
+                                            <span class="label">Status:</span>
+                                            <span class="value"><span class="status-badge status-active">${project.status}</span></span>
+                                        </div>
+                                        <div class="info-item">
+                                            <span class="label">Team:</span>
+                                            <span class="value">${project.team_count} members</span>
+                                        </div>
+                                        <div class="info-item">
+                                            <span class="label">Tasks:</span>
+                                            <span class="value">${project.task_count}</span>
+                                        </div>
+                                        <div class="info-item">
+                                            <span class="label">Created:</span>
+                                            <span class="value">${new Date(project.created_at).toLocaleDateString()}</span>
+                                        </div>
+                                        <div class="info-item">
+                                            <span class="label">Deadline:</span>
+                                            <span class="value">${project.deadline ? new Date(project.deadline).toLocaleDateString() : 'No deadline'}</span>
+                                        </div>
+                                    </div>
+                                    <div class="progress-container">
+                                        <p>Progress: ${project.progress || 0}%</p>
+                                        <div class="progress">
+                                            <div class="progress-bar" style="width: ${project.progress || 0}%"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            `).join('');
+                        }
+                        break;
 
-        //             case 'completed_tasks':
-        //                 const completedTasksResponse = await fetch(`${API_BASE}/admin/tasks`, {
-        //                     method: 'GET',
-        //                     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${sessionStorage.getItem('admin_session_token')}` }
-        //                 });
-        //                 if (completedTasksResponse.ok) {
-        //                     const allTasks = await completedTasksResponse.json();
-        //                     data = allTasks.filter(task => task.status === 'Completed');
-        //                     content = data.map(task => `
-        //                         <div class="deadline-item">
-        //                             <h5><i class="fas fa-check-circle text-success"></i> ${task.title}</h5>
-        //                             <p><strong>Project:</strong> ${task.project_name || 'N/A'}</p>
-        //                             <p><strong>Assigned to:</strong> ${task.assigned_to_name || 'Unassigned'}</p>
-        //                             <p><strong>Completed:</strong> ${new Date(task.created_at).toLocaleDateString()}</p>
-        //                             <span class="badge bg-success">Completed</span>
-        //                         </div>
-        //                     `).join('');
-        //                 }
-        //                 break;
+                    case 'completed_tasks':
+                        const completedTasksResponse = await fetch(`${API_BASE}/admin/tasks`, {
+                            method: 'GET',
+                            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${sessionStorage.getItem('admin_session_token')}` }
+                        });
+                        if (completedTasksResponse.ok) {
+                            const allTasks = await completedTasksResponse.json();
+                            data = allTasks.filter(task => task.status === 'Completed');
+                            content = data.map(task => `
+                                <div class="deadline-item">
+                                    <h5><i class="fas fa-check-circle text-success"></i> ${task.title}</h5>
+                                    <p><strong>Project:</strong> ${task.project_name || 'N/A'}</p>
+                                    <p><strong>Assigned to:</strong> ${task.assigned_to_name || 'Unassigned'}</p>
+                                    <p><strong>Completed:</strong> ${new Date(task.created_at).toLocaleDateString()}</p>
+                                    <span class="badge bg-success">Completed</span>
+                                </div>
+                            `).join('');
+                        }
+                        break;
 
-        //             case 'active_tasks':
-        //                 const activeTasksResponse = await fetch(`${API_BASE}/admin/tasks`, {
-        //                     method: 'GET',
-        //                     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${sessionStorage.getItem('admin_session_token')}` }
-        //                 });
-        //                 if (activeTasksResponse.ok) {
-        //                     const allTasks = await activeTasksResponse.json();
-        //                     data = allTasks.filter(task => task.status === 'In Progress');
-        //                     content = data.map(task => `
-        //                         <div class="deadline-item">
-        //                             <h5><i class="fas fa-clock text-warning"></i> ${task.title}</h5>
-        //                             <p><strong>Project:</strong> ${task.project_name || 'N/A'}</p>
-        //                             <p><strong>Assigned to:</strong> ${task.assigned_to_name || 'Unassigned'}</p>
-        //                             <p><strong>Priority:</strong> <span class="badge bg-${task.priority === 'High' ? 'danger' : task.priority === 'Medium' ? 'warning' : 'info'}">${task.priority}</span></p>
-        //                             <p><strong>Deadline:</strong> ${task.deadline ? new Date(task.deadline).toLocaleDateString() : 'No deadline'}</p>
-        //                             <span class="badge bg-warning">In Progress</span>
-        //                         </div>
-        //                     `).join('');
-        //                 }
-        //                 break;
+                    case 'active_tasks':
+                        const activeTasksResponse = await fetch(`${API_BASE}/admin/tasks`, {
+                            method: 'GET',
+                            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${sessionStorage.getItem('admin_session_token')}` }
+                        });
+                        if (activeTasksResponse.ok) {
+                            const allTasks = await activeTasksResponse.json();
+                            data = allTasks.filter(task => task.status === 'In Progress');
+                            content = data.map(task => `
+                                <div class="deadline-item">
+                                    <h5><i class="fas fa-clock text-warning"></i> ${task.title}</h5>
+                                    <p><strong>Project:</strong> ${task.project_name || 'N/A'}</p>
+                                    <p><strong>Assigned to:</strong> ${task.assigned_to_name || 'Unassigned'}</p>
+                                    <p><strong>Priority:</strong> <span class="badge bg-${task.priority === 'High' ? 'danger' : task.priority === 'Medium' ? 'warning' : 'info'}">${task.priority}</span></p>
+                                    <p><strong>Deadline:</strong> ${task.deadline ? new Date(task.deadline).toLocaleDateString() : 'No deadline'}</p>
+                                    <span class="badge bg-warning">In Progress</span>
+                                </div>
+                            `).join('');
+                        }
+                        break;
 
-        //             case 'overdue_tasks':
-        //                 const overdueTasksResponse = await fetch(`${API_BASE}/admin/tasks`, {
-        //                     method: 'GET',
-        //                     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${sessionStorage.getItem('admin_session_token')}` }
-        //                 });
-        //                 if (overdueTasksResponse.ok) {
-        //                     const allTasks = await overdueTasksResponse.json();
-        //                     const today = new Date();
-        //                     data = allTasks.filter(task => {
-        //                         if (!task.deadline || task.status === 'Completed') return false;
-        //                         const deadline = new Date(task.deadline);
-        //                         return deadline < today;
-        //                     });
-        //                     content = data.map(task => `
-        //                         <div class="deadline-item">
-        //                             <h5><i class="fas fa-exclamation-triangle text-danger"></i> ${task.title}</h5>
-        //                             <p><strong>Project:</strong> ${task.project_name || 'N/A'}</p>
-        //                             <p><strong>Assigned to:</strong> ${task.assigned_to_name || 'Unassigned'}</p>
-        //                             <p><strong>Overdue by:</strong> ${Math.ceil((today - new Date(task.deadline)) / (1000 * 60 * 60 * 24))} days</p>
-        //                             <p><strong>Priority:</strong> <span class="badge bg-${task.priority === 'High' ? 'danger' : task.priority === 'Medium' ? 'warning' : 'info'}">${task.priority}</span></p>
-        //                             <p><strong>Document:</strong> ${task.document_id ? `<a class="btn btn-sm btn-primary" 
-        //                              href="${API_BASE}/admin/documents/${task.document_id}/download">
-        //                              <i class="fas fa-download"></i> Download
-        //                              </a>`
-        //                             : 'No document'}
-        //                             </p>
-        //                             <span class="badge bg-danger">Overdue</span>
-        //                         </div>
-        //                     `).join('');
-        //                 }
-        //                 break;
+                    case 'overdue_tasks':
+                        const overdueTasksResponse = await fetch(`${API_BASE}/admin/tasks`, {
+                            method: 'GET',
+                            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${sessionStorage.getItem('admin_session_token')}` }
+                        });
+                        if (overdueTasksResponse.ok) {
+                            const allTasks = await overdueTasksResponse.json();
+                            const today = new Date();
+                            data = allTasks.filter(task => {
+                                if (!task.deadline || task.status === 'Completed') return false;
+                                const deadline = new Date(task.deadline);
+                                return deadline < today;
+                            });
+                            content = data.map(task => `
+                                <div class="deadline-item">
+                                    <h5><i class="fas fa-exclamation-triangle text-danger"></i> ${task.title}</h5>
+                                    <p><strong>Project:</strong> ${task.project_name || 'N/A'}</p>
+                                    <p><strong>Assigned to:</strong> ${task.assigned_to_name || 'Unassigned'}</p>
+                                    <p><strong>Overdue by:</strong> ${Math.ceil((today - new Date(task.deadline)) / (1000 * 60 * 60 * 24))} days</p>
+                                    <p><strong>Priority:</strong> <span class="badge bg-${task.priority === 'High' ? 'danger' : task.priority === 'Medium' ? 'warning' : 'info'}">${task.priority}</span></p>
+                                    <p><strong>Document:</strong> ${task.document_id ? `<a class="btn btn-sm btn-primary" 
+                                     href="${API_BASE}/admin/documents/${task.document_id}/download">
+                                     <i class="fas fa-download"></i> Download
+                                     </a>`
+                                    : 'No document'}
+                                    </p>
+                                    <span class="badge bg-danger">Overdue</span>
+                                </div>
+                            `).join('');
+                        }
+                        break;
 
-        //             case 'pending_approvals':
-        //                 const pendingTasksResponse = await fetch(`${API_BASE}/admin/tasks`, {
-        //                     method: 'GET',
-        //                     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${sessionStorage.getItem('admin_session_token')}` }
-        //                 });
-        //                 if (pendingTasksResponse.ok) {
-        //                     const allTasks = await pendingTasksResponse.json();
-        //                     data = allTasks.filter(task => task.approval_status === 'pending');
-        //                     content = data.map(task => `
-        //                         <div class="deadline-item">
-        //                             <h5><i class="fas fa-clipboard-check text-info"></i> ${task.title}</h5>
-        //                             <p><strong>Project:</strong> ${task.project_name || 'N/A'}</p>
-        //                             <p><strong>Created by:</strong> ${task.created_by_name || 'N/A'}</p>
-        //                             <p><strong>Assigned to:</strong> ${task.assigned_to_name || 'Unassigned'}</p>
-        //                             <p><strong>Priority:</strong> <span class="badge bg-${task.priority === 'High' ? 'danger' : task.priority === 'Medium' ? 'warning' : 'info'}">${task.priority}</span></p>
-        //                             <span class="badge bg-info">Pending Approval</span>
-        //                         </div>
-        //                     `).join('');
-        //                 }
-        //                 break;
-        //             case 'live_updates':
-        //                 const docsResponse = await fetch(`${API_BASE}/admin/documents`, {
-        //                     method: 'GET',
-        //                     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${sessionStorage.getItem('admin_session_token')}` }
-        //                 });
+                    case 'pending_approvals':
+                        const pendingTasksResponse = await fetch(`${API_BASE}/admin/tasks`, {
+                            method: 'GET',
+                            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${sessionStorage.getItem('admin_session_token')}` }
+                        });
+                        if (pendingTasksResponse.ok) {
+                            const allTasks = await pendingTasksResponse.json();
+                            data = allTasks.filter(task => task.approval_status === 'pending');
+                            content = data.map(task => `
+                                <div class="deadline-item">
+                                    <h5><i class="fas fa-clipboard-check text-info"></i> ${task.title}</h5>
+                                    <p><strong>Project:</strong> ${task.project_name || 'N/A'}</p>
+                                    <p><strong>Created by:</strong> ${task.created_by_name || 'N/A'}</p>
+                                    <p><strong>Assigned to:</strong> ${task.assigned_to_name || 'Unassigned'}</p>
+                                    <p><strong>Priority:</strong> <span class="badge bg-${task.priority === 'High' ? 'danger' : task.priority === 'Medium' ? 'warning' : 'info'}">${task.priority}</span></p>
+                                    <span class="badge bg-info">Pending Approval</span>
+                                </div>
+                            `).join('');
+                        }
+                        break;
+                    case 'live_updates':
+                        const docsResponse = await fetch(`${API_BASE}/admin/documents`, {
+                            method: 'GET',
+                            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${sessionStorage.getItem('admin_session_token')}` }
+                        });
 
-        //                 if (docsResponse.ok) {
-        //                     data = await docsResponse.json();
+                        if (docsResponse.ok) {
+                            data = await docsResponse.json();
 
-        //                     content = data.map(doc => `
-        //   <div class="deadline-item">
-        //       <h5><i class="fas fa-file-alt text-primary"></i> ${doc.original_filename}</h5>
-        //       <p><strong>Project:</strong> ${doc.project_name || 'N/A'}</p>
-        //       <p><strong>Uploaded by:</strong> ${doc.uploaded_by_name}</p>
-        //       <p><strong>Uploaded at:</strong> ${new Date(doc.uploaded_at).toLocaleString()}</p>
+                            content = data.map(doc => `
+          <div class="deadline-item">
+              <h5><i class="fas fa-file-alt text-primary"></i> ${doc.original_filename}</h5>
+              <p><strong>Project:</strong> ${doc.project_name || 'N/A'}</p>
+              <p><strong>Uploaded by:</strong> ${doc.uploaded_by_name}</p>
+              <p><strong>Uploaded at:</strong> ${new Date(doc.uploaded_at).toLocaleString()}</p>
 
-        //       <a href="${API_BASE}/admin/documents/${doc.id}/download" 
-        //          class="btn btn-sm btn-primary" target="_blank">
-        //          <i class="fas fa-download"></i> Download
-        //       </a>
-        //   </div>
-        //                 `).join('');
-        //                 }
-        //                 break;
+              <a href="${API_BASE}/admin/documents/${doc.id}/download" 
+                 class="btn btn-sm btn-primary" target="_blank">
+                 <i class="fas fa-download"></i> Download
+              </a>
+          </div>
+                        `).join('');
+                        }
+                        break;
 
-        //         }
+                }
 
-        //         if (content) {
-        //             modalBody.innerHTML = content;
-        //         } else {
-        //             modalBody.innerHTML = '<div class="text-center text-muted"><p>No data available</p></div>';
-        //         }
+                if (content) {
+                    modalBody.innerHTML = content;
+                } else {
+                    modalBody.innerHTML = '<div class="text-center text-muted"><p>No data available</p></div>';
+                }
 
-        //     } catch (error) {
-        //         console.error('Error loading detail data:', error);
-        //         modalBody.innerHTML = '<div class="text-center text-danger"><p>Error loading data</p></div>';
-        //     }
-        // }
-        // function hideTaskModal() { document.getElementById('taskDetailModal').style.display = 'none'; }
-        // window.onclick = function (event) { document.querySelectorAll('.modal').forEach(modal => { if (event.target === modal) modal.style.display = 'none'; }); };
+            } catch (error) {
+                console.error('Error loading detail data:', error);
+                modalBody.innerHTML = '<div class="text-center text-danger"><p>Error loading data</p></div>';
+            }
+        }
+        function hideTaskModal() { document.getElementById('taskDetailModal').style.display = 'none'; }
+        window.onclick = function (event) { document.querySelectorAll('.modal').forEach(modal => { if (event.target === modal) modal.style.display = 'none'; }); };
 
         async function loadUserTypes() {
             try {

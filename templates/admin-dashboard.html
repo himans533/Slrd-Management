@@ -3419,9 +3419,9 @@
                 // fetchProjectDetails(type, body); // Example
             }
         }
-
-        function closeDetailModal() {
-            document.getElementById('detailModal').style.display = 'none';
+          function closeDetailModal() {
+            const modal = document.getElementById('detailModal');
+            if (modal) modal.style.display = 'none';
         }
 
         function performAdminSearch(event) {

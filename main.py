@@ -373,8 +373,13 @@ def index():
 
 @app.route("/login")
 def login_page():
-    return render_template("login.html"),
-    recaptcha_site_key=RECAPTCHA_SITE_KEY
+    return render_template("login.html")
+
+
+@app.route("/api/config/recaptcha", methods=["GET"])
+def get_recaptcha_config():
+    """Return reCAPTCHA site key for frontend initialization"""
+    return jsonify({"site_key": RECAPTCHA_SITE_KEY}), 200
 
 
 @app.route("/admin-dashboard")

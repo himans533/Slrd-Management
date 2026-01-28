@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Admin Panel - Login</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <script src="https://www.google.com/recaptcha/api.js" async defer></script>
     <style>
         :root {
             --primary: #667eea;
@@ -535,16 +536,11 @@
                     </div>
 
                     <div class="form-group">
-                        <label for="adminConfirmPassword">Confirm Password *</label>
-                        <input type="password" id="adminConfirmPassword" placeholder="Confirm your password" required />
-                    </div>
-
-                    <div class="form-group">
                         <label for="adminPin">Admin PIN</label>
-
                         <input type="password" id="adminPin" placeholder="Enter 6-digit PIN" maxlength="6" required>
-
                     </div>
+
+                    <div class="g-recaptcha" data-sitekey="YOUR_RECAPTCHA_SITE_KEY" style="margin-bottom: 20px;"></div>
 
                     <div class="form-actions">
                         <button type="submit" class="btn-primary">
@@ -625,6 +621,8 @@
                     <label for="employeePassword">Password *</label>
                     <input type="password" id="employeePassword" placeholder="Enter your password" required />
                 </div>
+
+                <div class="g-recaptcha" data-sitekey="YOUR_RECAPTCHA_SITE_KEY" style="margin-bottom: 20px;"></div>
 
                 <div class="form-actions">
                     <button type="submit" class="btn-primary">Login</button>
@@ -734,14 +732,11 @@
                 .value.trim()
                 .toLowerCase();
             const password = document.getElementById("adminPassword").value;
-            const confirmPassword = document.getElementById(
-                "adminConfirmPassword",
-            ).value;
             const adminPin = document
                 .getElementById("adminPin")
                 .value.trim();
 
-            if (!email || !password || !confirmPassword || !adminPin) {
+            if (!email || !password || !adminPin) {
                 showAlert(
                     "adminStep1Alert",
                     "All fields are required.",
@@ -755,6 +750,15 @@
                     .getElementById("adminStep1Loading")
                     .classList.add("show");
 
+                // Get reCAPTCHA token
+                const recaptchaToken = await new Promise((resolve) => {
+                    grecaptcha.ready(() => {
+                        grecaptcha.execute('YOUR_RECAPTCHA_SITE_KEY', { action: 'admin_login' }).then(token => {
+                            resolve(token);
+                        });
+                    });
+                });
+
                 const response = await fetch(
                     `${API_BASE}/admin/login/step1`,
                     {
@@ -763,8 +767,8 @@
                         body: JSON.stringify({
                             email,
                             password,
-                            confirm_password: confirmPassword,
                             admin_pin: adminPin,
+                            recaptcha_token: recaptchaToken,
                         }),
                     },
                 );
@@ -917,10 +921,19 @@
                     .getElementById("employeeLoading")
                     .classList.add("show");
 
+                // Get reCAPTCHA token for employee login
+                const recaptchaToken = await new Promise((resolve) => {
+                    grecaptcha.ready(() => {
+                        grecaptcha.execute('YOUR_RECAPTCHA_SITE_KEY', { action: 'employee_login' }).then(token => {
+                            resolve(token);
+                        });
+                    });
+                });
+
                 const response = await fetch(`${API_BASE}/user/login`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ email, password }),
+                    body: JSON.stringify({ email, password, recaptcha_token: recaptchaToken }),
                 });
 
                 const data = await response.json();

@@ -30,6 +30,8 @@ ADMIN_EMAIL = os.environ.get('ADMIN_EMAIL', 'abhijeet@yeseartheco.com').lower()
 ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', 'Abhijeet@#46')
 ADMIN_PIN = os.environ.get('ADMIN_PIN', '468101')
 ADMIN_OTP = os.environ.get('ADMIN_OTP', '654321')
+RECAPTCHA_SITE_KEY = os.getenv("RECAPTCHA_SITE_KEY")
+RECAPTCHA_SECRET_KEY = os.getenv("RECAPTCHA_SECRET_KEY")
 
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
 MAX_CONTENT_LENGTH = 10 * 1024 * 1024  # 10MB max

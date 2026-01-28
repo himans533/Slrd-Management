@@ -7,7 +7,6 @@
     <title>Admin Panel - Login</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
     <script src="https://www.google.com/recaptcha/api.js" async defer></script>
-    <script src="https://www.google.com/recaptcha/api.js?render={{ recaptcha_site_key }}"></script>
 
     <style>
         :root {
@@ -624,7 +623,7 @@
                     <input type="password" id="employeePassword" placeholder="Enter your password" required />
                 </div>
 
-                <div class="g-recaptcha" data-sitekey="YOUR_RECAPTCHA_SITE_KEY" style="margin-bottom: 20px;"></div>
+                    <div id="adminRecaptcha" class="g-recaptcha" style="margin-bottom: 20px;"></div>
 
                 <div class="form-actions">
                     <button type="submit" class="btn-primary">Login</button>
@@ -641,6 +640,19 @@
         const API_BASE = window.location.origin + "/api";
         let adminId = null;
         let adminResendTimer = 0;
+        let RECAPTCHA_SITE_KEY = null;
+
+        // Load reCAPTCHA configuration from backend
+        async function loadRecaptchaConfig() {
+            try {
+                const response = await fetch(`${API_BASE}/config/recaptcha`);
+                const data = await response.json();
+                RECAPTCHA_SITE_KEY = data.site_key;
+                console.log('[v0] reCAPTCHA site key loaded successfully');
+            } catch (error) {
+                console.error('[v0] Failed to load reCAPTCHA configuration:', error);
+            }
+        }
 
         // Theme toggle functionality
         function toggleTheme() {
@@ -663,6 +675,24 @@
                 document.body.classList.add('dark-mode');
             }
             updateThemeIcon();
+            
+            // Load reCAPTCHA configuration
+            loadRecaptchaConfig().then(() => {
+                // Render reCAPTCHA widgets after config is loaded
+                if (RECAPTCHA_SITE_KEY) {
+                    grecaptcha.render('adminRecaptcha', {
+                        'sitekey': RECAPTCHA_SITE_KEY,
+                        'theme': document.body.classList.contains('dark-mode') ? 'dark' : 'light'
+                    });
+                    grecaptcha.render('employeeRecaptcha', {
+                        'sitekey': RECAPTCHA_SITE_KEY,
+                        'theme': document.body.classList.contains('dark-mode') ? 'dark' : 'light'
+                    });
+                    console.log('[v0] reCAPTCHA widgets rendered successfully');
+                } else {
+                    console.error('[v0] reCAPTCHA site key not loaded');
+                }
+            });
         });
 
         function switchTab(tab) {
@@ -755,7 +785,7 @@
                 // Get reCAPTCHA token
                 const recaptchaToken = await new Promise((resolve) => {
                     grecaptcha.ready(() => {
-                        grecaptcha.execute('YOUR_RECAPTCHA_SITE_KEY', { action: 'admin_login' }).then(token => {
+                        grecaptcha.execute(RECAPTCHA_SITE_KEY, { action: 'admin_login' }).then(token => {
                             resolve(token);
                         });
                     });
@@ -926,7 +956,7 @@
                 // Get reCAPTCHA token for employee login
                 const recaptchaToken = await new Promise((resolve) => {
                     grecaptcha.ready(() => {
-                        grecaptcha.execute('YOUR_RECAPTCHA_SITE_KEY', { action: 'employee_login' }).then(token => {
+                        grecaptcha.execute(RECAPTCHA_SITE_KEY, { action: 'employee_login' }).then(token => {
                             resolve(token);
                         });
                     });

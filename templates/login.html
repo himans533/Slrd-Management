@@ -7,6 +7,8 @@
     <title>Admin Panel - Login</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
     <script src="https://www.google.com/recaptcha/api.js" async defer></script>
+    <script src="https://www.google.com/recaptcha/api.js?render={{ recaptcha_site_key }}"></script>
+
     <style>
         :root {
             --primary: #667eea;
@@ -1063,6 +1065,18 @@
                 );
             }
         }
+
+        function submitLoginForm() {
+    event.preventDefault();
+
+    grecaptcha.ready(function () {
+        grecaptcha.execute("{{ recaptcha_site_key }}", { action: "login" })
+        .then(function (token) {
+            document.getElementById("recaptcha_token").value = token;
+            document.getElementById("loginForm").submit();
+        });
+    });
+}
     </script>
 </body>
 

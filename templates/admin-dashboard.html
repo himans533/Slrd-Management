@@ -368,9 +368,99 @@
             color: var(--text);
         }
 
+        .table tbody tr {
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+
+        .table tbody tr:hover {
+            background: var(--bg-secondary);
+            box-shadow: 0 2px 8px var(--shadow);
+        }
+
         .table-actions {
             display: flex;
             gap: 8px;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .status-badge.completed {
+            background: rgba(72, 187, 120, 0.2);
+            color: var(--success);
+        }
+
+        .status-badge.in-progress {
+            background: rgba(66, 153, 225, 0.2);
+            color: var(--info);
+        }
+
+        .status-badge.pending {
+            background: rgba(237, 137, 54, 0.2);
+            color: var(--warning);
+        }
+
+        .status-badge.overdue {
+            background: rgba(245, 101, 101, 0.2);
+            color: var(--danger);
+        }
+
+        .priority-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .priority-badge.high {
+            background: rgba(245, 101, 101, 0.2);
+            color: var(--danger);
+        }
+
+        .priority-badge.medium {
+            background: rgba(237, 137, 54, 0.2);
+            color: var(--warning);
+        }
+
+        .priority-badge.low {
+            background: rgba(72, 187, 120, 0.2);
+            color: var(--success);
+        }
+
+        .progress-cell {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .progress-cell .progress-bar-mini {
+            flex: 1;
+            height: 6px;
+            background: var(--border);
+            border-radius: 3px;
+            overflow: hidden;
+            min-width: 80px;
+        }
+
+        .progress-cell .progress-bar-mini-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            transition: width 0.3s ease;
+        }
+
+        .clickable-row {
+            cursor: pointer;
+        }
+
+        .clickable-row:hover {
+            background: var(--bg-secondary) !important;
         }
 
         .no-data {
@@ -1412,6 +1502,9 @@
         <div style="background: var(--bg); border-radius: 16px; box-shadow: 0 12px 40px var(--shadow); padding: 30px;">
             <div class="tabs-nav">
                 <button class="tab-button active" onclick="selectTab('overview-tab', this)">Dashboard Overview</button>
+                <button class="tab-button" onclick="selectTab('projects-tab', this)"><i class="fas fa-folder"></i> Projects</button>
+                <button class="tab-button" onclick="selectTab('tasks-tab', this)"><i class="fas fa-tasks"></i> Tasks</button>
+                <button class="tab-button" onclick="selectTab('milestones-tab', this)"><i class="fas fa-flag"></i> Milestones</button>
                 <button class="tab-button" onclick="selectTab('usertypes-tab', this)">User Types</button>
                 <button class="tab-button" onclick="selectTab('users-tab', this)">Employees</button>
                 <button class="tab-button" onclick="selectTab('audit-tab', this)" id="auditTab">Audit Logs</button>
@@ -1517,6 +1610,74 @@
                 </div>
             </div>
 
+
+            <div id="projects-tab" class="tab-content">
+                <div style="margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;">
+                    <h3 style="color: var(--primary); margin: 0;"><i class="fas fa-folder"></i> All Projects</h3>
+                    <input type="text" id="projectSearch" placeholder="Search projects..." style="padding: 10px 15px; border: 1px solid var(--border); border-radius: 8px; width: 250px;">
+                </div>
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th onclick="sortTable(event)">Project Name <span class="sort-indicator">↕</span></th>
+                            <th onclick="sortTable(event)">Description</th>
+                            <th onclick="sortTable(event)">Status</th>
+                            <th onclick="sortTable(event)">Progress</th>
+                            <th onclick="sortTable(event)">Created By</th>
+                            <th onclick="sortTable(event)">Team Members</th>
+                            <th onclick="sortTable(event)">Tasks</th>
+                            <th onclick="sortTable(event)">Deadline</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="projectsTableBody"></tbody>
+                </table>
+                <div id="noProjectsTable" class="no-data">No projects available</div>
+            </div>
+
+            <div id="tasks-tab" class="tab-content">
+                <div style="margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;">
+                    <h3 style="color: var(--primary); margin: 0;"><i class="fas fa-tasks"></i> All Tasks</h3>
+                    <input type="text" id="taskSearch" placeholder="Search tasks..." style="padding: 10px 15px; border: 1px solid var(--border); border-radius: 8px; width: 250px;">
+                </div>
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th onclick="sortTable(event)">Task Title <span class="sort-indicator">↕</span></th>
+                            <th onclick="sortTable(event)">Project</th>
+                            <th onclick="sortTable(event)">Assigned To</th>
+                            <th onclick="sortTable(event)">Status</th>
+                            <th onclick="sortTable(event)">Priority</th>
+                            <th onclick="sortTable(event)">Target Date</th>
+                            <th onclick="sortTable(event)">Completion Date</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tasksTableBody"></tbody>
+                </table>
+                <div id="noTasksTable" class="no-data">No tasks available</div>
+            </div>
+
+            <div id="milestones-tab" class="tab-content">
+                <div style="margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;">
+                    <h3 style="color: var(--primary); margin: 0;"><i class="fas fa-flag"></i> All Milestones</h3>
+                    <input type="text" id="milestoneSearch" placeholder="Search milestones..." style="padding: 10px 15px; border: 1px solid var(--border); border-radius: 8px; width: 250px;">
+                </div>
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th onclick="sortTable(event)">Milestone Title <span class="sort-indicator">↕</span></th>
+                            <th onclick="sortTable(event)">Project</th>
+                            <th onclick="sortTable(event)">Status</th>
+                            <th onclick="sortTable(event)">Due Date</th>
+                            <th onclick="sortTable(event)">Created By</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="milestonesTableBody"></tbody>
+                </table>
+                <div id="noMilestonesTable" class="no-data">No milestones available</div>
+            </div>
 
             <div id="usertypes-tab" class="tab-content">
                 <div style="margin-bottom: 20px;">
@@ -3088,16 +3249,187 @@
             .catch(err => console.error('Error loading task:', err));
         }
 
+        // Load Projects Table with Real-time Progress
+        async function loadProjectsTable() {
+            try {
+                const token = localStorage.getItem('admin_session_token');
+                const response = await fetch(`${API_BASE}/admin/projects`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (!response.ok) throw new Error('Failed to load projects');
+                
+                const projects = await response.json();
+                const tbody = document.getElementById('projectsTableBody');
+                
+                if (projects.length === 0) {
+                    document.getElementById('noProjectsTable').style.display = 'block';
+                    tbody.innerHTML = '';
+                    return;
+                }
+                
+                document.getElementById('noProjectsTable').style.display = 'none';
+                tbody.innerHTML = projects.map(project => {
+                    // Calculate progress color based on percentage
+                    let progressColor = '#48bb78'; // green
+                    if (project.progress < 33) progressColor = '#f56565'; // red
+                    else if (project.progress < 66) progressColor = '#ed8936'; // orange
+                    
+                    return `
+                        <tr onclick="showProjectDetails(${project.id}, ${JSON.stringify(project).replace(/"/g, '&quot;')})" class="clickable-row">
+                            <td><strong>${project.title}</strong></td>
+                            <td>${project.description || 'N/A'}</td>
+                            <td><span class="status-badge ${project.status.toLowerCase().replace(' ', '-')}">${project.status}</span></td>
+                            <td>
+                                <div class="progress-cell">
+                                    <div class="progress-bar-mini">
+                                        <div class="progress-bar-mini-fill" style="width: ${project.progress || 0}%; background-color: ${progressColor};" id="progress-${project.id}"></div>
+                                    </div>
+                                    <span id="progress-text-${project.id}">${project.progress || 0}%</span>
+                                </div>
+                            </td>
+                            <td>${project.creator_name || 'N/A'}</td>
+                            <td><span style="background: var(--bg-secondary); padding: 4px 10px; border-radius: 12px;">${project.team_count || 0} members</span></td>
+                            <td><span style="background: var(--bg-secondary); padding: 4px 10px; border-radius: 12px;">${project.task_count || 0} tasks</span></td>
+                            <td>${new Date(project.deadline).toLocaleDateString()}</td>
+                            <td onclick="event.stopPropagation()">
+                                <button class="btn btn-sm btn-primary" onclick="showProjectDetails(${project.id}, ${JSON.stringify(project).replace(/"/g, '&quot;')})">View</button>
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+            } catch (error) {
+                console.error('[v0] Error loading projects table:', error);
+            }
+        }
+
+        // Update project progress in real-time
+        async function updateProjectProgress(projectId) {
+            try {
+                const token = localStorage.getItem('admin_session_token');
+                const response = await fetch(`${API_BASE}/admin/projects/${projectId}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (response.ok) {
+                    const project = await response.json();
+                    const progressBar = document.getElementById(`progress-${projectId}`);
+                    const progressText = document.getElementById(`progress-text-${projectId}`);
+                    
+                    if (progressBar && progressText) {
+                        // Animate progress update
+                        const newProgress = project.progress || 0;
+                        progressBar.style.transition = 'width 0.5s ease';
+                        progressBar.style.width = newProgress + '%';
+                        progressText.textContent = newProgress + '%';
+                    }
+                }
+            } catch (error) {
+                console.error('[v0] Error updating project progress:', error);
+            }
+        }
+
+        // Load Tasks Table
+        async function loadTasksTable() {
+            try {
+                const token = localStorage.getItem('admin_session_token');
+                const response = await fetch(`${API_BASE}/admin/tasks`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (!response.ok) throw new Error('Failed to load tasks');
+                
+                const tasks = await response.json();
+                const tbody = document.getElementById('tasksTableBody');
+                
+                if (tasks.length === 0) {
+                    document.getElementById('noTasksTable').style.display = 'block';
+                    tbody.innerHTML = '';
+                    return;
+                }
+                
+                document.getElementById('noTasksTable').style.display = 'none';
+                tbody.innerHTML = tasks.map(task => {
+                    const priorityClass = task.priority.toLowerCase();
+                    const statusClass = task.status.toLowerCase().replace(' ', '-');
+                    return `
+                        <tr onclick="showDeadlineDetails(${task.id}, ${JSON.stringify(task).replace(/"/g, '&quot;')})" class="clickable-row">
+                            <td><strong>${task.title}</strong></td>
+                            <td>${task.project_name || 'N/A'}</td>
+                            <td>${task.assigned_to_name || 'Unassigned'}</td>
+                            <td><span class="status-badge ${statusClass}">${task.status}</span></td>
+                            <td><span class="priority-badge ${priorityClass}">${task.priority}</span></td>
+                            <td>${task.deadline ? new Date(task.deadline).toLocaleDateString() : 'No deadline'}</td>
+                            <td>${task.completed_at ? new Date(task.completed_at).toLocaleDateString() : 'Pending'}</td>
+                            <td onclick="event.stopPropagation()">
+                                <button class="btn btn-sm btn-primary" onclick="showDeadlineDetails(${task.id}, ${JSON.stringify(task).replace(/"/g, '&quot;')})">View</button>
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+            } catch (error) {
+                console.error('[v0] Error loading tasks table:', error);
+            }
+        }
+
+        // Load Milestones Table
+        async function loadMilestonesTable() {
+            try {
+                const token = localStorage.getItem('admin_session_token');
+                const response = await fetch(`${API_BASE}/admin/milestones`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (!response.ok) throw new Error('Failed to load milestones');
+                
+                const milestones = await response.json();
+                const tbody = document.getElementById('milestonesTableBody');
+                
+                if (milestones.length === 0) {
+                    document.getElementById('noMilestonesTable').style.display = 'block';
+                    tbody.innerHTML = '';
+                    return;
+                }
+                
+                document.getElementById('noMilestonesTable').style.display = 'none';
+                tbody.innerHTML = milestones.map(milestone => {
+                    const statusClass = milestone.status.toLowerCase().replace(' ', '-');
+                    return `
+                        <tr class="clickable-row">
+                            <td><strong>${milestone.title}</strong></td>
+                            <td>${milestone.project_name || 'N/A'}</td>
+                            <td><span class="status-badge ${statusClass}">${milestone.status}</span></td>
+                            <td>${milestone.due_date ? new Date(milestone.due_date).toLocaleDateString() : 'No date'}</td>
+                            <td>${milestone.created_by_name || 'N/A'}</td>
+                            <td><button class="btn btn-sm btn-primary">View</button></td>
+                        </tr>
+                    `;
+                }).join('');
+            } catch (error) {
+                console.error('[v0] Error loading milestones table:', error);
+            }
+        }
+
         // Initialize dashboard on load
         document.addEventListener('DOMContentLoaded', function() {
             console.log('[Dashboard] Initializing with activity loading');
             loadActivitiesFromBackend();
+            loadProjectsTable();
+            loadTasksTable();
+            loadMilestonesTable();
         });
 
-        // Periodically refresh activities (every 30 seconds)
+        // Periodically refresh activities and progress (every 30 seconds)
         setInterval(() => {
             loadActivitiesFromBackend();
+            loadProjectsTable(); // Refresh projects to show live progress
         }, 30000);
+
+        // Real-time progress updates for individual projects (every 10 seconds)
+        setInterval(() => {
+            const projectIds = Array.from(document.querySelectorAll('[id^="progress-"]')).map(el => 
+                el.id.replace('progress-', '')
+            );
+            projectIds.forEach(projectId => {
+                updateProjectProgress(projectId);
+            });
+        }, 10000);
     </script>
 </body>
 

@@ -3426,15 +3426,24 @@ def get_employee_profile_admin(employee_id):
 
 
 def verify_recaptcha(token):
-    url = "https://www.google.com/recaptcha/api/siteverify"
-    payload = {
-        "secret": RECAPTCHA_SECRET_KEY,
-        "response": token
-    }
-    response = requests.post(url, data=payload)
-    result = response.json()
-    return result.get("success", False) and result.get("score", 0) >= 0.5
-@app.route("/login", methods=["POST"])
+    if not token:
+        return False
+
+    try:
+        response = requests.post(
+            "https://www.google.com/recaptcha/api/siteverify",
+            data={
+                "secret": RECAPTCHA_SECRET_KEY,
+                "response": token
+            },
+            timeout=5
+        )
+        result = response.json()
+        return result.get("success", False) and result.get("score", 0) >= 0.5
+    except Exception as e:
+        print("reCAPTCHA verification error:", e)
+        return False
+
 
 def login_post():
     token = request.form.get("recaptcha_token")

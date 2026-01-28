@@ -15,6 +15,7 @@ import psycopg2
 from psycopg2.extras import RealDictCursor
 from urllib.parse import urlparse
 from psycopg2 import errors, sql
+import requests
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -3422,6 +3423,28 @@ def get_employee_profile_admin(employee_id):
         return jsonify(profile), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+def verify_recaptcha(token):
+    url = "https://www.google.com/recaptcha/api/siteverify"
+    payload = {
+        "secret": RECAPTCHA_SECRET_KEY,
+        "response": token
+    }
+    response = requests.post(url, data=payload)
+    result = response.json()
+    return result.get("success", False) and result.get("score", 0) >= 0.5
+@app.route("/login", methods=["POST"])
+
+def login_post():
+    token = request.form.get("recaptcha_token")
+
+    if not token or not verify_recaptcha(token):
+        flash("reCAPTCHA verification failed", "danger")
+        return redirect(url_for("login"))
+
+    # ✅ If passed → continue normal login
+    # check user, password, session, etc.
 
 
 if __name__ == "__main__":

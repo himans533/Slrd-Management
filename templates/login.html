@@ -1020,6 +1020,7 @@
                 }
             }, 1000);
         }
+        
 
         async function resendAdminOtp() {
             const email = document
@@ -1066,17 +1067,16 @@
             }
         }
 
-        function submitLoginForm() {
-    event.preventDefault();
-
+        function recaptchaToken(action, callback) {
     grecaptcha.ready(function () {
-        grecaptcha.execute("{{ recaptcha_site_key }}", { action: "login" })
+        grecaptcha.execute("{{ recaptcha_site_key }}", { action: action })
         .then(function (token) {
-            document.getElementById("recaptcha_token").value = token;
-            document.getElementById("loginForm").submit();
+            callback(token);
         });
     });
 }
+
+     
     </script>
 </body>
 

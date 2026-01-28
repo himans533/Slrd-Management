@@ -3431,7 +3431,7 @@ def get_employee_profile_admin(employee_id):
 
 
 def verify_recaptcha(token):
-    if not token:
+    if not token or not RECAPTCHA_SECRET_KEY:
         return False
 
     try:
@@ -3444,10 +3444,11 @@ def verify_recaptcha(token):
             timeout=5
         )
         result = response.json()
-        return result.get("success", False) and result.get("score", 0) >= 0.5
+        return result.get("success") and result.get("score", 0) >= 0.5
     except Exception as e:
-        print("reCAPTCHA verification error:", e)
+        print("reCAPTCHA error:", e)
         return False
+
 
 
 def login_post():

@@ -4,16 +4,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Dashboard - SLRD System (Complete Upgrade)</title>
+    <title>Admin Dashboard - SLRD System</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css">
     <style>
-        /* ============================================
-           PHASE 1-3: SECURITY + RBAC + UI DESIGN SYSTEM
-           ============================================ */
+ 
 
         :root {
-            /* Professional Color Palette */
+           
             --primary: #667eea;
             --secondary: #764ba2;
             --bg: #ffffff;
@@ -30,6 +28,12 @@
         }
 
         .dark-mode {
+            --primary: #667eea;
+            --secondary: #764ba2;
+            
+        }
+
+        body.dark-mode {
             --bg: #1a202c;
             --bg-secondary: #2d3748;
             --text: #f7fafc;
@@ -883,14 +887,10 @@
             </div>
         </div>
 
-        <!-- Enhanced notification system for Phase 1-4 features -->
         <div id="successMessage" class="notification success"></div>
         <div id="errorMessage" class="notification error"></div>
         <div id="infoMessage" class="notification info"></div>
-        <div id="warningMessage" class="notification warning"></div>
 
-
-        <!-- Permission denied message for RBAC -->
         <div id="permissionDenied" class="permission-denied" style="display: none;">
             <i class="fas fa-lock"></i> You don't have permission to perform this action.
         </div>
@@ -899,14 +899,14 @@
             <div class="action-card">
                 <h3><i class="fas fa-chart-line"></i> Dashboard Overview</h3>
                 <p>View project statistics and task analytics</p>
-                <button class="btn btn-primary" onclick="selectTab('overview-tab')">View Dashboard</button>
+                <button class="btn btn-primary" onclick="selectTab('overview-tab', this)">View Dashboard</button>
             </div>
-            <div class="action-card" id="manageUserTypesCard">
+            <div class="action-card">
                 <h3><i class="fas fa-users-cog"></i> Manage User Types</h3>
                 <p>Create and manage employee roles</p>
-                <button class="btn btn-primary" onclick="selectTab('usertypes-tab')">Manage Types</button>
+                <button class="btn btn-primary" onclick="selectTab('usertypes-tab', this)">Manage Types</button>
             </div>
-            <div class="action-card" id="createEmployeeCard">
+            <div class="action-card">
                 <h3><i class="fas fa-user-plus"></i> Create Employee</h3>
                 <p>Add new employees to the system</p>
                 <button class="btn btn-primary" onclick="openUserModal()">Create Employee</button>
@@ -914,176 +914,165 @@
             <div class="action-card">
                 <h3><i class="fas fa-list-check"></i> View Employees</h3>
                 <p>Manage all system employees</p>
-                <button class="btn btn-primary" onclick="selectTab('users-tab')">View Employees</button>
+                <button class="btn btn-primary" onclick="selectTab('users-tab', this)">View Employees</button>
             </div>
-            <!-- Add audit logs card for Phase 2 RBAC -->
             <div class="action-card" id="auditLogsCard">
                 <h3><i class="fas fa-history"></i> Audit Logs</h3>
                 <p>View system activity and changes</p>
-                <button class="btn btn-primary" onclick="selectTab('audit-tab')">View Logs</button>
+                <button class="btn btn-primary" onclick="selectTab('audit-tab', this)">View Logs</button>
             </div>
         </div>
 
         <div style="background: var(--bg); border-radius: 16px; box-shadow: 0 12px 40px var(--shadow); padding: 30px;">
             <div class="tabs-nav">
-                <button class="tab-button active" onclick="selectTab('overview-tab')">Dashboard Overview</button>
-                <button class="tab-button" onclick="selectTab('usertypes-tab')" id="userTypesTab">User Types</button>
-                <button class="tab-button" onclick="selectTab('users-tab')">Employees</button>
-                <!-- Add audit logs tab for Phase 2 -->
-                <button class="tab-button" onclick="selectTab('audit-tab')" id="auditTab">Audit Logs</button>
-                <!-- Add activities tab for Phase 1 -->
-                <button class="tab-button" onclick="selectTab('activities-tab')">All Activities</button>
+                <button class="tab-button active" onclick="selectTab('overview-tab', this)">Dashboard Overview</button>
+                <button class="tab-button" onclick="selectTab('usertypes-tab', this)">User Types</button>
+                <button class="tab-button" onclick="selectTab('users-tab', this)">Employees</button>
+                <button class="tab-button" onclick="selectTab('audit-tab', this)" id="auditTab">Audit Logs</button>
             </div>
 
             <div id="overview-tab" class="tab-content active">
                 <div class="dashboard-stats">
-                    <div class="stat-card primary">
+                    <div class="stat-card primary" onclick="showDetailModal('active_projects')">
                         <div style="text-align: center; font-size: 24px; color: #667eea;"><i class="fas fa-folder"></i>
                         </div>
-                        <h3 id="projects-count">0</h3>
+                        <h3 id="activeProjectsCount">0</h3>
                         <p>Active Projects</p>
                     </div>
-                    <div class="stat-card success">
+                    <div class="stat-card success" onclick="showDetailModal('completed_tasks')">
                         <div style="text-align: center; font-size: 24px; color: #28a745;"><i
                                 class="fas fa-check-circle"></i></div>
-                        <h3 id="tasks-count">0</h3>
+                        <h3 id="completedTasksCount">0</h3>
                         <p>Completed Tasks</p>
                     </div>
-                    <div class="stat-card warning">
+                    <div class="stat-card warning" onclick="showDetailModal('active_tasks')">
                         <div style="text-align: center; font-size: 24px; color: #ffc107;"><i class="fas fa-clock"></i>
                         </div>
-                        <h3 id="active-tasks-count">0</h3>
+                        <h3 id="activeTasksCount">0</h3>
                         <p>Active Tasks</p>
                     </div>
-                    <div class="stat-card danger">
+                    <div class="stat-card danger" onclick="showDetailModal('overdue_tasks')">
                         <div style="text-align: center; font-size: 24px; color: #dc3545;"><i
                                 class="fas fa-exclamation-triangle"></i></div>
-                        <h3 id="overdue-tasks-count">0</h3>
+                        <h3 id="overdueTasksCount">0</h3>
                         <p>Overdue Tasks</p>
                     </div>
-                    <div class="stat-card info">
+                    <div class="stat-card info" onclick="showDetailModal('pending_approvals')">
                         <div style="text-align: center; font-size: 24px; color: #17a2b8;"><i
                                 class="fas fa-clipboard-check"></i></div>
-                        <h3 id="pending-approvals-count">0</h3>
+                        <h3 id="pendingApprovalsCount">0</h3>
                         <p>Pending Approvals</p>
-                    </div>
-                    <!-- Add employees count stat -->
-                    <div class="stat-card secondary">
-                        <div style="text-align: center; font-size: 24px; color: #6c757d;"><i class="fas fa-users"></i>
-                        </div>
-                        <h3 id="employees-count">0</h3>
-                        <p>Employees</p>
                     </div>
                 </div>
 
                 <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 20px; margin-top: 25px;">
                     <div
                         style="background: var(--bg); padding: 25px; border-radius: 12px; box-shadow: 0 4px 12px var(--shadow);">
-                        <h3 style="color: var(--primary); margin-bottom: 20px;"><i class="fas fa-list-alt"></i> Recent Activities</h3>
-                        <ul id="recent-actions-list" style="list-style: none; padding: 0; margin: 0;">
-                            <!-- Recent actions will be loaded here -->
-                        </ul>
+                        <h3 style="color: var(--primary); margin-bottom: 20px;"><i class="fas fa-folder"></i> Recent
+                            Projects</h3>
+                        <div class="projects-list" id="projectsList">
+                            <div class="project-item" onclick='showProjectDetails(2, {"created_at":"Wed, 07 Jan 2026 11:17:12 GMT","created_by_id":4,"creator_name":"Akansha","deadline":"Sat, 10 Jan 2026 00:00:00 GMT","description":"project","id":2,"progress":70,"status":"In Progress","task_count":1,"team_count":2,"title":"project01"})'>
+                                <h4>project01</h4>
+                                <p>project - 70% Complete</p>
+                                <div class="progress">
+                                    <div class="progress-bar" style="width: 70%"></div>
+                                </div>
+                                <p style="font-size: 12px; color: #718096;">
+                                    Created by: Akansha | Team: 2 members | Tasks: 1
+                                </p>
+                            </div>
+
+                            <div class="project-item" onclick='showProjectDetails(1, {"created_at":"Sun, 04 Jan 2026 12:58:27 GMT","created_by_id":4,"creator_name":"Akansha","deadline":"Tue, 06 Jan 2026 00:00:00 GMT","description":"abcd","id":1,"progress":0,"status":"In Progress","task_count":1,"team_count":2,"title":"abc"})'>
+                                <h4>abc</h4>
+                                <p>abcd - 0% Complete</p>
+                                <div class="progress">
+                                    <div class="progress-bar" style="width: 0%"></div>
+                                </div>
+                                <p style="font-size: 12px; color: #718096;">
+                                    Created by: Akansha | Team: 2 members | Tasks: 1
+                                </p>
+                            </div>
+                        </div>
+                        <div id="noProjects" class="no-data">No projects available yet</div>
                     </div>
 
                     <div
                         style="background: var(--bg); padding: 25px; border-radius: 12px; box-shadow: 0 4px 12px var(--shadow);">
-                        <h3 style="color: var(--primary); margin-bottom: 20px;"><i class="fas fa-calendar"></i> Upcoming Deadlines</h3>
-                        <div class="deadlines-list" id="deadlinesList"></div>
+                        <h3 style="color: var(--primary); margin-bottom: 20px;"><i class="fas fa-calendar"></i> Upcoming
+                            Deadlines</h3>
+                        <div class="deadlines-list" id="deadlinesList">
+                            <div class="deadline-item" onclick='showDeadlineDetails(2, {"approval_status":"pending","assigned_to_id":6,"assigned_to_name":"himanshu","created_at":"Wed, 07 Jan 2026 11:19:29 GMT","created_by_id":4,"created_by_name":"Akansha","deadline":"Sat, 10 Jan 2026 00:00:00 GMT","description":"task","id":2,"priority":"Medium","project_id":2,"project_name":"project01","status":"Completed","title":"task-1"})'>
+                                <h5>task-1</h5>
+                                <p style="margin: 0; font-size: 12px; color: var(--text-secondary);">Due: Overdue</p>
+                                <p style="margin: 5px 0 0 0; font-size: 11px;">
+                                    <span
+                                        style="background: #28a745; color: white; padding: 2px 6px; border-radius: 3px;">Medium
+                                        Priority</span>
+                                    <span
+                                        style="background: #28a745; color: white; padding: 2px 6px; border-radius: 3px; margin-left: 5px;">Completed</span>
+                                </p>
+                            </div>
+
+                            <div class="deadline-item" onclick='showDeadlineDetails(1, {"approval_status":"pending","assigned_to_id":5,"assigned_to_name":"rishi","created_at":"Sun, 04 Jan 2026 12:59:14 GMT","created_by_id":4,"created_by_name":"Akansha","deadline":"Thu, 08 Jan 2026 00:00:00 GMT","description":"task is created","id":1,"priority":"Medium","project_id":1,"project_name":"abc","status":"In Progress","title":"Task-1"})'>
+                                <h5>Task-1</h5>
+                                <p style="margin: 0; font-size: 12px; color: var(--text-secondary);">Due: Overdue</p>
+                                <p style="margin: 5px 0 0 0; font-size: 11px;">
+                                    <span
+                                        style="background: #28a745; color: white; padding: 2px 6px; border-radius: 3px;">Medium
+                                        Priority</span>
+                                    <span
+                                        style="background: #ffc107; color: white; padding: 2px 6px; border-radius: 3px; margin-left: 5px;">In
+                                        Progress</span>
+                                </p>
+                            </div>
+                        </div>
                         <div id="noDeadlines" class="no-data">No upcoming deadlines</div>
                     </div>
                 </div>
             </div>
 
+
             <div id="usertypes-tab" class="tab-content">
                 <div style="margin-bottom: 20px;">
-                    <button class="btn btn-primary" onclick="openUserTypeModal()" id="createUserTypeBtn">+ Create User
-                        Type</button>
-                </div>
-                <!-- Add search and filter for Phase 4 -->
-                <div class="search-filter-container">
-                    <div class="search-input-group">
-                        <i class="fas fa-search" style="color: var(--text-secondary);"></i>
-                        <input type="text" id="userTypesSearch" placeholder="Search user types..."
-                            onkeyup="filterUserTypes()">
-                    </div>
+                    <button class="btn btn-primary" onclick="openUserTypeModal()">+ Create User Type</button>
                 </div>
                 <table class="table">
                     <thead>
                         <tr>
-                            <th onclick="sortUserTypes('id')">ID <span class="sort-indicator"></span></th>
-                            <th onclick="sortUserTypes('role')">User Role <span class="sort-indicator"></span></th>
-                            <th onclick="sortUserTypes('created')">Created At <span class="sort-indicator"></span></th>
+                            <th>ID</th>
+                            <th>User Role</th>
+                            <th>Created At</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody id="usertypesList"></tbody>
                 </table>
                 <div id="noUserTypes" class="no-data">No user types available</div>
-                <!-- Add pagination and export for Phase 4 -->
-                <div class="pagination-controls">
-                    <select id="userTypesPerPage" onchange="changeUserTypesPerPage()">
-                        <option value="10">10 per page</option>
-                        <option value="25">25 per page</option>
-                        <option value="50">50 per page</option>
-                    </select>
-                    <button class="pagination-btn" onclick="previousUserTypesPage()">&lt; Previous</button>
-                    <span class="pagination-info" id="userTypesPaginationInfo">Page 1</span>
-                    <button class="pagination-btn" onclick="nextUserTypesPage()">Next &gt;</button>
-                    <button class="btn btn-secondary btn-sm" onclick="exportUserTypesCSV()" id="exportUserTypesBtn"><i
-                            class="fas fa-download"></i> Export CSV</button>
-                </div>
             </div>
 
             <div id="users-tab" class="tab-content">
-                <div style="margin-bottom: 20px; display: flex; gap: 10px; flex-wrap: wrap;">
-                    <button class="btn btn-primary" onclick="openUserModal()" id="createUserBtn">+ Create
-                        Employee</button>
-                    <!-- Add export button for Phase 4 -->
-                    <button class="btn btn-secondary" onclick="exportUsersCSV()" id="exportUsersBtn"><i
-                            class="fas fa-download"></i> Export CSV</button>
-                </div>
-                <!-- Add search and filter for Phase 4 -->
-                <div class="search-filter-container">
-                    <div class="search-input-group">
-                        <i class="fas fa-search" style="color: var(--text-secondary);"></i>
-                        <input type="text" id="usersSearch" placeholder="Search by name, email, or role..."
-                            onkeyup="filterUsers()">
-                    </div>
-                    <select class="filter-select" id="roleFilter" onchange="filterUsers()">
-                        <option value="">All Roles</option>
-                    </select>
+                <div style="margin-bottom: 20px;">
+                    <button class="btn btn-primary" onclick="openUserModal()">+ Create Employee</button>
                 </div>
                 <table class="table">
                     <thead>
                         <tr>
-                            <th onclick="sortUsers('id')">ID <span class="sort-indicator"></span></th>
-                            <th onclick="sortUsers('username')">Username <span class="sort-indicator"></span></th>
-                            <th onclick="sortUsers('email')">Email <span class="sort-indicator"></span></th>
-                            <th onclick="sortUsers('userType')">User Type <span class="sort-indicator"></span></th>
-                            <th onclick="sortUsers('createdAt')">Created At <span class="sort-indicator"></span></th>
+                            <th>ID</th>
+                            <th>Username</th>
+                            <th>Email</th>
+                            <th>User Type</th>
+                            <th>Created At</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody id="usersList"></tbody>
                 </table>
                 <div id="noUsers" class="no-data">No employees available</div>
-                <!-- Add pagination controls for Phase 4 -->
-                <div class="pagination-controls">
-                    <select id="itemsPerPage" onchange="changeItemsPerPage()">
-                        <option value="10">10 per page</option>
-                        <option value="25">25 per page</option>
-                        <option value="50">50 per page</option>
-                    </select>
-                    <button class="pagination-btn" onclick="previousPage()">&lt; Previous</button>
-                    <span class="pagination-info" id="paginationInfo">Page 1 of 1</span>
-                    <button class="pagination-btn" onclick="nextPage()">Next &gt;</button>
-                </div>
             </div>
 
-            <!-- Add audit logs tab for Phase 2 RBAC -->
             <div id="audit-tab" class="tab-content">
                 <div style="margin-bottom: 20px; display: flex; gap: 10px; flex-wrap: wrap;">
-                    <button class="btn btn-secondary" onclick="exportAuditLogsCSV()" id="exportAuditBtn"><i class="fas fa-download"></i>
+                    <button class="btn btn-secondary" onclick="exportAuditLogsCSV()"><i class="fas fa-download"></i>
                         Export CSV</button>
                     <button class="btn btn-danger" onclick="clearAuditLogs()" id="clearAuditBtn">Clear Logs</button>
                 </div>
@@ -1127,50 +1116,9 @@
                     <button class="pagination-btn" onclick="nextAuditPage()">Next &gt;</button>
                 </div>
             </div>
-
-            <!-- Add activities tab for Phase 1 -->
-            <div id="activities-tab" class="tab-content">
-                <div style="margin-bottom: 20px; display: flex; gap: 10px; flex-wrap: wrap;">
-                    <!-- <button class="btn btn-secondary" onclick="exportActivitiesCSV()"><i class="fas fa-download"></i> Export CSV</button> -->
-                </div>
-                <div class="search-filter-container">
-                    <div class="search-input-group">
-                        <i class="fas fa-search" style="color: var(--text-secondary);"></i>
-                        <input type="text" id="activitiesSearch" placeholder="Search activities..." onkeyup="filterActivities()">
-                    </div>
-                    <select class="filter-select" id="activityTypeFilter" onchange="filterActivities()">
-                        <option value="">All Activity Types</option>
-                        <!-- Options will be populated dynamically -->
-                    </select>
-                </div>
-                <table class="table">
-                    <thead>
-                        <tr>
-                            <th>Timestamp</th>
-                            <th>User</th>
-                            <th>Activity Type</th>
-                            <th>Description</th>
-                            <th>Project</th>
-                        </tr>
-                    </thead>
-                    <tbody id="activitiesTable"></tbody>
-                </table>
-                <div id="noActivities" class="no-data">No activities found</div>
-                <div class="pagination-controls">
-                    <select id="activitiesPerPage" onchange="changeActivitiesPerPage()">
-                        <option value="10">10 per page</option>
-                        <option value="25">25 per page</option>
-                        <option value="50">50 per page</option>
-                    </select>
-                    <button class="pagination-btn" onclick="previousActivitiesPage()">&lt; Previous</button>
-                    <span class="pagination-info" id="activitiesPaginationInfo">Page 1</span>
-                    <button class="pagination-btn" onclick="nextActivitiesPage()">Next &gt;</button>
-                </div>
-            </div>
         </div>
     </div>
 
-    <!-- Modals -->
     <div id="userTypeModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -1230,10 +1178,8 @@
                     </div>
                     <div class="form-group">
                         <label for="usrPassword">Password *</label>
-                        <input type="password" id="usrPassword" required placeholder="Min 8 characters, 2 special chars"
-                            onkeyup="checkPasswordStrength()">
-                        <!-- Add password strength indicator -->
-                        <div id="passwordStrength"></div>
+                        <input type="password" id="usrPassword" required
+                            placeholder="Min 8 characters, 2 special chars">
                     </div>
                     <div class="form-group">
                         <label for="usrConfirmPassword">Confirm Password *</label>
@@ -1350,6 +1296,16 @@
         </div>
     </div>
 
+    <div id="detailModal" class="modal">
+        <div class="modal-content" style="width: 600px; max-height: 80vh; overflow-y: auto;">
+            <div class="modal-header">
+                <h3 id="detailModalTitle">Active Projects</h3>
+                <span class="close" onclick="closeDetailModal()">&times;</span>
+            </div>
+            <div id="detailModalBody" style="padding: 20px;"></div>
+        </div>
+    </div>
+
     <div id="updateUserModal" class="modal">
         <div class="modal-content" style="width: 700px; max-height: 80vh; overflow-y: auto;">
             <div class="modal-header">
@@ -1358,34 +1314,23 @@
             </div>
             <form onsubmit="updateUser(event)">
                 <div class="modal-body">
+                    <input type="hidden" id="updateUsrId">
                     <div id="updateUserError"></div>
-                    <input type="hidden" id="updateUserId">
-
                     <div class="form-group">
-                        <label for="updateUsername">Username *</label>
-                        <input type="text" id="updateUsername" required placeholder="Enter username" readonly>
+                        <label for="updateUsrUsername">Username *</label>
+                        <input type="text" id="updateUsrUsername" required placeholder="Enter username">
                     </div>
-
                     <div class="form-group">
-                        <label for="updateEmail">Email Address *</label>
-                        <input type="email" id="updateEmail" required placeholder="employee@example.com" readonly>
+                        <label for="updateUsrEmail">Email Address *</label>
+                        <input type="email" id="updateUsrEmail" required placeholder="employee@example.com">
                     </div>
-
                     <div class="form-group">
-                        <label for="updatePassword">Password (Optional)</label>
-                        <input type="password" id="updatePassword" placeholder="Leave blank to keep current password"
-                            onkeyup="checkUpdatePasswordStrength()">
-                        <div id="updatePasswordStrength"></div>
+                        <label for="updateUsrPassword">New Password (leave blank to keep current)</label>
+                        <input type="password" id="updateUsrPassword" placeholder="Min 8 characters, 2 special chars">
                     </div>
-
                     <div class="form-group">
-                        <label for="updateConfirmPassword">Confirm Password</label>
-                        <input type="password" id="updateConfirmPassword" placeholder="Confirm new password">
-                    </div>
-
-                    <div class="form-group">
-                        <label for="updateUserType">User Type *</label>
-                        <select id="updateUserType" required>
+                        <label for="updateUsrUserType">User Type *</label>
+                        <select id="updateUsrUserType" required>
                             <option value="">Select a user type</option>
                         </select>
                     </div>
@@ -1399,15 +1344,13 @@
                             <div class="checkbox-group">
                                 <div class="checkbox-item"><input type="checkbox" id="updatePermProjView"
                                         data-module="Proj" data-action="View"><label for="updatePermProjView"
-                                        style="margin: 0;">View</label>
-                                </div>
+                                        style="margin: 0;">View</label></div>
                                 <div class="checkbox-item"><input type="checkbox" id="updatePermProjAdd"
                                         data-module="Proj" data-action="Add"><label for="updatePermProjAdd"
                                         style="margin: 0;">Add</label></div>
                                 <div class="checkbox-item"><input type="checkbox" id="updatePermProjEdit"
                                         data-module="Proj" data-action="Edit"><label for="updatePermProjEdit"
-                                        style="margin: 0;">Edit</label>
-                                </div>
+                                        style="margin: 0;">Edit</label></div>
                                 <div class="checkbox-item"><input type="checkbox" id="updatePermProjDelete"
                                         data-module="Proj" data-action="Delete"><label for="updatePermProjDelete"
                                         style="margin: 0;">Delete</label></div>
@@ -1476,15 +1419,13 @@
                             <div class="checkbox-group">
                                 <div class="checkbox-item"><input type="checkbox" id="updatePermTaskView"
                                         data-module="task" data-action="View"><label for="updatePermTaskView"
-                                        style="margin: 0;">View</label>
-                                </div>
+                                        style="margin: 0;">View</label></div>
                                 <div class="checkbox-item"><input type="checkbox" id="updatePermTaskAdd"
                                         data-module="task" data-action="Add"><label for="updatePermTaskAdd"
                                         style="margin: 0;">Add</label></div>
                                 <div class="checkbox-item"><input type="checkbox" id="updatePermTaskEdit"
                                         data-module="task" data-action="Edit"><label for="updatePermTaskEdit"
-                                        style="margin: 0;">Edit</label>
-                                </div>
+                                        style="margin: 0;">Edit</label></div>
                                 <div class="checkbox-item"><input type="checkbox" id="updatePermTaskDelete"
                                         data-module="task" data-action="Delete"><label for="updatePermTaskDelete"
                                         style="margin: 0;">Delete</label></div>
@@ -1492,7 +1433,6 @@
                         </div>
                     </div>
                 </div>
-
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" onclick="closeUpdateUserModal()">Cancel</button>
                     <button type="submit" class="btn btn-primary">Update Employee</button>
@@ -1501,1968 +1441,665 @@
         </div>
     </div>
 
-    <div id="detailModal" class="modal">
-        <div class="modal-content" style="width: 600px; max-height: 80vh; overflow-y: auto;">
+    <div id="projectDetailModal" class="modal project-detail-modal">
+        <div class="modal-content">
             <div class="modal-header">
-                <h3 id="detailModalTitle">Active Projects</h3>
-                <span class="close" onclick="closeDetailModal()">&times;</span>
+                <h3><i class="fas fa-folder-open"></i> Project Details</h3>
+                <button class="close" onclick="closeProjectDetailModal()">&times;</button>
             </div>
-            <div id="detailModalBody" style="padding: 20px;"></div>
+            <div id="projectDetailContent"></div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeProjectDetailModal()">Close</button>
+            </div>
         </div>
     </div>
 
+    <div id="taskDetailModal" class="modal">
+        <div class="modal-content" style="width: 700px; max-height: 80vh; overflow-y: auto;">
+            <div class="modal-header">
+                <h3 id="modalTitle">Task Details</h3>
+                <span class="close" onclick="hideTaskModal()">&times;</span>
+            </div>
+            <div class="modal-body" id="modalBody"></div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="hideTaskModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // ============================================
-        // PHASE 1: REAL-TIME DATA LOADING FROM DATABASE
-        // ============================================
+        const API_BASE = window.location.origin + '/api';
 
-        let authToken = sessionStorage.getItem('admin_token') || localStorage.getItem('admin_token');
-        // Added fallback for when token might not be present but user is logged in.
-        // In a real app, this would be handled by redirecting to login if no token.
-        if (!authToken && document.body.dataset.loggedIn === 'true') {
-            authToken = localStorage.getItem('sessionToken'); // Example: try another token
-        }
-
-        async function loadAdminStats() {
-            try {
-                const res = await fetch("/api/admin/dashboard/stats", {
-                    headers: {
-                        'Authorization': authToken ? `Bearer ${authToken}` : '',
-                        'Content-Type': 'application/json'
-                    }
-                });
-                
-                if (!res.ok) {
-                    if (res.status === 401) { // Unauthorized, likely token expired or invalid
-                        console.error("[v0] Unauthorized. Redirecting to login.");
-                        return logout(); // Redirect to login
-                    }
-                    console.error("[v0] Stats API error:", res.status, await res.text());
-                    // Show a user-friendly error message
-                    showNotification("Failed to load dashboard statistics. Please try again later.", "error");
-                    return;
-                }
-                
-                const data = await res.json();
-                console.log("[v0] Dashboard stats received:", data);
-
-                document.getElementById("projects-count").innerText = data.projects || 0;
-                document.getElementById("tasks-count").innerText = data.tasks || 0;
-                document.getElementById("documents-count").innerText = data.documents || 0;
-                document.getElementById("employees-count").innerText = data.users || 0; // Assuming API provides 'users' for employee count
-                
-                // For the stat cards that were not directly mapped
-                document.getElementById("active-tasks-count").innerText = data.active_tasks || 0;
-                document.getElementById("overdue-tasks-count").innerText = data.overdue_tasks || 0;
-                document.getElementById("pending-approvals-count").innerText = data.pending_approvals || 0;
-
-            } catch (error) {
-                console.error("[v0] Error loading stats:", error);
-                showNotification("An error occurred while loading dashboard statistics.", "error");
-            }
-        }
-
-        async function loadRecentActions() {
-            try {
-                const res = await fetch("/api/admin/dashboard/recent-actions", {
-                    headers: {
-                        'Authorization': authToken ? `Bearer ${authToken}` : '',
-                        'Content-Type': 'application/json'
-                    }
-                });
-                
-                if (!res.ok) {
-                     if (res.status === 401) {
-                        console.error("[v0] Unauthorized. Redirecting to login.");
-                        return logout();
-                    }
-                    console.error("[v0] Recent actions API error:", res.status, await res.text());
-                    showNotification("Failed to load recent activities.", "error");
-                    return;
-                }
-                
-                const activities = await res.json();
-                console.log("[v0] Recent activities received:", activities.length);
-
-                const list = document.getElementById("recent-actions-list");
-                if (list) {
-                    list.innerHTML = "";
-                    
-                    if (activities.length === 0) {
-                        list.innerHTML = '<li style="padding: 20px; text-align: center; color: var(--text-secondary);">No recent activities</li>';
-                        return;
-                    }
-                    
-                    activities.slice(0, 10).forEach(a => {
-                        const activityText = `
-                            <strong>${sanitizeInput(a.username || 'Unknown')}</strong> 
-                            ${getActivityDescription(a.activity_type, a.description)}
-                        `;
-                        const timestamp = new Date(a.created_at).toLocaleString();
-                        
-                        list.innerHTML += `
-                            <li style="padding: 12px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
-                                <div>${activityText}</div>
-                                <small style="color: var(--text-secondary);">${timestamp}</small>
-                            </li>
-                        `;
-                    });
-                }
-            } catch (error) {
-                console.error("[v0] Error loading recent actions:", error);
-                showNotification("An error occurred while loading recent activities.", "error");
-            }
-        }
-
-        async function loadAllActivities() {
-            try {
-                const res = await fetch("/api/admin/dashboard/activities", {
-                    headers: {
-                        'Authorization': authToken ? `Bearer ${authToken}` : '',
-                        'Content-Type': 'application/json'
-                    }
-                });
-                
-                if (!res.ok) {
-                    if (res.status === 401) {
-                        console.error("[v0] Unauthorized. Redirecting to login.");
-                        return logout();
-                    }
-                    console.error("[v0] Activities API error:", res.status, await res.text());
-                    showNotification("Failed to load all activities.", "error");
-                    return;
-                }
-                
-                const activities = await res.json();
-                console.log("[v0] All activities received:", activities.length);
-
-                allActivitiesData = activities;
-                // Populate filter options
-                populateActivityTypeFilter(activities);
-                displayActivitiesTable();
-            } catch (error) {
-                console.error("[v0] Error loading all activities:", error);
-                showNotification("An error occurred while loading all activities.", "error");
-            }
-        }
-
-        async function loadUsersFromDatabase() {
-            try {
-                const res = await fetch("/api/users", {
-                    headers: {
-                        'Authorization': authToken ? `Bearer ${authToken}` : '',
-                        'Content-Type': 'application/json'
-                    }
-                });
-                
-                if (!res.ok) {
-                    if (res.status === 401) {
-                        console.error("[v0] Unauthorized. Redirecting to login.");
-                        return logout();
-                    }
-                    console.error("[v0] Users API error:", res.status, await res.text());
-                    showNotification("Failed to load employees.", "error");
-                    return;
-                }
-                
-                const users = await res.json();
-                console.log("[v0] Users loaded from database:", users.length);
-
-                localStorage.setItem('users', JSON.stringify(users)); // Keep local copy for now
-                filteredUsers = users; // Update global filtered list
-                displayUsers(); // Re-render table with new data
-            } catch (error) {
-                console.error("[v0] Error loading users:", error);
-                showNotification("An error occurred while loading employees.", "error");
-            }
-        }
-
-        async function loadUserTypesFromDatabase() {
-            try {
-                const res = await fetch("/api/usertypes", {
-                    headers: {
-                        'Authorization': authToken ? `Bearer ${authToken}` : '',
-                        'Content-Type': 'application/json'
-                    }
-                });
-                
-                if (!res.ok) {
-                    if (res.status === 401) {
-                        console.error("[v0] Unauthorized. Redirecting to login.");
-                        return logout();
-                    }
-                    console.error("[v0] User types API error:", res.status, await res.text());
-                    showNotification("Failed to load user types.", "error");
-                    return;
-                }
-                
-                const userTypes = await res.json();
-                console.log("[v0] User types loaded from database:", userTypes.length);
-
-                localStorage.setItem('userTypes', JSON.stringify(userTypes)); // Keep local copy
-                filteredUserTypes = userTypes; // Update global filtered list
-                displayUserTypes(); // Re-render table
-                updateUserTypeSelects(); // Update select boxes in modals
-            } catch (error) {
-                console.error("[v0] Error loading user types:", error);
-                showNotification("An error occurred while loading user types.", "error");
-            }
-        }
-
-        function getActivityDescription(type, description) {
-            const activityMap = {
-                'project_created': '📁 Created a new project',
-                'project_updated': '✏️ Updated a project',
-                'task_created': '✓ Created a new task',
-                'task_completed': '✓✓ Completed a task',
-                'milestone_created': '🚩 Created a milestone',
-                'milestone_completed': '🚩 Completed a milestone',
-                'document_uploaded': '📄 Uploaded a document',
-                'document_deleted': '🗑️ Deleted a document',
-                'comment_added': '💬 Added a comment',
-                'user_created': '➕ Added a new employee',
-                'user_updated': '✏️ Updated an employee',
-                'user_deleted': '➖ Deleted an employee',
-                'user_type_created': '➕ Added a new user type',
-                'user_type_updated': '✏️ Updated a user type',
-                'user_type_deleted': '➖ Deleted a user type',
-                'login': '➡️ User logged in',
-                'logout': '⬅️ User logged out',
-                'permission_granted': '🛡️ Granted permission',
-                'permission_revoked': '🚫 Revoked permission',
-                'audit_log_cleared': '🧹 Cleared audit logs'
-            };
-            
-            // Fallback to description if type is not found or description is more specific
-            const activityText = activityMap[type] || (description ? ` ${sanitizeInput(description)}` : '');
-            return activityText;
-        }
-
-        let allActivitiesData = [];
-        let activitiesPage = 1;
-        let activitiesPerPage = 10;
-
-        function displayActivitiesTable() {
-            const start = (activitiesPage - 1) * activitiesPerPage;
-            const end = start + activitiesPerPage;
-            const paginatedActivities = allActivitiesData.slice(start, end);
-
-            const actTableBody = document.getElementById('activitiesTable');
-            const noActivities = document.getElementById('noActivities');
-
-            if (!actTableBody) {
-                console.warn("[v0] Activities table body not found in DOM");
-                return;
-            }
-
-            if (paginatedActivities.length === 0) {
-                actTableBody.innerHTML = '';
-                if (noActivities) noActivities.style.display = 'block';
-                // Update pagination info when no data
-                const paginationInfo = document.getElementById('activitiesPaginationInfo');
-                if (paginationInfo) paginationInfo.textContent = 'Page 1 of 1';
-                return;
-            }
-
-            if (noActivities) noActivities.style.display = 'none';
-            
-            actTableBody.innerHTML = paginatedActivities.map(act => `
-                <tr>
-                    <td>${new Date(act.created_at).toLocaleString()}</td>
-                    <td>${sanitizeInput(act.username || 'Unknown')}</td>
-                    <td>${sanitizeInput(act.activity_type)}</td>
-                    <td>${sanitizeInput(act.description || '-')}</td>
-                    <td>${sanitizeInput(act.project_title || '-')}</td>
-                </tr>
-            `).join('');
-
-            // Update pagination info
-            const maxPages = Math.ceil(allActivitiesData.length / activitiesPerPage);
-            const paginationInfo = document.getElementById('activitiesPaginationInfo');
-            if (paginationInfo) {
-                paginationInfo.textContent = `Page ${activitiesPage} of ${maxPages || 1}`;
-            }
-            // Update button states
-            document.querySelector('#activities-tab .pagination-btn[onclick="previousActivitiesPage()"]').disabled = activitiesPage === 1;
-            document.querySelector('#activities-tab .pagination-btn[onclick="nextActivitiesPage()"]').disabled = activitiesPage === maxPages;
-        }
-
-        // Modified to refresh more frequently for immediate feedback
-        setInterval(() => {
-            console.log("[v0] Polling for updates...");
-            loadAdminStats();
-            loadRecentActions();
-            // For other sections, a manual refresh or more targeted polling might be needed
-            // e.g., loadUsersFromDatabase() could be called less frequently or on tab switch
-        }, 10000); // Every 10 seconds
-
-        document.addEventListener('DOMContentLoaded', () => {
-            console.log("[v0] Dashboard initializing...");
-            initializeDarkMode();
-            generateCSRFToken(); // Generate CSRF token on load
-            
-            // Load data only if authentication token is available
-            if (authToken) {
-                loadAdminStats();
-                loadRecentActions();
-                loadUsersFromDatabase();
-                loadUserTypesFromDatabase();
-                applyRBACVisibility(); // Apply visibility based on fetched role
-                // loadAllActivities(); // Load activities when the tab is selected for efficiency
-            } else {
-                console.warn("[v0] No auth token found. User may not be logged in.");
-                // Consider redirecting to login if no token found
-                showNotification("You are not logged in. Please log in to access the dashboard.", "error");
-                setTimeout(() => {
-                    window.location.href = '/login';
-                }, 2000);
-            }
-        });
-
-        // ============================================
-        // PHASE 2: RBAC & AUDIT LOGGING SYSTEM
-        // ============================================
-
-        // NOTE: This RBAC implementation is client-side and for demonstration.
-        // In a real-world application, role and permissions should be managed server-side
-        // and validated on every sensitive API request.
-        const rbacSystem = {
-            // Initially set to 'Viewer' and will be updated by the backend via API response
-            // or a specific user profile endpoint. For now, we'll fetch the actual user role.
-            currentRole: 'Guest', // Default to guest, will be updated
-            roles: {}, // This will be populated by fetching from backend or predefined
-
-            async initializeRoles() {
-                try {
-                    const res = await fetch('/api/auth/me', { // Assuming an endpoint to get current user info
-                        headers: { 'Authorization': authToken ? `Bearer ${authToken}` : '' }
-                    });
-
-                    if (!res.ok) {
-                        if (res.status === 401) {
-                            console.error("[v0] Auth check failed. Redirecting to login.");
-                            return logout();
-                        }
-                        console.error("[v0] Failed to fetch user role:", res.status, await res.text());
-                        this.currentRole = 'Guest'; // Fallback
-                        return;
-                    }
-
-                    const user = await res.json();
-                    this.currentRole = user.userType || 'Guest'; // Use userType from API
-                    document.getElementById('adminName').textContent = user.username || 'Admin';
-                    document.getElementById('adminRoleDisplay').textContent = this.currentRole;
-
-                    // Fetch specific permissions if the system is complex, or use predefined roles
-                    // For this example, we'll assume predefined roles and just use the user's type as their role.
-                    // In a real app, you might fetch a more detailed permission set.
-                    console.log(`[v0] User role set to: ${this.currentRole}`);
-                    applyRBACVisibility(); // Apply visibility after role is set
-                    // Load user types and users only if the role has permission to see them.
-                    if (this.hasPermission('users', 'read')) loadUsersFromDatabase();
-                    if (this.hasPermission('userTypes', 'read')) loadUserTypesFromDatabase();
-                    if (this.hasPermission('auditLogs', 'read')) {
-                        // Load audit logs if the tab is active or on initial load if appropriate
-                    }
-                } catch (error) {
-                    console.error("[v0] Error initializing roles:", error);
-                    this.currentRole = 'Guest'; // Fallback to Guest
-                }
-            },
-
-            // Hardcoded roles for demonstration. In a real app, this would be dynamic.
-            // These roles are more comprehensive than the original 'Admin', 'Manager', 'Viewer'.
-            // Key: Role Name
-            // Value: Object containing permissions by module
-            predefinedRoles: {
-                'Super Admin': {
-                    users: ['create', 'read', 'update', 'delete', 'export'],
-                    userTypes: ['create', 'read', 'update', 'delete', 'export'],
-                    auditLogs: ['read', 'export', 'delete'],
-                    dashboard: ['read'],
-                    projects: ['create', 'read', 'update', 'delete'],
-                    tasks: ['create', 'read', 'update', 'delete'],
-                    activities: ['read']
-                },
-                'Administrator': { // This is the default Admin role from original code
-                    users: ['read', 'update', 'export'],
-                    userTypes: ['read', 'export'],
-                    auditLogs: ['read', 'export'],
-                    dashboard: ['read'],
-                    projects: ['read', 'update'],
-                    tasks: ['read', 'update'],
-                    activities: ['read']
-                },
-                'Manager': {
-                    users: ['read'],
-                    userTypes: ['read'],
-                    auditLogs: [],
-                    dashboard: ['read'],
-                    projects: ['read', 'update'],
-                    tasks: ['read', 'update'],
-                    activities: ['read']
-                },
-                'Supervisor': { // Added for more granular control
-                    users: ['read'],
-                    auditLogs: [],
-                    dashboard: ['read'],
-                    projects: ['read'],
-                    tasks: ['read', 'update'],
-                    activities: ['read']
-                },
-                'Viewer': {
-                    users: ['read'],
-                    userTypes: [],
-                    auditLogs: [],
-                    dashboard: ['read'],
-                    projects: ['read'],
-                    tasks: ['read'],
-                    activities: ['read']
-                },
-                'Guest': { // For unauthenticated or very basic access
-                    users: [],
-                    userTypes: [],
-                    auditLogs: [],
-                    dashboard: ['read'], // Can view dashboard stats
-                    projects: [],
-                    tasks: [],
-                    activities: []
-                }
-            },
-
-            hasPermission(resource, action) {
-                const rolePermissions = this.predefinedRoles[this.currentRole];
-                if (!rolePermissions) {
-                    console.warn(`[v0] Role "${this.currentRole}" not found in predefined roles.`);
-                    return false; // Role not defined
-                }
-                const modulePermissions = rolePermissions[resource];
-                if (!modulePermissions) {
-                    // If the resource itself is not defined for the role, they have no access.
-                    // This is for modules like 'auditLogs' or 'userTypes'.
-                    return false;
-                }
-                return modulePermissions.includes(action);
-            },
-
-            checkPermission(resource, action) {
-                if (!this.hasPermission(resource, action)) {
-                    showNotification(`Permission denied: You cannot perform '${action}' on '${resource}'.`, 'error');
-                    // Optionally, visually indicate permission denial
-                    document.getElementById('permissionDenied')?.style.display = 'block';
-                    return false;
-                }
-                // Hide permission denied message if it was previously shown and now permission is granted
-                document.getElementById('permissionDenied')?.style.display = 'none';
-                return true;
-            }
-        };
-
-        const auditLog = {
-            // Storing logs in localStorage is for demonstration; in production, this should be fetched from the backend.
-            logs: [], // Initialize as empty, will be loaded from API
-            maxLogs: 1000,
-
-            async initialize() {
-                try {
-                    const res = await fetch('/api/audit-log', {
-                        headers: { 'Authorization': authToken ? `Bearer ${authToken}` : '' }
-                    });
-                    if (!res.ok) {
-                        if (res.status === 401) {
-                            console.error("[v0] Unauthorized. Redirecting to login.");
-                            return logout();
-                        }
-                        console.error("[v0] Failed to load audit logs:", res.status, await res.text());
-                        showNotification("Failed to load audit logs.", "error");
-                        return;
-                    }
-                    this.logs = await res.json();
-                    console.log(`[v0] Loaded ${this.logs.length} audit logs.`);
-                    filterAuditLogs(); // Initial display of logs
-                } catch (error) {
-                    console.error("[v0] Error initializing audit log:", error);
-                    showNotification("An error occurred initializing audit logs.", "error");
-                }
-            },
-
-            async addEntry(action, resource, details = '') {
-                const entry = {
-                    // Use server-generated timestamp and user info for consistency
-                    // timestamp: new Date().toLocaleString(), // Client-side timestamp can drift
-                    user: document.getElementById('adminName').textContent || 'Unknown', // Fetch from DOM for display
-                    role: rbacSystem.currentRole, // Use current role for display
-                    action: action,
-                    resource: resource,
-                    details: sanitizeInput(details),
-                    // id: Date.now() // Server should generate unique ID
-                };
-
-                // Optimistically add to the displayed list for immediate feedback
-                this.logs.unshift(entry); // Add to beginning of array
-                filterAuditLogs(); // Re-display with new entry
-
-                try {
-                    const response = await fetch('/api/audit-log', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': authToken ? `Bearer ${authToken}` : '',
-                            'X-CSRF-Token': sessionStorage.getItem('csrfToken')
-                        },
-                        body: JSON.stringify(entry)
-                    });
-
-                    if (!response.ok) {
-                        console.error("[v0] Failed to log audit entry to backend:", response.status, await response.text());
-                        // Optionally, show a warning if logging fails critically
-                        // showNotification("Warning: Could not record audit event.", "warning");
-                        // If logging fails, we might want to remove the optimistic entry if it's crucial
-                        // For now, we keep it for user feedback.
-                    } else {
-                        console.log("[v0] Audit entry logged successfully.");
-                    }
-                } catch (error) {
-                    console.error("[v0] Error sending audit entry to backend:", error);
-                    // showNotification("Warning: Network error while logging audit event.", "warning");
-                }
-
-                // Trim logs if they exceed maxLogs (server should also enforce this)
-                if (this.logs.length > this.maxLogs) {
-                    this.logs = this.logs.slice(0, this.maxLogs);
-                    // In a real app, you'd also need to prune from the backend if it's stored there.
-                }
-            },
-
-            getFilteredLogs(searchTerm = '', actionFilter = '') {
-                return this.logs.filter(log => {
-                    const matchesSearch = !searchTerm ||
-                        (log.user && log.user.toLowerCase().includes(searchTerm.toLowerCase())) ||
-                        (log.resource && log.resource.toLowerCase().includes(searchTerm.toLowerCase())) ||
-                        (log.details && log.details.toLowerCase().includes(searchTerm.toLowerCase()));
-
-                    const matchesAction = !actionFilter || log.action === actionFilter;
-
-                    return matchesSearch && matchesAction;
-                });
-            },
-
-            async clear() {
-                if (!rbacSystem.checkPermission('auditLogs', 'delete')) return;
-                if (confirm('Are you sure you want to clear all audit logs? This cannot be undone.')) {
-                    try {
-                        const res = await fetch('/api/audit-log', {
-                            method: 'DELETE',
-                            headers: {
-                                'Authorization': authToken ? `Bearer ${authToken}` : '',
-                                'X-CSRF-Token': sessionStorage.getItem('csrfToken')
-                            }
-                        });
-                        if (!res.ok) {
-                            console.error("[v0] Failed to clear audit logs from backend:", res.status, await res.text());
-                            showNotification("Failed to clear audit logs. Please try again.", "error");
-                            return;
-                        }
-                        this.logs = []; // Clear client-side logs
-                        filterAuditLogs(); // Re-display empty table
-                        showNotification('Audit logs cleared successfully', 'success');
-                        // Add an entry for the clearing action itself if it succeeds.
-                        auditLog.addEntry('DELETE', 'Audit Logs', 'All logs cleared by admin.');
-                    } catch (error) {
-                        console.error("[v0] Error clearing audit logs:", error);
-                        showNotification("An error occurred while clearing audit logs.", "error");
-                    }
-                }
-            }
-        };
-
-        // ============================================
-        // PHASE 3-4: NOTIFICATION & UI ENHANCEMENTS
-        // ============================================
-
-        function showNotification(message, type = 'success', duration = 4000) {
-            // Ensure the message is sanitized to prevent XSS if it comes from an untrusted source
-            const sanitizedMessage = sanitizeInput(message);
-
-            const notificationEl = document.getElementById(type === 'success' ? 'successMessage' :
-                type === 'error' ? 'errorMessage' :
-                    type === 'info' ? 'infoMessage' :
-                        type === 'warning' ? 'warningMessage' : 'successMessage');
-
-            if (!notificationEl) {
-                console.error(`[v0] Notification element not found for type: ${type}`);
-                return;
-            }
-
-            notificationEl.textContent = sanitizedMessage;
-            notificationEl.style.display = 'block';
-            notificationEl.style.animation = 'slideIn 0.3s ease'; // Apply slide-in animation
-
-            setTimeout(() => {
-                notificationEl.style.animation = 'slideOut 0.3s ease forwards'; // Apply slide-out animation
-                setTimeout(() => {
-                    notificationEl.style.display = 'none';
-                    notificationEl.style.animation = ''; // Reset animation property
-                }, 300); // Match the duration of slideOut animation
-            }, duration);
-        }
-
+        // Theme toggle functionality
         function toggleTheme() {
-            document.body.classList.toggle('dark-mode');
-            const isDarkMode = document.body.classList.contains('dark-mode');
-            localStorage.setItem('darkMode', isDarkMode);
-            
-            const themeToggleIcon = document.getElementById('themeToggle').querySelector('i');
-            if (isDarkMode) {
-                themeToggleIcon.classList.remove('fa-moon');
-                themeToggleIcon.classList.add('fa-sun');
-            } else {
-                themeToggleIcon.classList.remove('fa-sun');
-                themeToggleIcon.classList.add('fa-moon');
-            }
+            const body = document.body;
+            const isDark = body.classList.toggle('dark-mode');
+            localStorage.setItem('theme', isDark ? 'dark' : 'light');
+            updateThemeIcon();
         }
 
-        function initializeDarkMode() {
-            const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-            const storedDarkMode = localStorage.getItem('darkMode');
+        function updateThemeIcon() {
+            const icon = document.querySelector('#themeToggle i');
+            const isDark = document.body.classList.contains('dark-mode');
+            icon.className = isDark ? 'fas fa-sun' : 'fas fa-moon';
+        }
 
-            if (storedDarkMode === 'true' || (storedDarkMode === null && prefersDark)) {
+        // Load saved theme
+        document.addEventListener('DOMContentLoaded', function () {
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme === 'dark') {
                 document.body.classList.add('dark-mode');
             }
-            
-            const themeToggleIcon = document.getElementById('themeToggle').querySelector('i');
-            if (document.body.classList.contains('dark-mode')) {
-                themeToggleIcon.classList.add('fa-sun');
-            } else {
-                themeToggleIcon.classList.add('fa-moon');
+            updateThemeIcon();
+        });
+
+        window.addEventListener('DOMContentLoaded', function () { loadPageData(); });
+
+        function selectTab(tabName, btn) {
+            document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+            const tab = document.getElementById(tabName);
+            if (tab) {
+                tab.classList.add('active');
+                btn.classList.add('active');
+                if (tabName === 'overview-tab') loadDashboardOverview();
+                else if (tabName === 'users-tab') loadUsers();
+                else if (tabName === 'usertypes-tab') loadUserTypes();
             }
         }
 
-        // Dynamically apply RBAC visibility based on user's role
-        function applyRBACVisibility() {
-            // Get current role from rbacSystem
-            const currentRole = rbacSystem.currentRole;
-            console.log(`[v0] Applying RBAC visibility for role: ${currentRole}`);
+        function loadPageData() {
+            const token = localStorage.getItem('admin_session_token');
+            if (!token) { window.location.href = '/'; return; }
+            const adminName = localStorage.getItem('admin_name') || 'Super Admin';
+            document.getElementById('adminName').textContent = adminName;
+            loadUserTypes();
+            loadUsers();
+            loadDashboardOverview();
+        }
 
-            // Hide/show elements based on permissions
-            // Elements that should be hidden if permission is lacking.
-            const elementsToManage = [
-                { id: 'manageUserTypesCard', resource: 'userTypes', action: 'create' },
-                { id: 'createEmployeeCard', resource: 'users', action: 'create' },
-                { id: 'auditLogsCard', resource: 'auditLogs', action: 'read' },
-                { id: 'userTypesTab', resource: 'userTypes', action: 'read' },
-                { id: 'auditTab', resource: 'auditLogs', action: 'read' },
-                { id: 'createUserTypeBtn', resource: 'userTypes', action: 'create' },
-                { id: 'createUserBtn', resource: 'users', action: 'create' },
-                { id: 'exportUserTypesBtn', resource: 'userTypes', action: 'export' },
-                { id: 'exportUsersBtn', resource: 'users', action: 'export' },
-                { id: 'exportAuditBtn', resource: 'auditLogs', action: 'export' },
-                { id: 'clearAuditBtn', resource: 'auditLogs', action: 'delete' }
-            ];
+        function performAdminSearch(event) {
+            if (event.key === 'Enter') {
+                const searchTerm = document.getElementById('adminSearchInput').value.trim();
+                if (searchTerm) {
+                    alert(`Searching for: ${searchTerm}`);
+                    // Implement actual search logic here
+                }
+            }
+        }
 
-            elementsToManage.forEach(item => {
-                const el = document.getElementById(item.id);
-                if (el) {
-                    if (rbacSystem.hasPermission(item.resource, item.action)) {
-                        el.classList.remove('rbac-hidden');
+        function closeDetailModal() {
+            document.getElementById('detailModal').style.display = 'none';
+        }
+
+        function closeTaskModal() {
+            document.getElementById('taskDetailModal').style.display = 'none';
+        }
+
+        async function loadDashboardOverview() {
+            try {
+                const token = localStorage.getItem('admin_session_token');
+                if (!token) { window.location.href = '/'; return; }
+                const response = await fetch(`${API_BASE}/admin/dashboard/stats`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (!response.ok) {
+                    if (response.status === 401) {
+                        localStorage.removeItem('admin_session_token');
+                        window.location.href = '/';
+                    }
+                    console.error('Failed to load dashboard stats');
+                    return;
+                }
+                const stats = await response.json();
+                document.getElementById('activeProjectsCount').textContent = stats.active_projects || 0;
+                document.getElementById('completedTasksCount').textContent = stats.completed_tasks || 0;
+                document.getElementById('activeTasksCount').textContent = stats.active_tasks || 0;
+                document.getElementById('overdueTasksCount').textContent = stats.overdue_tasks || 0;
+                document.getElementById('pendingApprovalsCount').textContent = stats.pending_approvals || 0;
+
+                const projectsResponse = await fetch(`${API_BASE}/admin/projects`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${localStorage.getItem('admin_session_token')}`
+                    }
+                });
+                if (projectsResponse.ok) {
+                    const projects = await projectsResponse.json();
+                    const projectsList = document.getElementById('projectsList');
+                    if (projects.length === 0) {
+                        projectsList.innerHTML = '<p style="color: #718096;">No projects created yet</p>';
                     } else {
-                        el.classList.add('rbac-hidden');
+                        projectsList.innerHTML = projects.slice(0, 5).map(project => `
+                            <div class="project-item">
+                                <h4>${project.title}</h4>
+                                <p>${project.description || 'No description'} - ${project.progress || 0}% Complete</p>
+                                <div class="progress">
+                                    <div class="progress-bar" style="width: ${project.progress || 0}%"></div>
+                                </div>
+                                <p style="font-size: 12px; color: #718096;">
+                                    Created by: ${project.creator_name || 'N/A'} | Team: ${project.team_count} members | Tasks: ${project.task_count}
+                                </p>
+                            </div>
+                        `).join('');
                     }
                 }
-            });
 
-            // Update role display in header
-            const roleDisplay = document.getElementById('roleDisplay');
-            if (roleDisplay) {
-                roleDisplay.textContent = currentRole;
-            }
-            const adminRoleDisplay = document.getElementById('adminRoleDisplay');
-            if (adminRoleDisplay) {
-                adminRoleDisplay.textContent = currentRole; // Also update the secondary display if it exists
-            }
-        }
-
-        // ============================================
-        // PHASE 4: SEARCH, SORT, FILTER & PAGINATION
-        // ============================================
-
-        let currentUserPage = 1;
-        let itemsPerPage = 10;
-        let sortConfig = { field: 'id', direction: 'asc' };
-        let filteredUsers = []; // Holds the currently displayed/filtered users
-
-        let currentUserTypePage = 1;
-        let userTypesPerPage = 10;
-        let userTypesSortConfig = { field: 'id', direction: 'asc' };
-        let filteredUserTypes = []; // Holds the currently displayed/filtered user types
-
-        let currentAuditPage = 1;
-        let auditPerPage = 10;
-        let filteredAuditLogs = []; // Holds the currently displayed/filtered audit logs
-
-        // Users Tab Filtering & Sorting
-        function filterUsers() {
-            const searchTerm = document.getElementById('usersSearch').value.toLowerCase();
-            const roleFilter = document.getElementById('roleFilter').value;
-            const allUsers = JSON.parse(localStorage.getItem('users')) || []; // Fallback to local storage
-
-            filteredUsers = allUsers.filter(user => {
-                const matchesSearch = !searchTerm ||
-                    (user.username && user.username.toLowerCase().includes(searchTerm)) ||
-                    (user.email && user.email.toLowerCase().includes(searchTerm)) ||
-                    (user.userType && user.userType.toLowerCase().includes(searchTerm));
-
-                const matchesRole = !roleFilter || user.userType === roleFilter;
-
-                return matchesSearch && matchesRole;
-            });
-
-            currentUserPage = 1; // Reset to first page on filter change
-            displayUsers();
-            updateSortIndicators(); // Ensure indicators are correct
-        }
-
-        function sortUsers(field) {
-            if (!rbacSystem.checkPermission('users', 'read')) return; // Check permission to read users
-
-            if (sortConfig.field === field) {
-                sortConfig.direction = sortConfig.direction === 'asc' ? 'desc' : 'asc';
-            } else {
-                sortConfig.field = field;
-                sortConfig.direction = 'asc';
-            }
-
-            // Sort the filteredUsers array
-            filteredUsers.sort((a, b) => {
-                let aVal = a[field];
-                let bVal = b[field];
-
-                // Handle string comparison case-insensitively
-                if (typeof aVal === 'string' && typeof bVal === 'string') {
-                    aVal = aVal.toLowerCase();
-                    bVal = bVal.toLowerCase();
-                }
-                // Handle null/undefined values if necessary, for now assume consistent data
-                
-                const comparison = aVal > bVal ? 1 : aVal < bVal ? -1 : 0;
-                return sortConfig.direction === 'asc' ? comparison : -comparison;
-            });
-
-            currentUserPage = 1; // Reset to first page after sorting
-            displayUsers();
-            updateSortIndicators();
-        }
-
-        function updateSortIndicators() {
-            // Clear all existing indicators
-            document.querySelectorAll('.table th .sort-indicator').forEach(el => {
-                el.textContent = '';
-            });
-
-            // Map table header fields to their column index for easier access
-            const headerMap = {
-                'id': 0,
-                'username': 1,
-                'email': 2,
-                'userType': 3, // Changed from 'usertype' to match data structure
-                'createdAt': 4 // Changed from 'created' to match data structure
-            };
-
-            const columnIndex = headerMap[sortConfig.field];
-            if (columnIndex !== undefined) {
-                const headerElement = document.querySelector(`.table th:nth-child(${columnIndex + 1})`); // nth-child is 1-based
-                if (headerElement) {
-                    const indicator = headerElement.querySelector('.sort-indicator');
-                    if (indicator) {
-                        indicator.textContent = sortConfig.direction === 'asc' ? ' ▲' : ' ▼';
+                const tasksResponse = await fetch(`${API_BASE}/admin/tasks`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${localStorage.getItem('admin_session_token')}`
+                    }
+                });
+                if (tasksResponse.ok) {
+                    const tasks = await tasksResponse.json();
+                    const deadlinesList = document.getElementById('deadlinesList');
+                    if (tasks.length === 0) {
+                        deadlinesList.innerHTML = '<p style="color: #718096;">No tasks created yet</p>';
+                    } else {
+                        deadlinesList.innerHTML = tasks.slice(0, 5).map(task => {
+                            const dueDate = new Date(task.deadline);
+                            const today = new Date();
+                            const diffTime = dueDate - today;
+                            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                            let dueDateStr = 'No deadline';
+                            if (diffDays < 0) dueDateStr = 'Overdue';
+                            else if (diffDays === 0) dueDateStr = 'Today';
+                            else if (diffDays === 1) dueDateStr = 'Tomorrow';
+                            else dueDateStr = `${diffDays} days`;
+                            const priorityColor = { 'High': '#ffc107', 'Medium': '#28a745', 'Low': '#6c757d' };
+                            const statusColor = { 'Overdue': '#dc3545', 'In Progress': '#ffc107', 'Completed': '#28a745' };
+                            return `
+                                <div class="deadline-item" onclick="alert('Task: ${task.title}\\nStatus: ${task.status}\\nAssigned to: ${task.assigned_to_name || 'Unassigned'}')">
+                                    <h5>${task.title}</h5>
+                                    <p style="margin: 0; font-size: 12px; color: var(--text-secondary);">Due: ${dueDateStr}</p>
+                                    <p style="margin: 5px 0 0 0; font-size: 11px;">
+                                        <span style="background: ${priorityColor[task.priority] || '#6c757d'}; color: white; padding: 2px 6px; border-radius: 3px;">${task.priority} Priority</span>
+                                        <span style="background: ${statusColor[task.status] || '#6c757d'}; color: white; padding: 2px 6px; border-radius: 3px; margin-left: 5px;">${task.status}</span>
+                                    </p>
+                                </div>
+                            `;
+                        }).join('');
                     }
                 }
+            } catch (error) {
+                console.error('[v0] Error loading dashboard:', error);
             }
         }
 
-        function changeItemsPerPage() {
-            itemsPerPage = parseInt(document.getElementById('itemsPerPage').value);
-            currentUserPage = 1; // Reset to first page
-            displayUsers();
-        }
 
-        function nextPage() {
-            const maxPages = Math.ceil(filteredUsers.length / itemsPerPage);
-            if (currentUserPage < maxPages) {
-                currentUserPage++;
-                displayUsers();
-            }
-        }
+        async function showDetailModal(type) {
+             const modal = document.getElementById('taskDetailModal');
+             const modalTitle = document.getElementById('modalTitle');
+             const modalBody = document.getElementById('modalBody');
+             const titles = {
+                 'active_projects': 'Active Projects',
+                 'completed_tasks': 'Completed Tasks',
+                 'active_tasks': 'Active Tasks',
+                 'overdue_tasks': 'Overdue Tasks',
+                 'pending_approvals': 'Pending Approvals'
+             };
+             modalTitle.textContent = titles[type] || 'Details';
+             modalBody.innerHTML = '<div class="text-center"><i class="fas fa-spinner fa-spin"></i> Loading...</div>';
+             modal.style.display = 'block';
 
-        function previousPage() {
-            if (currentUserPage > 1) {
-                currentUserPage--;
-                displayUsers();
-            }
-        }
+             try {
+                 let data = [];
+                 let content = '';
 
-        function exportUsersCSV() {
-            if (!rbacSystem.checkPermission('users', 'export')) return;
+                // Use same storage key as other API calls
+                const token = localStorage.getItem('admin_session_token');
 
-            const headers = ['ID', 'Username', 'Email', 'User Type', 'Created At'];
-            const rows = filteredUsers.map(user => [
-                user.id,
-                user.username,
-                user.email,
-                user.userType,
-                user.createdAt
-            ]);
+                 switch (type) {
+                     case 'active_projects':
+                        const projectsResponse = await fetch(`${API_BASE}/admin/projects`, {
+                            method: 'GET',
+                            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }
+                        });
+                         if (projectsResponse.ok) {
+                             data = await projectsResponse.json();
+                             content = data.map(project => `
+                                 <div class="project-detail-card">
+                                    <h4><i class="fas fa-folder"></i> ${project.title}</h4>
+                                    <p>${project.description || 'No description'}</p>
+                                    <div class="project-info">
+                                        <div class="info-item">
+                                            <span class="label">Creator:</span>
+                                            <span class="value">${project.creator_name || 'N/A'}</span>
+                                        </div>
+                                        <div class="info-item">
+                                            <span class="label">Status:</span>
+                                            <span class="value"><span class="status-badge status-active">${project.status}</span></span>
+                                        </div>
+                                        <div class="info-item">
+                                            <span class="label">Team:</span>
+                                            <span class="value">${project.team_count} members</span>
+                                        </div>
+                                        <div class="info-item">
+                                            <span class="label">Tasks:</span>
+                                            <span class="value">${project.task_count}</span>
+                                        </div>
+                                        <div class="info-item">
+                                            <span class="label">Created:</span>
+                                            <span class="value">${new Date(project.created_at).toLocaleDateString()}</span>
+                                        </div>
+                                        <div class="info-item">
+                                            <span class="label">Deadline:</span>
+                                            <span class="value">${project.deadline ? new Date(project.deadline).toLocaleDateString() : 'No deadline'}</span>
+                                        </div>
+                                    </div>
+                                    <div class="progress-container">
+                                        <p>Progress: ${project.progress || 0}%</p>
+                                        <div class="progress">
+                                            <div class="progress-bar" style="width: ${project.progress || 0}%"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            `).join('');
+                         }
+                         break;
 
-            const csv = [
-                headers.join(','),
-                ...rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')) // Properly escape quotes
-            ].join('\n');
+                     case 'completed_tasks':
+                        const completedTasksResponse = await fetch(`${API_BASE}/admin/tasks`, {
+                            method: 'GET',
+                            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }
+                        });
+                         if (completedTasksResponse.ok) {
+                             const allTasks = await completedTasksResponse.json();
+                             data = allTasks.filter(task => task.status === 'Completed');
+                             content = data.map(task => `
+                                 <div class="deadline-item">
+                                    <h5><i class="fas fa-check-circle text-success"></i> ${task.title}</h5>
+                                    <p><strong>Project:</strong> ${task.project_name || 'N/A'}</p>
+                                    <p><strong>Assigned to:</strong> ${task.assigned_to_name || 'Unassigned'}</p>
+                                    <p><strong>Completed:</strong> ${new Date(task.created_at).toLocaleDateString()}</p>
+                                    <span class="badge bg-success">Completed</span>
+                                </div>
+                            `).join('');
+                         }
+                         break;
 
-            const blob = new Blob([csv], { type: 'text/csv' });
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `users_export_${new Date().toISOString().split('T')[0]}.csv`;
-            a.click();
-            window.URL.revokeObjectURL(url);
+                     case 'active_tasks':
+                        const activeTasksResponse = await fetch(`${API_BASE}/admin/tasks`, {
+                            method: 'GET',
+                            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }
+                        });
+                         if (activeTasksResponse.ok) {
+                             const allTasks = await activeTasksResponse.json();
+                             data = allTasks.filter(task => task.status === 'In Progress');
+                             content = data.map(task => `
+                                 <div class="deadline-item">
+                                    <h5><i class="fas fa-clock text-warning"></i> ${task.title}</h5>
+                                    <p><strong>Project:</strong> ${task.project_name || 'N/A'}</p>
+                                    <p><strong>Assigned to:</strong> ${task.assigned_to_name || 'Unassigned'}</p>
+                                    <p><strong>Priority:</strong> <span class="badge bg-${task.priority === 'High' ? 'danger' : task.priority === 'Medium' ? 'warning' : 'info'}">${task.priority}</span></p>
+                                    <p><strong>Deadline:</strong> ${task.deadline ? new Date(task.deadline).toLocaleDateString() : 'No deadline'}</p>
+                                    <span class="badge bg-warning">In Progress</span>
+                                </div>
+                            `).join('');
+                         }
+                         break;
 
-            auditLog.addEntry('EXPORT', 'Users', `Exported ${filteredUsers.length} users`);
-            showNotification(`Exported ${filteredUsers.length} users to CSV`, 'success');
-        }
+                     case 'overdue_tasks':
+                        const overdueTasksResponse = await fetch(`${API_BASE}/admin/tasks`, {
+                           
+                            method: 'GET',
+                            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }
+                        });
+                         if (overdueTasksResponse.ok) {
+                             const allTasks = await overdueTasksResponse.json();
+                             const today = new Date();
+                             data = allTasks.filter(task => {
+                                 if (!task.deadline || task.status === 'Completed') return false;
+                                 const deadline = new Date(task.deadline);
+                                 return deadline < today;
+                             });
+                             content = data.map(task => `
+                                 <div class="deadline-item">
+                                    <h5><i class="fas fa-exclamation-triangle text-danger"></i> ${task.title}</h5>
+                                    <p><strong>Project:</strong> ${task.project_name || 'N/A'}</p>
+                                    <p><strong>Assigned to:</strong> ${task.assigned_to_name || 'Unassigned'}</p>
+                                    <p><strong>Overdue by:</strong> ${Math.ceil((today - new Date(task.deadline)) / (1000 * 60 * 60 * 24))} days</p>
+                                    <p><strong>Priority:</strong> <span class="badge bg-${task.priority === 'High' ? 'danger' : task.priority === 'Medium' ? 'warning' : 'info'}">${task.priority}</span></p>
+                                    <p><strong>Document:</strong> ${task.document_id ? `<a class="btn btn-sm btn-primary" 
+                                     href="${API_BASE}/admin/documents/${task.document_id}/download">
+                                     <i class="fas fa-download"></i> Download
+                                     </a>`
+                                    : 'No document'}
+                                    </p>
+                                    <span class="badge bg-danger">Overdue</span>
+                                </div>
+                            `).join('');
+                         }
+                         break;
 
-        // User Types Tab Filtering & Sorting
-        function filterUserTypes() {
-            const searchTerm = document.getElementById('userTypesSearch').value.toLowerCase();
-            const allUserTypes = JSON.parse(localStorage.getItem('userTypes')) || []; // Fallback
+                     case 'pending_approvals':
+                        const pendingTasksResponse = await fetch(`${API_BASE}/admin/tasks`, {
+                            method: 'GET',
+                            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }
+                        });
+                         if (pendingTasksResponse.ok) {
+                             const allTasks = await pendingTasksResponse.json();
+                             data = allTasks.filter(task => task.approval_status === 'pending');
+                             content = data.map(task => `
+                                 <div class="deadline-item">
+                                    <h5><i class="fas fa-clipboard-check text-info"></i> ${task.title}</h5>
+                                    <p><strong>Project:</strong> ${task.project_name || 'N/A'}</p>
+                                    <p><strong>Created by:</strong> ${task.created_by_name || 'N/A'}</p>
+                                    <p><strong>Assigned to:</strong> ${task.assigned_to_name || 'Unassigned'}</p>
+                                    <p><strong>Priority:</strong> <span class="badge bg-${task.priority === 'High' ? 'danger' : task.priority === 'Medium' ? 'warning' : 'info'}">${task.priority}</span></p>
+                                    <span class="badge bg-info">Pending Approval</span>
+                                </div>
+                            `).join('');
+                         }
+                         break;
+                    case 'live_updates':
+                        const docsResponse = await fetch(`${API_BASE}/admin/documents`, {
+                            method: 'GET',
+                            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }
+                        });
 
-            filteredUserTypes = allUserTypes.filter(type =>
-                !searchTerm || (type.role && type.role.toLowerCase().includes(searchTerm))
-            );
+                        if (docsResponse.ok) {
+                            data = await docsResponse.json();
 
-            currentUserTypePage = 1; // Reset to first page
-            displayUserTypes();
-        }
+                            content = data.map(doc => `
+            <div class="deadline-item">
+                <h5><i class="fas fa-file-alt text-primary"></i> ${doc.original_filename}</h5>
+                <p><strong>Project:</strong> ${doc.project_name || 'N/A'}</p>
+                <p><strong>Uploaded by:</strong> ${doc.uploaded_by_name}</p>
+                <p><strong>Uploaded at:</strong> ${new Date(doc.uploaded_at).toLocaleString()}</p>
 
-        function sortUserTypes(field) {
-            if (!rbacSystem.checkPermission('userTypes', 'read')) return; // Check permission
+                <a href="${API_BASE}/admin/documents/${doc.id}/download" 
+                   class="btn btn-sm btn-primary" target="_blank">
+                   <i class="fas fa-download"></i> Download
+                </a>
+            </div>
+                  `).join('');
+                        }
+                        break;
 
-            if (userTypesSortConfig.field === field) {
-                userTypesSortConfig.direction = userTypesSortConfig.direction === 'asc' ? 'desc' : 'asc';
-            } else {
-                userTypesSortConfig.field = field;
-                userTypesSortConfig.direction = 'asc';
-            }
-
-            filteredUserTypes.sort((a, b) => {
-                let aVal = a[field === 'role' ? 'role' : field === 'id' ? 'id' : 'createdAt']; // Map fields
-                let bVal = b[field === 'role' ? 'role' : field === 'id' ? 'id' : 'createdAt'];
-
-                if (typeof aVal === 'string' && typeof bVal === 'string') {
-                    aVal = aVal.toLowerCase();
-                    bVal = bVal.toLowerCase();
                 }
-                
-                const comparison = aVal > bVal ? 1 : aVal < bVal ? -1 : 0;
-                return userTypesSortConfig.direction === 'asc' ? comparison : -comparison;
-            });
 
-            currentUserTypePage = 1; // Reset to first page
-            displayUserTypes();
-        }
-
-        function changeUserTypesPerPage() {
-            userTypesPerPage = parseInt(document.getElementById('userTypesPerPage').value);
-            currentUserTypePage = 1; // Reset to first page
-            displayUserTypes();
-        }
-
-        function nextUserTypesPage() {
-            const maxPages = Math.ceil(filteredUserTypes.length / userTypesPerPage);
-            if (currentUserTypePage < maxPages) {
-                currentUserTypePage++;
-                displayUserTypes();
-            }
-        }
-
-        function previousUserTypesPage() {
-            if (currentUserTypePage > 1) {
-                currentUserTypePage--;
-                displayUserTypes();
-            }
-        }
-
-        function exportUserTypesCSV() {
-            if (!rbacSystem.checkPermission('userTypes', 'export')) return;
-
-            const headers = ['ID', 'User Role', 'Created At'];
-            const rows = filteredUserTypes.map(type => [
-                type.id,
-                type.role,
-                type.createdAt
-            ]);
-
-            const csv = [
-                headers.join(','),
-                ...rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
-            ].join('\n');
-
-            const blob = new Blob([csv], { type: 'text/csv' });
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `user_types_export_${new Date().toISOString().split('T')[0]}.csv`;
-            a.click();
-            window.URL.revokeObjectURL(url);
-
-            auditLog.addEntry('EXPORT', 'User Types', `Exported ${filteredUserTypes.length} user types`);
-            showNotification(`Exported ${filteredUserTypes.length} user types to CSV`, 'success');
-        }
-
-        // Audit Logs Tab Filtering & Sorting
-        function filterAuditLogs() {
-            const searchTerm = document.getElementById('auditSearch').value.toLowerCase();
-            const actionFilter = document.getElementById('actionFilter').value;
-
-            filteredAuditLogs = auditLog.getFilteredLogs(searchTerm, actionFilter);
-            currentAuditPage = 1; // Reset to first page
-            displayAuditLogs();
-        }
-
-        function changeAuditPerPage() {
-            auditPerPage = parseInt(document.getElementById('auditPerPage').value);
-            currentAuditPage = 1; // Reset to first page
-            displayAuditLogs();
-        }
-
-        function nextAuditPage() {
-            const maxPages = Math.ceil(filteredAuditLogs.length / auditPerPage);
-            if (currentAuditPage < maxPages) {
-                currentAuditPage++;
-                displayAuditLogs();
-            }
-        }
-
-        function previousAuditPage() {
-            if (currentAuditPage > 1) {
-                currentAuditPage--;
-                displayAuditLogs();
-            }
-        }
-
-        function exportAuditLogsCSV() {
-            if (!rbacSystem.checkPermission('auditLogs', 'export')) return;
-
-            const headers = ['Timestamp', 'User', 'Role', 'Action', 'Resource', 'Details'];
-            const rows = filteredAuditLogs.map(log => [
-                log.timestamp,
-                log.user,
-                log.role,
-                log.action,
-                log.resource,
-                log.details
-            ]);
-
-            const csv = [
-                headers.join(','),
-                ...rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
-            ].join('\n');
-
-            const blob = new Blob([csv], { type: 'text/csv' });
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `audit_logs_export_${new Date().toISOString().split('T')[0]}.csv`;
-            a.click();
-            window.URL.revokeObjectURL(url);
-
-            auditLog.addEntry('EXPORT', 'Audit Logs', `Exported ${filteredAuditLogs.length} audit logs`);
-            showNotification(`Exported ${filteredAuditLogs.length} audit logs to CSV`, 'success');
-        }
-
-        function clearAuditLogs() {
-            auditLog.clear(); // The clear method already handles permission check and confirmation
-        }
-
-        // Activities Tab Filtering & Sorting
-        // Removed duplicate variable declarations - these are declared again at line 2567
-        // Removed: let allActivitiesData = [];
-        // Removed: let activitiesPage = 1;
-        // Removed: let activitiesPerPage = 10;
-
-        function displayActivitiesTable() {
-            const start = (activitiesPage - 1) * activitiesPerPage;
-            const end = start + activitiesPerPage;
-            const paginatedActivities = allActivitiesData.slice(start, end);
-
-            const actTableBody = document.getElementById('activitiesTable');
-            const noActivities = document.getElementById('noActivities');
-
-            if (!actTableBody) {
-                console.warn("[v0] Activities table body not found in DOM");
-                return;
-            }
-
-            if (paginatedActivities.length === 0) {
-                actTableBody.innerHTML = '';
-                if (noActivities) noActivities.style.display = 'block';
-                // Update pagination info when no data
-                const paginationInfo = document.getElementById('activitiesPaginationInfo');
-                if (paginationInfo) paginationInfo.textContent = 'Page 1 of 1';
-                return;
-            }
-
-            if (noActivities) noActivities.style.display = 'none';
-            
-            actTableBody.innerHTML = paginatedActivities.map(act => `
-                <tr>
-                    <td>${new Date(act.created_at).toLocaleString()}</td>
-                    <td>${sanitizeInput(act.username || 'Unknown')}</td>
-                    <td>${sanitizeInput(act.activity_type)}</td>
-                    <td>${sanitizeInput(act.description || '-')}</td>
-                    <td>${sanitizeInput(act.project_title || '-')}</td>
-                </tr>
-            `).join('');
-
-            // Update pagination info
-            const maxPages = Math.ceil(allActivitiesData.length / activitiesPerPage);
-            const paginationInfo = document.getElementById('activitiesPaginationInfo');
-            if (paginationInfo) {
-                paginationInfo.textContent = `Page ${activitiesPage} of ${maxPages || 1}`;
-            }
-            // Update button states
-            document.querySelector('#activities-tab .pagination-btn[onclick="previousActivitiesPage()"]').disabled = activitiesPage === 1;
-            document.querySelector('#activities-tab .pagination-btn[onclick="nextActivitiesPage()"]').disabled = activitiesPage === maxPages;
-        }
-
-        function filterActivities() {
-            const searchTerm = document.getElementById('activitiesSearch').value.toLowerCase();
-            const activityTypeFilter = document.getElementById('activityTypeFilter').value;
-
-            filteredActivities = allActivitiesData.filter(act => {
-                const matchesSearch = !searchTerm ||
-                    (act.username && act.username.toLowerCase().includes(searchTerm)) ||
-                    (act.activity_type && act.activity_type.toLowerCase().includes(searchTerm)) ||
-                    (act.description && act.description.toLowerCase().includes(searchTerm)) ||
-                    (act.project_title && act.project_title.toLowerCase().includes(searchTerm));
-
-                const matchesType = !activityTypeFilter || act.activity_type === activityTypeFilter;
-
-                return matchesSearch && matchesType;
-            });
-
-            activitiesPage = 1; // Reset page
-            displayActivitiesTable();
-        }
-
-        function changeActivitiesPerPage() {
-            activitiesPerPage = parseInt(document.getElementById('activitiesPerPage').value);
-            activitiesPage = 1; // Reset page
-            displayActivitiesTable();
-        }
-
-        function nextActivitiesPage() {
-            const maxPages = Math.ceil(filteredActivities.length / activitiesPerPage);
-            if (activitiesPage < maxPages) {
-                activitiesPage++;
-                displayActivitiesTable();
-            }
-        }
-
-        function previousActivitiesPage() {
-            if (activitiesPage > 1) {
-                activitiesPage--;
-                displayActivitiesTable();
-            }
-        }
-
-        function populateActivityTypeFilter(activities) {
-            const filter = document.getElementById('activityTypeFilter');
-            if (!filter) return;
-
-            // Get unique activity types and sort them
-            const activityTypes = [...new Set(activities.map(act => act.activity_type))].sort();
-            
-            // Clear existing options except the default 'All'
-            filter.innerHTML = '<option value="">All Activity Types</option>';
-            
-            // Add new options
-            activityTypes.forEach(type => {
-                const option = document.createElement('option');
-                option.value = type;
-                option.textContent = type;
-                filter.appendChild(option);
-            });
-        }
-
-
-        // ============================================
-        // CORE DASHBOARD FUNCTIONS
-        // ============================================
-
-        function selectTab(tabId) {
-            const tabs = document.querySelectorAll('.tab-content');
-            const buttons = document.querySelectorAll('.tab-button');
-
-            tabs.forEach(tab => tab.classList.remove('active'));
-            buttons.forEach(btn => btn.classList.remove('active'));
-
-            document.getElementById(tabId).classList.add('active');
-            // The event.target might be an icon or span inside the button, find the button itself
-            const clickedButton = event.currentTarget; 
-            clickedButton.classList.add('active');
-
-            // Load data specific to the tab when it becomes active
-            if (tabId === 'users-tab') {
-                if (filteredUsers.length === 0 && authToken) { // Load only if not already loaded and authenticated
-                    loadUsersFromDatabase();
+                if (content) {
+                    modalBody.innerHTML = content;
+                } else {
+                    modalBody.innerHTML = '<div class="text-center text-muted"><p>No data available</p></div>';
                 }
-                displayUsers(); // Ensure display is called even if data is already loaded
-            } else if (tabId === 'usertypes-tab') {
-                if (filteredUserTypes.length === 0 && authToken) { // Load only if not already loaded and authenticated
-                    loadUserTypesFromDatabase();
+
+            } catch (error) {
+                console.error('Error loading detail data:', error);
+                modalBody.innerHTML = '<div class="text-center text-danger"><p>Error loading data</p></div>';
+            }
+        }
+        function hideTaskModal() { document.getElementById('taskDetailModal').style.display = 'none'; }
+        window.onclick = function (event) { document.querySelectorAll('.modal').forEach(modal => { if (event.target === modal) modal.style.display = 'none'; }); };
+
+        async function loadUserTypes() {
+            try {
+                const token = localStorage.getItem('admin_session_token');
+                if (!token) { window.location.href = '/'; return; }
+                const response = await fetch(`${API_BASE}/usertypes`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (!response.ok) {
+                    if (response.status === 401) {
+                        localStorage.removeItem('admin_session_token');
+                        window.location.href = '/';
+                    }
+                    throw new Error(`HTTP ${response.status}`);
                 }
-                displayUserTypes();
-            } else if (tabId === 'audit-tab') {
-                if (auditLog.logs.length === 0 && authToken) { // Load only if not already loaded and authenticated
-                    auditLog.initialize();
+                const usertypes = await response.json();
+                if (!Array.isArray(usertypes)) {
+                    console.error('Invalid usertypes response:', usertypes);
+                    return;
                 }
-                filterAuditLogs(); // Re-apply filters on tab switch if needed
-            } else if (tabId === 'activities-tab') {
-                 if (allActivitiesData.length === 0 && authToken) { // Load only if not already loaded and authenticated
-                    loadAllActivities();
+                const tbody = document.getElementById('usertypesList');
+                const noData = document.getElementById('noUserTypes');
+                if (usertypes.length === 0) { tbody.innerHTML = ''; noData.style.display = 'block'; }
+                else {
+                    noData.style.display = 'none';
+                    tbody.innerHTML = usertypes.map(ut => `<tr><td>${ut.id}</td><td><strong>${ut.user_role}</strong></td><td>${new Date(ut.created_at).toLocaleDateString()}</td><td><div class="table-actions"><button class="btn btn-sm btn-primary" onclick="openUpdateUserTypeModal(${ut.id}, '${ut.user_role}')">Edit</button><button class="btn btn-sm btn-danger" onclick="deleteUserType(${ut.id})">Delete</button></div></td></tr>`).join('');
                 }
-                filterActivities(); // Re-apply filters
-            }
+                loadUserTypesForUserForm(usertypes);
+            } catch (error) { console.error('Error:', error); }
         }
 
-
-        function displayUsers() {
-            // Check if data is available and permissions allow reading
-            if (!rbacSystem.checkPermission('users', 'read')) {
-                document.getElementById('users-tab').innerHTML = '<div class="permission-denied"><i class="fas fa-lock"></i> You do not have permission to view employees.</div>';
-                return;
-            }
-
-            // If no users are loaded yet (e.g., API call still pending or failed)
-            if (filteredUsers.length === 0) {
-                // Check if we've already tried to load them and they were empty or failed
-                // This is a placeholder for actual loading state management.
-                // For now, we assume it will be populated by loadUsersFromDatabase().
-                // If it remains empty, the 'noUsers' message will be displayed.
-                const usersList = document.getElementById('usersList');
-                const noUsers = document.getElementById('noUsers');
-                if (usersList) usersList.innerHTML = '';
-                if (noUsers) noUsers.style.display = 'block';
-                if (document.getElementById('paginationInfo')) document.getElementById('paginationInfo').textContent = 'Page 1 of 1';
-                return;
-            }
-
-            const start = (currentUserPage - 1) * itemsPerPage;
-            const end = start + itemsPerPage;
-            const paginatedUsers = filteredUsers.slice(start, end);
-
-            const usersList = document.getElementById('usersList');
-            const noUsers = document.getElementById('noUsers');
-
-            if (paginatedUsers.length === 0 && filteredUsers.length > 0) {
-                // This scenario happens if the current page is empty after a filter, but data exists.
-                // It's better to reset to the last available page or go back.
-                // For simplicity, we'll just show no users for this page.
-                if (usersList) usersList.innerHTML = '';
-                if (noUsers) noUsers.style.display = 'block';
-                return;
-            } else if (paginatedUsers.length === 0 && filteredUsers.length === 0) {
-                 if (usersList) usersList.innerHTML = '';
-                 if (noUsers) noUsers.style.display = 'block';
-            } else {
-                if (noUsers) noUsers.style.display = 'none'; // Hide 'no users' message if there are users
-                usersList.innerHTML = paginatedUsers.map(user => `
-                    <tr>
-                        <td>${sanitizeInput(user.id)}</td>
-                        <td>${sanitizeInput(user.username)}</td>
-                        <td>${sanitizeInput(user.email)}</td>
-                        <td><span class="status-badge status-active">${sanitizeInput(user.userType)}</span></td>
-                        <td>${sanitizeInput(user.createdAt)}</td>
-                        <td>
-                            <div class="table-actions">
-                                ${rbacSystem.hasPermission('users', 'update') ? `<button class="btn btn-secondary btn-sm" onclick="openUpdateUserModal(${user.id})" title="Edit User"><i class="fas fa-edit"></i></button>` : ''}
-                                ${rbacSystem.hasPermission('users', 'delete') ? `<button class="btn btn-danger btn-sm" onclick="deleteUser(${user.id})" title="Delete User"><i class="fas fa-trash"></i></button>` : ''}
-                            </div>
-                        </td>
-                    </tr>
-                `).join('');
-            }
-
-            // Update pagination info
-            const maxPages = Math.ceil(filteredUsers.length / itemsPerPage);
-            const paginationInfo = document.getElementById('paginationInfo');
-            if (paginationInfo) {
-                paginationInfo.textContent = `Page ${currentUserPage} of ${maxPages || 1}`;
-            }
-            // Update button states
-            document.querySelector('[onclick="previousPage()"]').disabled = currentUserPage === 1;
-            document.querySelector('[onclick="nextPage()"]').disabled = currentUserPage === maxPages;
-            
-            // Update role filter dropdown if not already populated or if user types changed
-            const roleFilter = document.getElementById('roleFilter');
-            if (roleFilter && roleFilter.options.length <= 1) { // Only populate if it only has the default "All Roles"
-                updateUserTypeSelects(); // This also populates roleFilter
-            }
-            updateSortIndicators(); // Ensure indicators are correct after rendering
+        async function loadUsers() {
+            try {
+                const token = localStorage.getItem('admin_session_token');
+                if (!token) { window.location.href = '/'; return; }
+                const response = await fetch(`${API_BASE}/users`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (!response.ok) {
+                    if (response.status === 401) {
+                        localStorage.removeItem('admin_session_token');
+                        window.location.href = '/';
+                    }
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                const users = await response.json();
+                if (!Array.isArray(users)) {
+                    console.error('Invalid users response:', users);
+                    return;
+                }
+                const tbody = document.getElementById('usersList');
+                const noData = document.getElementById('noUsers');
+                if (users.length === 0) { tbody.innerHTML = ''; noData.style.display = 'block'; }
+                else {
+                    noData.style.display = 'none';
+                    tbody.innerHTML = users.map(user => `<tr><td>${user.id}</td><td><strong>${user.username}</strong></td><td>${user.email}</td><td>${user.user_role || 'N/A'}</td><td>${new Date(user.created_at).toLocaleDateString()}</td><td><div class="table-actions"><button class="btn btn-sm btn-primary" onclick="openUpdateUserModal(${user.id})">Edit</button><button class="btn btn-sm btn-danger" onclick="deleteUser(${user.id})">Delete</button></div></td></tr>`).join('');
+                }
+            } catch (error) { console.error('Error:', error); }
         }
 
-        function displayUserTypes() {
-             if (!rbacSystem.checkPermission('userTypes', 'read')) {
-                document.getElementById('usertypes-tab').innerHTML = '<div class="permission-denied"><i class="fas fa-lock"></i> You do not have permission to view user types.</div>';
-                return;
-            }
-
-            if (filteredUserTypes.length === 0) {
-                const userTypesList = document.getElementById('usertypesList');
-                const noUserTypes = document.getElementById('noUserTypes');
-                if (userTypesList) userTypesList.innerHTML = '';
-                if (noUserTypes) noUserTypes.style.display = 'block';
-                if (document.getElementById('userTypesPaginationInfo')) document.getElementById('userTypesPaginationInfo').textContent = 'Page 1 of 1';
-                return;
-            }
-
-            const start = (currentUserTypePage - 1) * userTypesPerPage;
-            const end = start + userTypesPerPage;
-            const paginatedTypes = filteredUserTypes.slice(start, end);
-
-            const userTypesList = document.getElementById('usertypesList');
-            const noUserTypes = document.getElementById('noUserTypes');
-
-            if (paginatedTypes.length === 0 && filteredUserTypes.length > 0) {
-                if (userTypesList) userTypesList.innerHTML = '';
-                if (noUserTypes) noUserTypes.style.display = 'block';
-            } else if (paginatedTypes.length === 0 && filteredUserTypes.length === 0) {
-                if (userTypesList) userTypesList.innerHTML = '';
-                if (noUserTypes) noUserTypes.style.display = 'block';
-            } else {
-                if (noUserTypes) noUserTypes.style.display = 'none';
-                userTypesList.innerHTML = paginatedTypes.map(type => `
-                    <tr>
-                        <td>${sanitizeInput(type.id)}</td>
-                        <td>${sanitizeInput(type.role)}</td>
-                        <td>${sanitizeInput(type.createdAt)}</td>
-                        <td>
-                            <div class="table-actions">
-                                ${rbacSystem.hasPermission('userTypes', 'update') ? `<button class="btn btn-secondary btn-sm" onclick="openUpdateUserTypeModal(${type.id})" title="Edit User Type"><i class="fas fa-edit"></i></button>` : ''}
-                                ${rbacSystem.hasPermission('userTypes', 'delete') ? `<button class="btn btn-danger btn-sm" onclick="deleteUserType(${type.id})" title="Delete User Type"><i class="fas fa-trash"></i></button>` : ''}
-                            </div>
-                        </td>
-                    </tr>
-                `).join('');
-            }
-
-            const maxPages = Math.ceil(filteredUserTypes.length / userTypesPerPage);
-            const paginationInfo = document.getElementById('userTypesPaginationInfo');
-            if (paginationInfo) {
-                paginationInfo.textContent = `Page ${currentUserTypePage} of ${maxPages || 1}`;
-            }
-            document.querySelector('[onclick="previousUserTypesPage()"]').disabled = currentUserTypePage === 1;
-            document.querySelector('[onclick="nextUserTypesPage()"]').disabled = currentUserTypePage === maxPages;
+        async function loadUserTypesForUserForm(usertypes) {
+            if (!Array.isArray(usertypes)) return;
+            const selects = [document.getElementById('usrUserType'), document.getElementById('updateUsrUserType')];
+            selects.forEach(select => { const currentValue = select.value; select.innerHTML = '<option value="">Select a user type</option>' + usertypes.map(ut => `<option value="${ut.id}">${ut.user_role}</option>`).join(''); select.value = currentValue; });
         }
 
-        function displayAuditLogs() {
-             if (!rbacSystem.checkPermission('auditLogs', 'read')) {
-                document.getElementById('audit-tab').innerHTML = '<div class="permission-denied"><i class="fas fa-lock"></i> You do not have permission to view audit logs.</div>';
-                return;
-            }
+        function openUserTypeModal() { document.getElementById('userTypeModal').style.display = 'block'; document.getElementById('typRole').value = ''; document.getElementById('usertypeError').innerHTML = ''; }
+        function closeUserTypeModal() { document.getElementById('userTypeModal').style.display = 'none'; }
+        function openUpdateUserTypeModal(id, role) { document.getElementById('updateTypId').value = id; document.getElementById('updateTypRole').value = role; document.getElementById('updateUserTypeModal').style.display = 'block'; }
+        function closeUpdateUserTypeModal() { document.getElementById('updateUserTypeModal').style.display = 'none'; }
+        function openUserModal() { document.getElementById('userModal').style.display = 'block'; document.getElementById('usrUsername').value = ''; document.getElementById('usrEmail').value = ''; document.getElementById('usrPassword').value = ''; document.getElementById('usrConfirmPassword').value = ''; document.getElementById('usrUserType').value = ''; document.getElementById('userError').innerHTML = ''; document.querySelectorAll('#userModal [data-module][data-action]').forEach(cb => cb.checked = false); }
+        function closeUserModal() { document.getElementById('userModal').style.display = 'none'; }
+        function closeUpdateUserModal() { document.getElementById('updateUserModal').style.display = 'none'; }
+        function showSuccessMessage(message) { const el = document.getElementById('successMessage'); el.textContent = message; el.style.display = 'block'; setTimeout(() => { el.style.display = 'none'; }, 3000); }
 
-            const start = (currentAuditPage - 1) * auditPerPage;
-            const end = start + auditPerPage;
-            const paginatedLogs = filteredAuditLogs.slice(start, end);
-
-            const auditList = document.getElementById('auditList');
-            const noAuditLogs = document.getElementById('noAuditLogs');
-
-            if (paginatedLogs.length === 0 && filteredAuditLogs.length > 0) {
-                if (auditList) auditList.innerHTML = '';
-                if (noAuditLogs) noAuditLogs.style.display = 'block';
-            } else if (paginatedLogs.length === 0 && filteredAuditLogs.length === 0) {
-                if (auditList) auditList.innerHTML = '';
-                if (noAuditLogs) noAuditLogs.style.display = 'block';
-            } else {
-                if (noAuditLogs) noAuditLogs.style.display = 'none';
-                auditList.innerHTML = paginatedLogs.map(log => `
-                    <tr>
-                        <td>${sanitizeInput(log.timestamp)}</td>
-                        <td>${sanitizeInput(log.user)}</td>
-                        <td>${sanitizeInput(log.role)}</td>
-                        <td><span class="status-badge status-active">${sanitizeInput(log.action)}</span></td>
-                        <td>${sanitizeInput(log.resource)}</td>
-                        <td>${sanitizeInput(log.details)}</td>
-                    </tr>
-                `).join('');
-            }
-
-            const maxPages = Math.ceil(filteredAuditLogs.length / auditPerPage);
-            const paginationInfo = document.getElementById('auditPaginationInfo');
-            if (paginationInfo) {
-                paginationInfo.textContent = `Page ${currentAuditPage} of ${maxPages || 1}`;
-            }
-            document.querySelector('[onclick="previousAuditPage()"]').disabled = currentAuditPage === 1;
-            document.querySelector('[onclick="nextAuditPage()"]').disabled = currentAuditPage === maxPages;
-        }
-
-        function openUserModal() {
-            if (!rbacSystem.checkPermission('users', 'create')) return;
-            document.getElementById('userModal').style.display = 'block';
-            // Clear form on open
-            document.getElementById('userModal').querySelector('form').reset();
-            document.getElementById('passwordStrength').innerHTML = '';
-            document.getElementById('userError').innerHTML = '';
-        }
-
-        function closeUserModal() {
-            document.getElementById('userModal').style.display = 'none';
-        }
-
-        function createUser(event) {
+        async function createUserType(event) {
             event.preventDefault();
+            const userRole = document.getElementById('typRole').value.trim();
+            if (!userRole || userRole.length < 3) { alert('User role must be at least 3 characters'); return; }
+            try {
+                const token = localStorage.getItem('admin_session_token');
+                const response = await fetch(`${API_BASE}/usertypes`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ user_role: userRole })
+                });
+                const data = await response.json();
+                if (!response.ok) { document.getElementById('usertypeError').innerHTML = `<div style="background: #f8d7da; color: #721c24; padding: 12px; border-radius: 8px;">${data.error}</div>`; return; }
+                showSuccessMessage('User type created successfully!');
+                closeUserTypeModal();
+                loadUserTypes();
+            } catch (error) { alert('Error creating user type'); }
+        }
 
-            if (!rbacSystem.checkPermission('users', 'create')) return;
+        async function updateUserType(event) {
+            event.preventDefault();
+            const id = document.getElementById('updateTypId').value;
+            const userRole = document.getElementById('updateTypRole').value.trim();
+            if (!userRole || userRole.length < 3) { alert('User role must be at least 3 characters'); return; }
+            try {
+                const token = localStorage.getItem('admin_session_token');
+                const response = await fetch(`${API_BASE}/usertypes/${id}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ user_role: userRole })
+                });
+                const data = await response.json();
+                if (!response.ok) { alert(data.error); return; }
+                showSuccessMessage('User type updated successfully!');
+                closeUpdateUserTypeModal();
+                loadUserTypes();
+            } catch (error) { alert('Error updating user type'); }
+        }
 
+        async function deleteUserType(id) {
+            if (!confirm('Are you sure you want to delete this user type?')) return;
+            try {
+                const token = localStorage.getItem('admin_session_token');
+                const response = await fetch(`${API_BASE}/usertypes/${id}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (response.ok) { showSuccessMessage('User type deleted successfully!'); loadUserTypes(); }
+                else { alert('Error deleting user type'); }
+            } catch (error) { alert('Error deleting user type'); }
+        }
+
+        async function createUser(event) {
+            event.preventDefault();
             const username = document.getElementById('usrUsername').value.trim();
             const email = document.getElementById('usrEmail').value.trim();
             const password = document.getElementById('usrPassword').value;
             const confirmPassword = document.getElementById('usrConfirmPassword').value;
-            const userType = document.getElementById('usrUserType').value;
-            const userErrorDiv = document.getElementById('userError');
-
-            if (!username || !email || !password || !confirmPassword || !userType) {
-                userErrorDiv.innerHTML = '<div class="alert alert-danger">All fields are required.</div>';
-                return;
-            }
-
-            if (!isValidEmail(email)) {
-                userErrorDiv.innerHTML = '<div class="alert alert-danger">Invalid email format.</div>';
-                return;
-            }
-
-            if (password !== confirmPassword) {
-                userErrorDiv.innerHTML = '<div class="alert alert-danger">Passwords do not match.</div>';
-                return;
-            }
-
-            if (!validatePasswordStrength(password)) {
-                userErrorDiv.innerHTML = '<div class="alert alert-danger">Password does not meet security requirements (min 8 chars, uppercase, lowercase, number, special char).</div>';
-                return;
-            }
-
-            // Collect permissions for the new user
-            const permissions = [];
-            const permissionsObject = {}; // For potential API integration
-            document.querySelectorAll('#userModal input[type="checkbox"]:checked').forEach(checkbox => {
-                const module = checkbox.dataset.module;
-                const action = checkbox.dataset.action;
-                permissions.push({ module, action });
-
-                // Build permissions object for API
-                if (!permissionsObject[module]) {
-                    permissionsObject[module] = {};
+            const userTypeId = document.getElementById('usrUserType').value;
+            const errorDiv = document.getElementById('userError');
+            errorDiv.innerHTML = '';
+            if (!username || username.length < 3) { errorDiv.innerHTML = '<div style="background: #f8d7da; color: #721c24; padding: 12px; border-radius: 8px;">Username must be at least 3 characters</div>'; return; }
+            if (!email || !email.includes('@')) { errorDiv.innerHTML = '<div style="background: #f8d7da; color: #721c24; padding: 12px; border-radius: 8px;">Please enter a valid email address</div>'; return; }
+            if (!password || password.length < 8) { errorDiv.innerHTML = '<div style="background: #f8d7da; color: #721c24; padding: 12px; border-radius: 8px;">Password must be at least 8 characters</div>'; return; }
+            if (password !== confirmPassword) { errorDiv.innerHTML = '<div style="background: #f8d7da; color: #721c24; padding: 12px; border-radius: 8px;">Passwords do not match</div>'; return; }
+            if (!userTypeId) { errorDiv.innerHTML = '<div style="background: #f8d7da; color: #721c24; padding: 12px; border-radius: 8px;">Please select a user type</div>'; return; }
+            const permissions = {};
+            document.querySelectorAll('#userModal [data-module][data-action]').forEach(checkbox => {
+                if (checkbox.checked) {
+                    const moduleName = checkbox.getAttribute('data-module');
+                    const actionName = checkbox.getAttribute('data-action');
+                    if (!permissions[moduleName]) permissions[moduleName] = {};
+                    permissions[moduleName][actionName] = true;
                 }
-                permissionsObject[module][action] = true;
             });
-
-            const newUser = {
-                // ID will be generated by the backend ideally
-                // For local storage fallback:
-                id: Date.now(), 
-                username: username,
-                email: email,
-                password: password, // In production, hash this server-side before storing
-                userType: userType,
-                permissions: permissions, // Store permissions in array format for local display
-                createdAt: new Date().toLocaleDateString() // Use locale string for display
-            };
-
-            // --- API Call to Create User ---
-            fetch('/api/users', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': authToken ? `Bearer ${authToken}` : '',
-                    'X-CSRF-Token': sessionStorage.getItem('csrfToken')
-                },
-                body: JSON.stringify({
-                    username: username,
-                    email: email,
-                    password: password,
-                    userType: userType,
-                    permissions: permissionsObject // Use object format for API
-                })
-            })
-            .then(response => {
-                if (!response.ok) {
-                    // Handle API errors, e.g., email already exists, invalid data
-                    return response.json().then(err => { throw err; });
-                }
-                return response.json();
-            })
-            .then(createdUser => {
-                // Assuming the API returns the created user object with an ID
-                // Update our local 'newUser' object with server-generated ID if available
-                // For now, we'll just use the local ID and refresh the list.
-                console.log("[v0] User created successfully in database:", createdUser);
-                
-                // Add to localStorage for immediate display if not already added
-                const users = JSON.parse(localStorage.getItem('users')) || [];
-                // If API returned the user with ID, use that. Otherwise, use generated ID.
-                // For consistency, we'll add the locally generated ID and assume it gets overwritten on next fetch.
-                // In a real app, you'd use the API's returned ID.
-                if (!users.some(u => u.id === newUser.id)) { // Avoid adding duplicates if fetch fails but we have local ID
-                    users.push(newUser); 
-                    localStorage.setItem('users', JSON.stringify(users));
-                }
-
-                auditLog.addEntry('CREATE', 'User', `Created new user: ${username}`);
-                showNotification('Employee created successfully', 'success');
-                closeUserModal();
-                loadUsersFromDatabase(); // Refresh the list from the server
-            })
-            .catch(error => {
-                console.error("[v0] Error creating user:", error);
-                const errorMessage = error.message || "Failed to create employee. Please check the details and try again.";
-                userErrorDiv.innerHTML = `<div class="alert alert-danger">${sanitizeInput(errorMessage)}</div>`;
-                // If API creation fails, maybe we don't want to add to local storage, or handle it differently.
-                // For now, we'll assume success for local display if API fails, but show error.
-                // showNotification("Warning: Could not create user in database, check console.", "warning");
-            });
-        }
-
-        function openUpdateUserModal(userId) {
-            if (!rbacSystem.checkPermission('users', 'update')) return;
-
-            const users = JSON.parse(localStorage.getItem('users')) || [];
-            const user = users.find(u => u.id === userId);
-
-            if (user) {
-                document.getElementById('updateUserId').value = user.id;
-                document.getElementById('updateUsername').value = user.username;
-                document.getElementById('updateEmail').value = user.email;
-                document.getElementById('updateUserType').value = user.userType;
-
-                // Clear password fields and strength indicator
-                document.getElementById('updatePassword').value = '';
-                document.getElementById('updateConfirmPassword').value = '';
-                document.getElementById('updatePasswordStrength').innerHTML = '';
-
-                // Reset all checkboxes first
-                document.querySelectorAll('#updateUserModal input[type="checkbox"]').forEach(checkbox => {
-                    checkbox.checked = false;
-                });
-
-                // Check relevant permissions
-                if (user.permissions && Array.isArray(user.permissions)) {
-                    user.permissions.forEach(perm => {
-                        const checkbox = document.querySelector(`#updateUserModal input[data-module="${perm.module}"][data-action="${perm.action}"]`);
-                        if (checkbox) {
-                            checkbox.checked = true;
-                        }
-                    });
-                }
-
-                document.getElementById('updateUserModal').style.display = 'block';
-            }
-        }
-
-        function closeUpdateUserModal() {
-            document.getElementById('updateUserModal').style.display = 'none';
-        }
-
-        function checkUpdatePasswordStrength() {
-            const password = document.getElementById('updatePassword').value;
-            const strengthDiv = document.getElementById('updatePasswordStrength');
-
-            if (!password) {
-                strengthDiv.innerHTML = '';
-                return;
-            }
-
-            const minLength = password.length >= 8;
-            const hasUpperCase = /[A-Z]/.test(password);
-            const hasLowerCase = /[a-z]/.test(password);
-            const hasNumbers = /\d/.test(password);
-            const hasSpecialChars = /[!@#$%^&*()_+=\-\[\]{};:'",.<>?/\\|`~]/.test(password);
-
-            let strength = 'weak';
-            let criteria = 0;
-
-            if (minLength) criteria++;
-            if (hasUpperCase) criteria++;
-            if (hasLowerCase) criteria++;
-            if (hasNumbers) criteria++;
-            if (hasSpecialChars) criteria++;
-
-            if (criteria >= 4) {
-                strength = 'strong';
-            } else if (criteria >= 3) {
-                strength = 'medium';
-            }
-
-            const messages = {
-                weak: '❌ Weak: Add uppercase, lowercase, numbers, and special characters',
-                medium: '⚠️ Medium: Password is acceptable',
-                strong: '✓ Strong: Password meets security requirements'
-            };
-
-            strengthDiv.className = `password-strength ${strength}`;
-            strengthDiv.innerHTML = messages[strength];
-        }
-
-        function updateUser(event) {
-            event.preventDefault();
-
-            if (!rbacSystem.checkPermission('users', 'update')) return;
-
-            const userId = parseInt(document.getElementById('updateUserId').value);
-            const newUserType = document.getElementById('updateUserType').value;
-            const newPassword = document.getElementById('updatePassword').value;
-            const confirmPassword = document.getElementById('updateConfirmPassword').value;
-            const updateUserErrorDiv = document.getElementById('updateUserError');
-
-            // Check if new password is provided
-            if (newPassword) {
-                if (newPassword !== confirmPassword) {
-                    updateUserErrorDiv.innerHTML = '<div class="alert alert-danger">New passwords do not match.</div>';
-                    return;
-                }
-                if (!validatePasswordStrength(newPassword)) {
-                    updateUserErrorDiv.innerHTML = '<div class="alert alert-danger">New password does not meet security requirements.</div>';
-                    return;
-                }
-            }
-
-            // Collect updated permissions
-            const permissionsArray = [];
-            const permissionsObject = {};
-            document.querySelectorAll('#updateUserModal input[type="checkbox"]:checked').forEach(checkbox => {
-                const module = checkbox.dataset.module;
-                const action = checkbox.dataset.action;
-                permissionsArray.push({ module, action });
-
-                if (!permissionsObject[module]) {
-                    permissionsObject[module] = {};
-                }
-                permissionsObject[module][action] = true;
-            });
-
-            const users = JSON.parse(localStorage.getItem('users')) || [];
-            const userIndex = users.findIndex(u => u.id === userId);
-
-            if (userIndex !== -1) {
-                const oldUser = { ...users[userIndex] }; // Store old user data for logging
-                users[userIndex].userType = newUserType; // Update user type
-                users[userIndex].permissions = permissionsArray; // Update permissions
-
-                if (newPassword) {
-                    users[userIndex].password = newPassword; // Update password if provided
-                }
-
-                // --- API Call to Update User Permissions and Type ---
-                fetch(`/api/users/${userId}`, { // Assuming a PUT or PATCH endpoint for user updates
-                    method: 'PUT', // Or 'PATCH'
+            try {
+                const token = localStorage.getItem('admin_session_token');
+                const response = await fetch(`${API_BASE}/users`, {
+                    method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': authToken ? `Bearer ${authToken}` : '',
-                        'X-CSRF-Token': sessionStorage.getItem('csrfToken')
+                        'Authorization': `Bearer ${token}`
                     },
                     body: JSON.stringify({
-                        userType: newUserType,
-                        permissions: permissionsObject,
-                        // Only include password if it's being changed
-                        ...(newPassword && { password: newPassword }) 
+                        username,
+                        email,
+                        password,
+                        confirm_password: confirmPassword,
+                        user_type_id: parseInt(userTypeId),
+                        permissions
                     })
-                })
-                .then(response => {
-                    if (!response.ok) {
-                        return response.json().then(err => { throw err; });
-                    }
-                    return response.json();
-                })
-                .then(updatedUserData => {
-                    console.log("[v0] User updated successfully in database.");
-                    // Update local storage with the latest data from API if it returned it
-                    // For now, apply changes to local storage
-                    localStorage.setItem('users', JSON.stringify(users));
-
-                    auditLog.addEntry('UPDATE', 'User', `Updated user ${oldUser.username}: type from ${oldUser.userType} to ${newUserType}. Permissions updated.`);
-                    showNotification('Employee updated successfully', 'success');
-                    closeUpdateUserModal();
-                    loadUsersFromDatabase(); // Refresh list to ensure consistency
-                })
-                .catch(error => {
-                    console.error("[v0] Error updating user:", error);
-                    const errorMessage = error.message || "Failed to update employee. Please check the details and try again.";
-                    updateUserErrorDiv.innerHTML = `<div class="alert alert-danger">${sanitizeInput(errorMessage)}</div>`;
-                    // showNotification("Warning: Could not update employee in database, check console.", "warning");
                 });
-            } else {
-                updateUserErrorDiv.innerHTML = '<div class="alert alert-danger">User not found for update.</div>';
-            }
+                const data = await response.json();
+                if (!response.ok) { errorDiv.innerHTML = `<div style="background: #f8d7da; color: #721c24; padding: 12px; border-radius: 8px;">${data.error}</div>`; return; }
+                showSuccessMessage('Employee created successfully!');
+                closeUserModal();
+                loadUsers();
+            } catch (error) { alert('Error creating employee'); }
         }
 
-        function deleteUser(userId) {
-            if (!rbacSystem.checkPermission('users', 'delete')) return;
-
-            // Confirmation dialog for deletion
-            if (confirm('Are you sure you want to delete this employee? This action cannot be undone.')) {
-                const users = JSON.parse(localStorage.getItem('users')) || [];
-                const userToDelete = users.find(u => u.id === userId);
-
-                // --- API Call to Delete User ---
-                fetch(`/api/users/${userId}`, {
-                    method: 'DELETE',
-                    headers: {
-                        'Authorization': authToken ? `Bearer ${authToken}` : '',
-                        'X-CSRF-Token': sessionStorage.getItem('csrfToken')
-                    }
-                })
-                .then(response => {
-                    if (!response.ok) {
-                        return response.json().then(err => { throw err; });
-                    }
-                    console.log(`[v0] User ${userId} deleted from database.`);
-                    
-                    // Remove from local storage as well
-                    const filteredList = users.filter(u => u.id !== userId);
-                    localStorage.setItem('users', JSON.stringify(filteredList));
-
-                    auditLog.addEntry('DELETE', 'User', `Deleted user: ${userToDelete ? userToDelete.username : userId}`);
-                    showNotification('Employee deleted successfully', 'success');
-                    loadUsersFromDatabase(); // Refresh list
-                })
-                .catch(error => {
-                    console.error(`[v0] Error deleting user ${userId}:`, error);
-                    const errorMessage = error.message || `Failed to delete employee. Please try again.`;
-                    showNotification(errorMessage, "error");
+        async function openUpdateUserModal(userId) {
+            try {
+                const token = localStorage.getItem('admin_session_token');
+                const response = await fetch(`${API_BASE}/users/${userId}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
                 });
-            }
-        }
-
-        function openUserTypeModal() {
-            if (!rbacSystem.checkPermission('userTypes', 'create')) return;
-            document.getElementById('userTypeModal').style.display = 'block';
-            // Clear form on open
-            document.getElementById('userTypeModal').querySelector('form').reset();
-            document.getElementById('usertypeError').innerHTML = '';
-        }
-
-        function closeUserTypeModal() {
-            document.getElementById('userTypeModal').style.display = 'none';
-        }
-
-        function createUserType(event) {
-            event.preventDefault();
-
-            if (!rbacSystem.checkPermission('userTypes', 'create')) return;
-
-            const role = document.getElementById('typRole').value.trim();
-            const userTypeModalErrorDiv = document.getElementById('usertypeError');
-
-            if (!role) {
-                userTypeModalErrorDiv.innerHTML = '<div class="alert alert-danger">User role name is required.</div>';
-                return;
-            }
-
-            const newUserType = {
-                // ID will be generated by backend
-                // For local storage fallback:
-                id: Date.now(), 
-                role: role,
-                createdAt: new Date().toLocaleDateString()
-            };
-
-            // --- API Call to Create User Type ---
-            fetch('/api/usertypes', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': authToken ? `Bearer ${authToken}` : '',
-                    'X-CSRF-Token': sessionStorage.getItem('csrfToken')
-                },
-                body: JSON.stringify({ role: role })
-            })
-            .then(response => {
-                if (!response.ok) {
-                    return response.json().then(err => { throw err; });
+                if (!response.ok) { alert('Failed to load user data'); return; }
+                const user = await response.json();
+                document.getElementById('updateUsrId').value = user.id;
+                document.getElementById('updateUsrUsername').value = user.username;
+                document.getElementById('updateUsrEmail').value = user.email;
+                document.getElementById('updateUsrPassword').value = '';
+                document.getElementById('updateUsrUserType').value = user.user_type_id;
+                document.querySelectorAll('#updateUserModal [data-module][data-action]').forEach(cb => cb.checked = false);
+                if (user.permissions) {
+                    for (const [module, actions] of Object.entries(user.permissions)) {
+                        for (const [action, granted] of Object.entries(actions)) {
+                            if (granted) {
+                                const checkbox = document.querySelector(`#updateUserModal [data-module="${module}"][data-action="${action}"]`);
+                                if (checkbox) checkbox.checked = true;
+                            }
+                        }
+                    }
                 }
-                return response.json();
-            })
-            .then(createdType => {
-                console.log("[v0] User type created in database:", createdType);
-                
-                // Add to local storage for immediate display
-                const userTypes = JSON.parse(localStorage.getItem('userTypes')) || [];
-                userTypes.push(newUserType); // Use local ID for now
-                localStorage.setItem('userTypes', JSON.stringify(userTypes));
+                document.getElementById('updateUserModal').style.display = 'block';
+            } catch (error) { alert('Error loading user data'); }
+        }
 
-                updateUserTypeSelects(); // Update dropdowns in other modals
-
-                auditLog.addEntry('CREATE', 'User Type', `Created new user type: ${role}`);
-                showNotification('User type created successfully', 'success');
-                closeUserTypeModal();
-                loadUserTypesFromDatabase(); // Refresh the list from server
-            })
-            .catch(error => {
-                console.error("[v0] Error creating user type:", error);
-                const errorMessage = error.message || "Failed to create user type. Please check the details and try again.";
-                userTypeModalErrorDiv.innerHTML = `<div class="alert alert-danger">${sanitizeInput(errorMessage)}</div>`;
+        async function updateUser(event) {
+            event.preventDefault();
+            const userId = document.getElementById('updateUsrId').value;
+            const username = document.getElementById('updateUsrUsername').value.trim();
+            const email = document.getElementById('updateUsrEmail').value.trim();
+            const password = document.getElementById('updateUsrPassword').value;
+            const userTypeId = document.getElementById('updateUsrUserType').value;
+            const errorDiv = document.getElementById('updateUserError');
+            errorDiv.innerHTML = '';
+            if (!username || username.length < 3) { errorDiv.innerHTML = '<div style="background: #f8d7da; color: #721c24; padding: 12px; border-radius: 8px;">Username must be at least 3 characters</div>'; return; }
+            if (!email || !email.includes('@')) { errorDiv.innerHTML = '<div style="background: #f8d7da; color: #721c24; padding: 12px; border-radius: 8px;">Please enter a valid email address</div>'; return; }
+            if (!userTypeId) { errorDiv.innerHTML = '<div style="background: #f8d7da; color: #721c24; padding: 12px; border-radius: 8px;">Please select a user type</div>'; return; }
+            const permissions = {};
+            document.querySelectorAll('#updateUserModal [data-module][data-action]').forEach(checkbox => {
+                if (checkbox.checked) {
+                    const moduleName = checkbox.getAttribute('data-module');
+                    const actionName = checkbox.getAttribute('data-action');
+                    if (!permissions[moduleName]) permissions[moduleName] = {};
+                    permissions[moduleName][actionName] = true;
+                }
             });
-        }
-
-        function openUpdateUserTypeModal(typeId) {
-            if (!rbacSystem.checkPermission('userTypes', 'update')) return;
-
-            const userTypes = JSON.parse(localStorage.getItem('userTypes')) || [];
-            const userType = userTypes.find(t => t.id === typeId);
-
-            if (userType) {
-                document.getElementById('updateTypId').value = userType.id;
-                document.getElementById('updateTypRole').value = userType.role;
-                document.getElementById('updateUserTypeModal').style.display = 'block';
-                document.getElementById('updateUserTypeModal').querySelector('.alert')?.remove(); // Clear previous errors
-            }
-        }
-
-        function closeUpdateUserTypeModal() {
-            document.getElementById('updateUserTypeModal').style.display = 'none';
-        }
-
-        function updateUserType(event) {
-            event.preventDefault();
-
-            if (!rbacSystem.checkPermission('userTypes', 'update')) return;
-
-            const typeId = parseInt(document.getElementById('updateTypId').value);
-            const newRole = document.getElementById('updateTypRole').value.trim();
-            const updateUserTypeErrorDiv = document.getElementById('updateUserTypeModal').querySelector('.modal-content'); // Adjust selector for error display
-
-            if (!newRole) {
-                // Find or create the error div
-                let errorDiv = updateUserTypeErrorDiv.querySelector('.alert.alert-danger');
-                if (!errorDiv) {
-                    errorDiv = document.createElement('div');
-                    errorDiv.className = 'alert alert-danger';
-                    updateUserTypeErrorDiv.insertBefore(errorDiv, updateUserTypeErrorDiv.querySelector('.modal-header').nextSibling);
-                }
-                errorDiv.textContent = 'User role name is required.';
-                return;
-            }
-
-            const userTypes = JSON.parse(localStorage.getItem('userTypes')) || [];
-            const typeIndex = userTypes.findIndex(t => t.id === typeId);
-
-            if (typeIndex !== -1) {
-                const oldRole = userTypes[typeIndex].role; // Get old role for logging
-
-                // --- API Call to Update User Type ---
-                fetch(`/api/usertypes/${typeId}`, {
+            const payload = { username, email, user_type_id: parseInt(userTypeId), permissions };
+            if (password) payload.password = password;
+            try {
+                const token = localStorage.getItem('admin_session_token');
+                const response = await fetch(`${API_BASE}/users/${userId}`, {
                     method: 'PUT',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': authToken ? `Bearer ${authToken}` : '',
-                        'X-CSRF-Token': sessionStorage.getItem('csrfToken')
+                        'Authorization': `Bearer ${token}`
                     },
-                    body: JSON.stringify({ role: newRole })
-                })
-                .then(response => {
-                    if (!response.ok) {
-                        return response.json().then(err => { throw err; });
-                    }
-                    return response.json();
-                })
-                .then(updatedTypeData => {
-                    console.log("[v0] User type updated in database.");
-                    
-                    // Update local storage
-                    userTypes[typeIndex].role = newRole;
-                    localStorage.setItem('userTypes', JSON.stringify(userTypes));
-
-                    updateUserTypeSelects(); // Update dropdowns
-
-                    auditLog.addEntry('UPDATE', 'User Type', `Updated user type from "${oldRole}" to "${newRole}"`);
-                    showNotification('User type updated successfully', 'success');
-                    closeUpdateUserTypeModal();
-                    loadUserTypesFromDatabase(); // Refresh list
-                })
-                .catch(error => {
-                    console.error("[v0] Error updating user type:", error);
-                    const errorMessage = error.message || "Failed to update user type. Please check the details and try again.";
-                    // Find or create the error div
-                    let errorDiv = updateUserTypeErrorDiv.querySelector('.alert.alert-danger');
-                    if (!errorDiv) {
-                        errorDiv = document.createElement('div');
-                        errorDiv.className = 'alert alert-danger';
-                        updateUserTypeErrorDiv.insertBefore(errorDiv, updateUserTypeErrorDiv.querySelector('.modal-header').nextSibling);
-                    }
-                    errorDiv.textContent = sanitizeInput(errorMessage);
+                    body: JSON.stringify(payload)
                 });
-            } else {
-                // Find or create the error div
-                let errorDiv = updateUserTypeErrorDiv.querySelector('.alert.alert-danger');
-                if (!errorDiv) {
-                    errorDiv = document.createElement('div');
-                    errorDiv.className = 'alert alert-danger';
-                    updateUserTypeErrorDiv.insertBefore(errorDiv, updateUserTypeErrorDiv.querySelector('.modal-header').nextSibling);
-                }
-                errorDiv.textContent = 'User type not found for update.';
-            }
+                const data = await response.json();
+                if (!response.ok) { errorDiv.innerHTML = `<div style="background: #f8d7da; color: #721c24; padding: 12px; border-radius: 8px;">${data.error}</div>`; return; }
+                showSuccessMessage('Employee updated successfully!');
+                closeUpdateUserModal();
+                loadUsers();
+            } catch (error) { alert('Error updating employee'); }
         }
 
-        function deleteUserType(typeId) {
-            if (!rbacSystem.checkPermission('userTypes', 'delete')) return;
-            
-            const userTypes = JSON.parse(localStorage.getItem('userTypes')) || [];
-            const userTypeToDelete = userTypes.find(t => t.id === typeId);
-
-            if (confirm(`Are you sure you want to delete the user type "${userTypeToDelete ? userTypeToDelete.role : typeId}"? Any users with this type will be affected.`)) {
-                // --- API Call to Delete User Type ---
-                fetch(`/api/usertypes/${typeId}`, {
+        async function deleteUser(userId) {
+            if (!confirm('Are you sure you want to delete this employee?')) return;
+            try {
+                const token = localStorage.getItem('admin_session_token');
+                const response = await fetch(`${API_BASE}/users/${userId}`, {
                     method: 'DELETE',
-                    headers: {
-                        'Authorization': authToken ? `Bearer ${authToken}` : '',
-                        'X-CSRF-Token': sessionStorage.getItem('csrfToken')
-                    }
-                })
-                .then(response => {
-                    if (!response.ok) {
-                        return response.json().then(err => { throw err; });
-                    }
-                    console.log(`[v0] User type ${typeId} deleted from database.`);
-                    
-                    // Remove from local storage
-                    const filteredList = userTypes.filter(t => t.id !== typeId);
-                    localStorage.setItem('userTypes', JSON.stringify(filteredList));
-
-                    updateUserTypeSelects();
-                    auditLog.addEntry('DELETE', 'User Type', `Deleted user type: ${userTypeToDelete ? userTypeToDelete.role : typeId}`);
-                    showNotification('User type deleted successfully', 'success');
-                    loadUserTypesFromDatabase();
-                })
-                .catch(error => {
-                    console.error(`[v0] Error deleting user type ${typeId}:`, error);
-                    const errorMessage = error.message || `Failed to delete user type. Please try again.`;
-                    showNotification(errorMessage, "error");
+                    headers: { 'Authorization': `Bearer ${token}` }
                 });
-            }
+                if (response.ok) { showSuccessMessage('Employee deleted successfully!'); loadUsers(); }
+                else { alert('Error deleting employee'); }
+            } catch (error) { alert('Error deleting employee'); }
         }
 
-        // Updates the <select> elements for user types in the Create/Update User modals and the Role Filter
-        function updateUserTypeSelects() {
-            const userTypes = JSON.parse(localStorage.getItem('userTypes')) || [];
-            const selectUser = document.getElementById('usrUserType');
-            const selectUpdateUser = document.getElementById('updateUserType');
-            const roleFilter = document.getElementById('roleFilter');
-
-            // Clear existing options except the default ones
-            if (selectUser) {
-                selectUser.innerHTML = '<option value="">Select a user type</option>';
-            }
-            if (selectUpdateUser) {
-                selectUpdateUser.innerHTML = '<option value="">Select a user type</option>';
-            }
-            if (roleFilter) {
-                roleFilter.innerHTML = '<option value="">All Roles</option>';
-            }
-
-            // Populate with new options
-            userTypes.forEach(type => {
-                const optionValue = type.role;
-                const optionText = type.role;
-
-                if (selectUser) {
-                    const option = document.createElement('option');
-                    option.value = optionValue;
-                    option.textContent = optionText;
-                    selectUser.appendChild(option);
-                }
-                if (selectUpdateUser) {
-                    const option = document.createElement('option');
-                    option.value = optionValue;
-                    option.textContent = optionText;
-                    selectUpdateUser.appendChild(option);
-                }
-                if (roleFilter) {
-                    const option = document.createElement('option');
-                    option.value = optionValue;
-                    option.textContent = optionText;
-                    roleFilter.appendChild(option);
-                }
-            });
-        }
-
-        function showDetailModal(type) {
-            // This function is currently using dummy data.
-            // In a real app, it would fetch data based on 'type' and display it.
-            const modal = document.getElementById('detailModal');
-            const title = document.getElementById('detailModalTitle');
-            const body = document.getElementById('detailModalBody');
-
-            // Example data - would be replaced by API calls
-            const details = {
-                active_projects: { title: 'Active Projects', content: '<p>Loading active projects...</p>' },
-                completed_tasks: { title: 'Completed Tasks', content: '<p>Loading completed tasks...</p>' },
-                active_tasks: { title: 'Active Tasks', content: '<p>Loading active tasks...</p>' },
-                overdue_tasks: { title: 'Overdue Tasks', content: '<p>Loading overdue tasks...</p>' },
-                pending_approvals: { title: 'Pending Approvals', content: '<p>Loading pending approvals...</p>' }
-            };
-
-            if (details[type]) {
-                title.textContent = details[type].title;
-                body.innerHTML = details[type].content;
-                modal.style.display = 'block';
-                // Trigger API calls here to fetch actual data for the modal
-                // fetchProjectDetails(type, body); // Example
-            }
-        }
-          function closeDetailModal() {
-            const modal = document.getElementById('detailModal');
-            if (modal) modal.style.display = 'none';
-        }
-
-        function performAdminSearch(event) {
-            const searchTerm = event.target.value.toLowerCase();
-            console.log('[v0] Admin search input:', searchTerm);
-            // Implement actual search logic here, e.g., filtering projects, tasks, users
-            // This might involve calling a search API or filtering displayed data.
-            if (event.key === 'Enter' || event.type === 'keyup') {
-                // Perform search actions
-                // For example: if on projects tab, filter projects.
-                // If on users tab, trigger filterUsers().
-                // This is a generic search bar.
-            }
-        }
-
-        function logout() {
-            console.log("[v0] Logging out...");
-            auditLog.addEntry('LOGOUT', 'Session', 'User logged out');
-            showNotification('Logged out successfully', 'success');
-            sessionStorage.removeItem('admin_token');
-            localStorage.removeItem('admin_token');
-            localStorage.removeItem('sessionToken'); // Clear any other potential tokens
-            // Clear local storage data relevant to the user session if necessary
-            localStorage.removeItem('users');
-            localStorage.removeItem('userTypes');
-            // localStorage.removeItem('auditLogs'); // If logs were stored client-side persistently
-
-            // Optionally, clear the CSRF token as well
-            sessionStorage.removeItem('csrfToken');
-
-            setTimeout(() => {
-                window.location.href = '/login'; // Redirect to login page
-            }, 1500); // Give time for notification to show
-        }
-        
-        // Initialization functions should be called when the DOM is ready
-        // and when the user is authenticated.
-        // Handled within DOMContentLoaded now for better control.
-        // loadAdminStats();
-        // loadRecentActions();
-
+        function logout() { localStorage.removeItem('admin_session_token'); localStorage.removeItem('admin_name'); localStorage.removeItem('userRole'); window.location.href = '/'; }
     </script>
 </body>
 

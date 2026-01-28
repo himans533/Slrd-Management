@@ -385,20 +385,32 @@ def employee_dashboard():
 
 @app.route("/api/admin/login/step1", methods=["POST"])
 def login_step1():
+    import requests
+    
     data = request.get_json() or {}
     email = (data.get("email") or "").strip().lower()
     password = data.get("password") or ""
-    confirm_password = data.get("confirm_password") or ""
     admin_pin = (data.get("admin_pin") or "").strip()
+    recaptcha_token = data.get("recaptcha_token") or ""
 
-    if not email or not password or not confirm_password or not admin_pin:
+    if not email or not password or not admin_pin:
         return jsonify({"error": "All fields are required."}), 400
 
     if "@" not in email or "." not in email.split("@")[-1]:
         return jsonify({"error": "Invalid email format."}), 400
 
-    if password != confirm_password:
-        return jsonify({"error": "Passwords do not match."}), 400
+    # Verify reCAPTCHA token
+    if recaptcha_token:
+        try:
+            recaptcha_response = requests.post(
+                'https://www.google.com/recaptcha/api/siteverify',
+                data={'secret': os.getenv('RECAPTCHA_SECRET_KEY'), 'response': recaptcha_token}
+            )
+            recaptcha_data = recaptcha_response.json()
+            if not recaptcha_data.get('success') or recaptcha_data.get('score', 0) < 0.5:
+                return jsonify({"error": "reCAPTCHA verification failed."}), 400
+        except Exception as e:
+            logger.warning(f"reCAPTCHA verification error: {str(e)}")
 
     if not admin_pin.isdigit() or len(admin_pin) != 6:
         return jsonify({"error": "Admin PIN must be exactly 6 digits."}), 400
@@ -1445,12 +1457,28 @@ def delete_user(id):
 
 @app.route("/api/user/login", methods=["POST"])
 def user_login():
+    import requests
+    
     data = request.get_json() or {}
     email = (data.get("email") or "").strip().lower()
     password = data.get("password") or ""
+    recaptcha_token = data.get("recaptcha_token") or ""
 
     if not email or not password:
         return jsonify({"error": "Email and password are required."}), 400
+
+    # Verify reCAPTCHA token
+    if recaptcha_token:
+        try:
+            recaptcha_response = requests.post(
+                'https://www.google.com/recaptcha/api/siteverify',
+                data={'secret': os.getenv('RECAPTCHA_SECRET_KEY'), 'response': recaptcha_token}
+            )
+            recaptcha_data = recaptcha_response.json()
+            if not recaptcha_data.get('success') or recaptcha_data.get('score', 0) < 0.5:
+                return jsonify({"error": "reCAPTCHA verification failed."}), 400
+        except Exception as e:
+            logger.warning(f"reCAPTCHA verification error: {str(e)}")
 
     try:
         conn = get_db_connection()
@@ -2418,7 +2446,7 @@ def get_admin_tasks():
                    t.deadline, t.project_id, p.title as project_name,
                    t.assigned_to_id, u.username as assigned_to_name,
                    t.created_by_id, uc.username as created_by_name,
-                   t.created_at, t.approval_status
+                   t.created_at, t.approval_status, t.completed_at
             FROM tasks t
             LEFT JOIN projects p ON t.project_id = p.id
             LEFT JOIN users u ON t.assigned_to_id = u.id
@@ -2430,6 +2458,32 @@ def get_admin_tasks():
         conn.close()
 
         return jsonify([dict(row) for row in tasks]), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/admin/milestones", methods=["GET"])
+@admin_required
+def get_admin_milestones():
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        cursor.execute('''
+            SELECT m.id, m.title, m.description, m.status, m.due_date,
+                   m.project_id, p.title as project_name,
+                   m.created_by_id, u.username as created_by_name,
+                   m.created_at
+            FROM milestones m
+            LEFT JOIN projects p ON m.project_id = p.id
+            LEFT JOIN users u ON m.created_by_id = u.id
+            ORDER BY m.created_at DESC
+        ''')
+
+        milestones = cursor.fetchall()
+        conn.close()
+
+        return jsonify([dict(row) for row in milestones]), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 

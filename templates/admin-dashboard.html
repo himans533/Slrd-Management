@@ -856,6 +856,492 @@
                 border-left-color: var(--primary);
             }
         }
+
+        /* Activity Detail Modal Styles */
+        .activity-detail-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 5000;
+            align-items: center;
+            justify-content: center;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .activity-detail-modal.active {
+            display: flex;
+        }
+
+        .activity-detail-content {
+            background: var(--bg);
+            border-radius: 14px;
+            width: 90%;
+            max-width: 600px;
+            max-height: 85vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px var(--shadow);
+            animation: slideUp 0.3s ease;
+        }
+
+        @keyframes slideUp {
+            from {
+                transform: translateY(30px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+
+        .activity-detail-header {
+            padding: 25px;
+            border-bottom: 2px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .activity-detail-header h3 {
+            margin: 0;
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 20px;
+        }
+
+        .activity-detail-header i {
+            font-size: 24px;
+        }
+
+        .activity-close-btn {
+            background: none;
+            border: none;
+            font-size: 28px;
+            cursor: pointer;
+            color: var(--text-secondary);
+            padding: 0;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: all 0.3s ease;
+        }
+
+        .activity-close-btn:hover {
+            background: var(--hover);
+            color: var(--text);
+            transform: rotate(90deg);
+        }
+
+        .activity-detail-body {
+            padding: 25px;
+        }
+
+        .activity-detail-section {
+            margin-bottom: 25px;
+        }
+
+        .activity-detail-section h5 {
+            color: var(--text);
+            font-weight: 700;
+            margin-bottom: 12px;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-secondary);
+        }
+
+        .activity-detail-user {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 15px;
+            background: var(--bg-secondary);
+            border-radius: 10px;
+            margin-bottom: 15px;
+        }
+
+        .activity-user-avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 20px;
+            flex-shrink: 0;
+        }
+
+        .activity-user-info h6 {
+            margin: 0 0 4px 0;
+            color: var(--text);
+            font-size: 15px;
+            font-weight: 600;
+        }
+
+        .activity-user-info p {
+            margin: 0;
+            color: var(--text-secondary);
+            font-size: 12px;
+        }
+
+        .activity-detail-meta {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 15px;
+        }
+
+        .activity-meta-item {
+            padding: 12px;
+            background: var(--bg-secondary);
+            border-left: 3px solid var(--primary);
+            border-radius: 6px;
+        }
+
+        .activity-meta-item label {
+            display: block;
+            font-size: 11px;
+            text-transform: uppercase;
+            color: var(--text-secondary);
+            margin-bottom: 5px;
+            font-weight: 700;
+            letter-spacing: 0.3px;
+        }
+
+        .activity-meta-item value {
+            display: block;
+            font-size: 14px;
+            color: var(--text);
+            font-weight: 600;
+        }
+
+        .activity-description {
+            padding: 15px;
+            background: var(--bg-secondary);
+            border-left: 3px solid var(--primary);
+            border-radius: 6px;
+            line-height: 1.6;
+            color: var(--text);
+        }
+
+        .activity-related-item {
+            padding: 15px;
+            background: var(--bg-secondary);
+            border-left: 4px solid var(--info);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: 12px;
+        }
+
+        .activity-related-item:hover {
+            background: var(--hover);
+            transform: translateX(4px);
+            box-shadow: 0 4px 12px var(--shadow);
+        }
+
+        .activity-related-item h6 {
+            margin: 0 0 8px 0;
+            color: var(--text);
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .activity-related-item p {
+            margin: 0;
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .activity-related-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            background: var(--info);
+            color: white;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            margin-top: 8px;
+        }
+
+        .activity-detail-footer {
+            padding: 20px 25px;
+            border-top: 2px solid var(--border);
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+
+        .activity-detail-footer .btn {
+            padding: 10px 16px;
+            font-size: 13px;
+        }
+
+        /* Activity List Item Enhancement */
+        .activity-list-item {
+            background: var(--bg);
+            padding: 16px;
+            border-radius: 10px;
+            border-left: 4px solid var(--primary);
+            margin-bottom: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 8px var(--shadow);
+        }
+
+        .activity-list-item:hover {
+            transform: translateX(4px);
+            box-shadow: 0 4px 16px var(--shadow);
+            background: var(--bg-secondary);
+        }
+
+        .activity-list-item.clickable {
+            cursor: pointer;
+        }
+
+        .activity-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            border-radius: 50%;
+            margin-right: 12px;
+            font-size: 16px;
+        }
+
+        /* Projects Modal Styles */
+        .projects-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 5001;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .projects-modal.active {
+            display: flex;
+        }
+
+        .projects-modal-content {
+            background: var(--bg);
+            border-radius: 14px;
+            width: 90%;
+            max-width: 700px;
+            max-height: 85vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px var(--shadow);
+        }
+
+        .projects-list-container {
+            padding: 25px;
+        }
+
+        .project-card-item {
+            background: var(--bg-secondary);
+            padding: 18px;
+            border-radius: 10px;
+            border-left: 4px solid var(--primary);
+            margin-bottom: 15px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .project-card-item:hover {
+            transform: translateX(4px);
+            box-shadow: 0 4px 16px var(--shadow);
+            border-left-color: var(--secondary);
+        }
+
+        .project-card-item h5 {
+            margin: 0 0 8px 0;
+            color: var(--text);
+            font-size: 15px;
+            font-weight: 600;
+        }
+
+        .project-card-item p {
+            margin: 0 0 12px 0;
+            color: var(--text-secondary);
+            font-size: 13px;
+            line-height: 1.4;
+        }
+
+        .project-meta {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            font-size: 12px;
+            margin-bottom: 12px;
+        }
+
+        .project-meta-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            color: var(--text-secondary);
+        }
+
+        .project-meta-item i {
+            color: var(--primary);
+        }
+
+        .project-progress-wrapper {
+            margin-top: 12px;
+        }
+
+        .project-progress-label {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 6px;
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .project-progress-bar {
+            height: 6px;
+            background: var(--border);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .project-progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            transition: width 0.3s ease;
+            border-radius: 3px;
+        }
+
+        /* Loading States */
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid var(--border);
+            border-radius: 50%;
+            border-top-color: var(--primary);
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .activity-loading {
+            text-align: center;
+            padding: 30px;
+        }
+
+        /* Error States */
+        .error-state {
+            background: rgba(245, 101, 101, 0.1);
+            border-left: 4px solid var(--danger);
+            padding: 15px;
+            border-radius: 6px;
+            color: var(--danger);
+            margin: 15px 0;
+        }
+
+        .error-state strong {
+            display: block;
+            margin-bottom: 8px;
+        }
+
+        /* Deadline Badge */
+        .deadline-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            background: linear-gradient(135deg, var(--danger), #e85d5d);
+            color: white;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            margin-left: 8px;
+        }
+
+        .deadline-badge.warning {
+            background: linear-gradient(135deg, var(--warning), #f0a050);
+        }
+
+        .deadline-badge.success {
+            background: linear-gradient(135deg, var(--success), #5eca5e);
+        }
+
+        /* Navigation Breadcrumb */
+        .modal-breadcrumb {
+            padding: 0 25px;
+            padding-top: 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        .modal-breadcrumb span {
+            cursor: pointer;
+            color: var(--primary);
+            transition: all 0.3s ease;
+        }
+
+        .modal-breadcrumb span:hover {
+            text-decoration: underline;
+        }
+
+        /* Responsive Modal */
+        @media (max-width: 768px) {
+            .activity-detail-content,
+            .projects-modal-content {
+                width: 95%;
+                max-height: 90vh;
+            }
+
+            .activity-detail-meta {
+                grid-template-columns: 1fr;
+            }
+
+            .project-meta {
+                grid-template-columns: 1fr;
+            }
+
+            .activity-detail-header,
+            .activity-detail-body,
+            .activity-detail-footer,
+            .projects-list-container {
+                padding: 16px;
+            }
+        }
     </style>
 </head>
 
@@ -1573,7 +2059,7 @@
                         projectsList.innerHTML = '<p style="color: #718096;">No projects created yet</p>';
                     } else {
                         projectsList.innerHTML = projects.slice(0, 5).map(project => `
-                            <div class="project-item">
+                            <div class="project-item" onclick="showProjectDetails(${project.id}, ${JSON.stringify(project).replace(/"/g, '&quot;')})" style="cursor: pointer;">
                                 <h4>${project.title}</h4>
                                 <p>${project.description || 'No description'} - ${project.progress || 0}% Complete</p>
                                 <div class="progress">
@@ -1613,7 +2099,7 @@
                             const priorityColor = { 'High': '#ffc107', 'Medium': '#28a745', 'Low': '#6c757d' };
                             const statusColor = { 'Overdue': '#dc3545', 'In Progress': '#ffc107', 'Completed': '#28a745' };
                             return `
-                                <div class="deadline-item" onclick="alert('Task: ${task.title}\\nStatus: ${task.status}\\nAssigned to: ${task.assigned_to_name || 'Unassigned'}')">
+                                <div class="deadline-item" onclick="showDeadlineDetails(${task.id}, ${JSON.stringify(task).replace(/"/g, '&quot;')})" style="cursor: pointer;">
                                     <h5>${task.title}</h5>
                                     <p style="margin: 0; font-size: 12px; color: var(--text-secondary);">Due: ${dueDateStr}</p>
                                     <p style="margin: 5px 0 0 0; font-size: 11px;">
@@ -2100,6 +2586,518 @@
         }
 
         function logout() { localStorage.removeItem('admin_session_token'); localStorage.removeItem('admin_name'); localStorage.removeItem('userRole'); window.location.href = '/'; }
+
+        /* ===== ACTIVITY DETAIL MODAL FUNCTIONALITY ===== */
+        
+        let dashboardState = {
+            activities: [],
+            projects: [],
+            currentModal: null,
+            selectedActivity: null
+        };
+
+        // Fetch and render activities from backend on dashboard load
+        async function loadActivitiesFromBackend() {
+            try {
+                const token = localStorage.getItem('admin_session_token');
+                if (!token) return;
+
+                const response = await fetch(`${API_BASE}/admin/dashboard/recent-actions`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (response.ok) {
+                    const activities = await response.json();
+                    dashboardState.activities = activities;
+                    renderActivitiesList(activities);
+                }
+            } catch (error) {
+                console.error('[Dashboard] Error loading activities:', error);
+            }
+        }
+
+        // Render activities list with clickable items
+        function renderActivitiesList(activities) {
+            const activityContainer = document.getElementById('activityContainer') || document.querySelector('[data-activities-container]');
+            
+            if (!activityContainer) return;
+
+            if (!activities || activities.length === 0) {
+                activityContainer.innerHTML = '<div class="no-data"><i class="fas fa-inbox"></i><p>No activities found</p></div>';
+                return;
+            }
+
+            activityContainer.innerHTML = activities.map((activity, index) => `
+                <div class="activity-list-item clickable" onclick="openActivityDetailModal(${index})" style="cursor: pointer;">
+                    <span class="activity-icon">
+                        <i class="${activity.icon_class || 'fas fa-history'}"></i>
+                    </span>
+                    <div style="flex: 1;">
+                        <h6 style="margin: 0 0 5px 0; color: var(--text); font-weight: 600;">
+                            ${activity.username || 'System'} - ${formatActivityType(activity.activity_type)}
+                        </h6>
+                        <p style="margin: 0; color: var(--text-secondary); font-size: 13px;">
+                            ${activity.description}
+                        </p>
+                        <small style="color: var(--text-secondary); font-size: 12px; margin-top: 5px; display: block;">
+                            ${getRelativeTime(activity.created_at)}
+                        </small>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Format activity type for display
+        function formatActivityType(type) {
+            const typeMap = {
+                'project_created': '📁 Project Created',
+                'task_created': '✓ Task Created',
+                'task_completed': '✅ Task Completed',
+                'milestone_created': '🚩 Milestone Created',
+                'milestone_completed': '🚩 Milestone Completed',
+                'document_uploaded': '📄 Document Uploaded',
+                'document_deleted': '🗑️ Document Deleted'
+            };
+            return typeMap[type] || type.replace(/_/g, ' ').toUpperCase();
+        }
+
+        // Get relative time (e.g., "2 hours ago")
+        function getRelativeTime(timestamp) {
+            try {
+                const date = new Date(timestamp);
+                const now = new Date();
+                const diffMs = now - date;
+                const diffMins = Math.floor(diffMs / 60000);
+                const diffHours = Math.floor(diffMs / 3600000);
+                const diffDays = Math.floor(diffMs / 86400000);
+
+                if (diffMins < 1) return 'Just now';
+                if (diffMins < 60) return `${diffMins}m ago`;
+                if (diffHours < 24) return `${diffHours}h ago`;
+                if (diffDays < 7) return `${diffDays}d ago`;
+                return date.toLocaleDateString();
+            } catch (e) {
+                return timestamp;
+            }
+        }
+
+        // Open activity detail modal
+        function openActivityDetailModal(activityIndex) {
+            const activity = dashboardState.activities[activityIndex];
+            if (!activity) return;
+
+            dashboardState.selectedActivity = activity;
+            const modal = document.getElementById('activityDetailModal') || createActivityDetailModal();
+            
+            // Populate modal with activity data
+            const header = modal.querySelector('.activity-detail-header h3');
+            const body = modal.querySelector('.activity-detail-body');
+
+            if (header) {
+                header.innerHTML = `
+                    <span><i class="${activity.icon_class || 'fas fa-history'}"></i> ${formatActivityType(activity.activity_type)}</span>
+                `;
+            }
+
+            if (body) {
+                body.innerHTML = `
+                    <!-- User Section -->
+                    <div class="activity-detail-section">
+                        <h5><i class="fas fa-user-circle" style="margin-right: 8px;"></i>Performed By</h5>
+                        <div class="activity-detail-user">
+                            <div class="activity-user-avatar">
+                                ${(activity.username || 'U')[0].toUpperCase()}
+                            </div>
+                            <div class="activity-user-info">
+                                <h6>${activity.username || 'System User'}</h6>
+                                <p>${activity.email || 'No email'}</p>
+                                <small style="display: block; margin-top: 4px; color: var(--text-secondary);">
+                                    <i class="fas fa-user-tag"></i> ${activity.user_role || 'Unknown'} Role
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Metadata Section -->
+                    <div class="activity-detail-section">
+                        <h5><i class="fas fa-clock" style="margin-right: 8px;"></i>Timeline</h5>
+                        <div class="activity-detail-meta">
+                            <div class="activity-meta-item">
+                                <label>Timestamp</label>
+                                <value>${new Date(activity.created_at).toLocaleString()}</value>
+                            </div>
+                            <div class="activity-meta-item">
+                                <label>When</label>
+                                <value>${getRelativeTime(activity.created_at)}</value>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Description Section -->
+                    <div class="activity-detail-section">
+                        <h5><i class="fas fa-align-left" style="margin-right: 8px;"></i>Details</h5>
+                        <div class="activity-description">
+                            <p>${activity.description}</p>
+                        </div>
+                    </div>
+
+                    <!-- Related Items Section -->
+                    ${activity.project_title || activity.task_title || activity.milestone_title ? `
+                        <div class="activity-detail-section">
+                            <h5><i class="fas fa-link" style="margin-right: 8px;"></i>Related Items</h5>
+                            ${activity.project_title ? `
+                                <div class="activity-related-item" onclick="navigateToProject(${activity.project_id})">
+                                    <h6><i class="fas fa-folder"></i> Project</h6>
+                                    <p>${activity.project_title}</p>
+                                    <span class="activity-related-badge">View Project Details</span>
+                                </div>
+                            ` : ''}
+                            ${activity.task_title ? `
+                                <div class="activity-related-item" onclick="navigateToTask(${activity.task_id})">
+                                    <h6><i class="fas fa-tasks"></i> Task</h6>
+                                    <p>${activity.task_title}</p>
+                                    <span class="activity-related-badge">View Task Details</span>
+                                </div>
+                            ` : ''}
+                            ${activity.milestone_title ? `
+                                <div class="activity-related-item">
+                                    <h6><i class="fas fa-flag"></i> Milestone</h6>
+                                    <p>${activity.milestone_title}</p>
+                                    <span class="activity-related-badge">Related Milestone</span>
+                                </div>
+                            ` : ''}
+                        </div>
+                    ` : ''}
+                `;
+            }
+
+            modal.classList.add('active');
+        }
+
+        // Create activity detail modal if it doesn't exist
+        function createActivityDetailModal() {
+            let modal = document.getElementById('activityDetailModal');
+            if (modal) return modal;
+
+            modal = document.createElement('div');
+            modal.id = 'activityDetailModal';
+            modal.className = 'activity-detail-modal';
+            modal.innerHTML = `
+                <div class="activity-detail-content">
+                    <div class="activity-detail-header">
+                        <h3></h3>
+                        <button class="activity-close-btn" onclick="closeActivityDetailModal()">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div class="activity-detail-body"></div>
+                    <div class="activity-detail-footer">
+                        <button class="btn btn-secondary" onclick="closeActivityDetailModal()">Close</button>
+                    </div>
+                </div>
+            `;
+
+            document.body.appendChild(modal);
+            
+            // Close modal when clicking outside
+            modal.addEventListener('click', function(event) {
+                if (event.target === this) {
+                    closeActivityDetailModal();
+                }
+            });
+
+            return modal;
+        }
+
+        // Close activity detail modal
+        function closeActivityDetailModal() {
+            const modal = document.getElementById('activityDetailModal');
+            if (modal) {
+                modal.classList.remove('active');
+            }
+        }
+
+        // Show project details in modal
+        function showProjectDetails(projectId, projectData) {
+            console.log('[Dashboard] Showing project details:', projectId, projectData);
+            
+            const modal = document.getElementById('projectDetailModal') || createProjectDetailModal();
+            const content = document.getElementById('projectDetailContent');
+            
+            if (content) {
+                const deadline = projectData.deadline ? new Date(projectData.deadline).toLocaleDateString() : 'No deadline';
+                const daysUntilDeadline = projectData.deadline ? Math.ceil((new Date(projectData.deadline) - new Date()) / (1000 * 60 * 60 * 24)) : null;
+                
+                let deadlineStatus = '';
+                if (daysUntilDeadline !== null) {
+                    if (daysUntilDeadline < 0) {
+                        deadlineStatus = `<span class="deadline-badge danger">Overdue by ${Math.abs(daysUntilDeadline)} days</span>`;
+                    } else if (daysUntilDeadline === 0) {
+                        deadlineStatus = '<span class="deadline-badge danger">Due Today</span>';
+                    } else if (daysUntilDeadline <= 7) {
+                        deadlineStatus = `<span class="deadline-badge warning">${daysUntilDeadline} days left</span>`;
+                    } else {
+                        deadlineStatus = `<span class="deadline-badge success">${daysUntilDeadline} days left</span>`;
+                    }
+                }
+                
+                content.innerHTML = `
+                    <div class="modal-body">
+                        <div class="project-detail-card">
+                            <h4><i class="fas fa-folder"></i> ${projectData.title}</h4>
+                            <p>${projectData.description}</p>
+                            
+                            <div class="project-info">
+                                <div class="info-item">
+                                    <i class="fas fa-user"></i>
+                                    <span><strong>Created by:</strong> ${projectData.creator_name || 'N/A'}</span>
+                                </div>
+                                <div class="info-item">
+                                    <i class="fas fa-flag"></i>
+                                    <span><strong>Status:</strong> ${projectData.status}</span>
+                                </div>
+                                <div class="info-item">
+                                    <i class="fas fa-users"></i>
+                                    <span><strong>Team Members:</strong> ${projectData.team_count}</span>
+                                </div>
+                                <div class="info-item">
+                                    <i class="fas fa-tasks"></i>
+                                    <span><strong>Tasks:</strong> ${projectData.task_count}</span>
+                                </div>
+                                <div class="info-item">
+                                    <i class="fas fa-calendar"></i>
+                                    <span><strong>Created:</strong> ${new Date(projectData.created_at).toLocaleDateString()}</span>
+                                </div>
+                                <div class="info-item">
+                                    <i class="fas fa-calendar-check"></i>
+                                    <span><strong>Deadline:</strong> ${deadline} ${deadlineStatus}</span>
+                                </div>
+                            </div>
+                            
+                            <div class="progress-container" style="margin-top: 20px;">
+                                <p><strong>Project Progress: ${projectData.progress || 0}%</strong></p>
+                                <div class="progress">
+                                    <div class="progress-bar" style="width: ${projectData.progress || 0}%"></div>
+                                </div>
+                            </div>
+                            
+                            <div style="margin-top: 20px; padding-top: 20px; border-top: 2px solid var(--border);">
+                                <h5 style="color: var(--primary); margin-bottom: 15px;">Project Summary</h5>
+                                <div style="background: var(--bg-secondary); padding: 15px; border-radius: 8px; line-height: 1.8;">
+                                    <p><i class="fas fa-circle-info"></i> <strong>ID:</strong> ${projectData.id}</p>
+                                    <p><i class="fas fa-info-circle"></i> <strong>Full Description:</strong> ${projectData.description || 'No additional details'}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            modal.style.display = 'block';
+        }
+
+        // Show deadline/task details in modal
+        function showDeadlineDetails(taskId, taskData) {
+            console.log('[Dashboard] Showing deadline details:', taskId, taskData);
+            
+            const modal = document.getElementById('taskDetailModal') || createTaskDetailModal();
+            const modalTitle = document.getElementById('modalTitle');
+            const modalBody = document.getElementById('modalBody');
+            
+            if (modalTitle) {
+                modalTitle.innerHTML = `<i class="fas fa-tasks"></i> ${taskData.title} - Task Details`;
+            }
+            
+            if (modalBody) {
+                const deadline = new Date(taskData.deadline);
+                const today = new Date();
+                const diffTime = deadline - today;
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                
+                let deadlineStatus = '';
+                if (diffDays < 0) {
+                    deadlineStatus = `<span class="deadline-badge danger">Overdue by ${Math.abs(diffDays)} days</span>`;
+                } else if (diffDays === 0) {
+                    deadlineStatus = '<span class="deadline-badge danger">Due Today</span>';
+                } else if (diffDays <= 3) {
+                    deadlineStatus = `<span class="deadline-badge warning">${diffDays} days left</span>`;
+                } else {
+                    deadlineStatus = `<span class="deadline-badge success">${diffDays} days left</span>`;
+                }
+                
+                const priorityColor = {
+                    'High': '#dc3545',
+                    'Medium': '#ffc107',
+                    'Low': '#6c757d'
+                };
+                
+                const statusColor = {
+                    'Completed': '#28a745',
+                    'In Progress': '#ffc107',
+                    'Pending': '#17a2b8'
+                };
+                
+                modalBody.innerHTML = `
+                    <div class="project-detail-card">
+                        <h5><i class="fas fa-tasks" style="color: var(--primary);"></i> ${taskData.title}</h5>
+                        <p style="color: var(--text-secondary); margin-top: 10px;">${taskData.description}</p>
+                        
+                        <div class="project-info" style="margin-top: 15px;">
+                            <div class="info-item">
+                                <i class="fas fa-user"></i>
+                                <span><strong>Assigned to:</strong> ${taskData.assigned_to_name || 'Unassigned'}</span>
+                            </div>
+                            <div class="info-item">
+                                <i class="fas fa-user-tie"></i>
+                                <span><strong>Created by:</strong> ${taskData.created_by_name || 'N/A'}</span>
+                            </div>
+                            <div class="info-item">
+                                <i class="fas fa-folder"></i>
+                                <span><strong>Project:</strong> ${taskData.project_name || 'N/A'}</span>
+                            </div>
+                            <div class="info-item">
+                                <i class="fas fa-flag"></i>
+                                <span><strong>Priority:</strong> <span style="background: ${priorityColor[taskData.priority]}; color: white; padding: 3px 8px; border-radius: 3px; font-size: 12px;">${taskData.priority || 'N/A'}</span></span>
+                            </div>
+                            <div class="info-item">
+                                <i class="fas fa-check-circle"></i>
+                                <span><strong>Status:</strong> <span style="background: ${statusColor[taskData.status]}; color: white; padding: 3px 8px; border-radius: 3px; font-size: 12px;">${taskData.status || 'N/A'}</span></span>
+                            </div>
+                            <div class="info-item">
+                                <i class="fas fa-calendar"></i>
+                                <span><strong>Deadline:</strong> ${deadline.toLocaleDateString()} ${deadlineStatus}</span>
+                            </div>
+                            <div class="info-item">
+                                <i class="fas fa-shield"></i>
+                                <span><strong>Approval Status:</strong> <span style="background: ${taskData.approval_status === 'approved' ? '#28a745' : taskData.approval_status === 'pending' ? '#ffc107' : '#dc3545'}; color: white; padding: 3px 8px; border-radius: 3px; font-size: 12px;">${taskData.approval_status || 'N/A'}</span></span>
+                            </div>
+                            <div class="info-item">
+                                <i class="fas fa-calendar-plus"></i>
+                                <span><strong>Created:</strong> ${new Date(taskData.created_at).toLocaleDateString()}</span>
+                            </div>
+                        </div>
+                        
+                        <div style="margin-top: 20px; padding-top: 20px; border-top: 2px solid var(--border);">
+                            <h6 style="color: var(--primary); margin-bottom: 10px;">Task Summary</h6>
+                            <div style="background: var(--bg-secondary); padding: 15px; border-radius: 8px;">
+                                <p><strong>Task ID:</strong> ${taskData.id}</p>
+                                <p><strong>Full Details:</strong> ${taskData.description}</p>
+                                <p><strong>Time Remaining:</strong> ${diffDays > 0 ? diffDays + ' days' : 'Overdue'}</p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            modal.style.display = 'block';
+        }
+
+        // Create project detail modal if it doesn't exist
+        function createProjectDetailModal() {
+            let modal = document.getElementById('projectDetailModal');
+            if (modal) return modal;
+            
+            modal = document.createElement('div');
+            modal.id = 'projectDetailModal';
+            modal.className = 'modal';
+            modal.innerHTML = `
+                <div class="modal-content" style="width: 700px; max-height: 85vh; overflow-y: auto;">
+                    <div class="modal-header">
+                        <h3><i class="fas fa-folder-open"></i> Project Details</h3>
+                        <span class="close" onclick="closeProjectDetailModal()">&times;</span>
+                    </div>
+                    <div id="projectDetailContent"></div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" onclick="closeProjectDetailModal()">Close</button>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+            return modal;
+        }
+
+        // Create task detail modal if it doesn't exist
+        function createTaskDetailModal() {
+            let modal = document.getElementById('taskDetailModal');
+            if (modal) return modal;
+            
+            modal = document.createElement('div');
+            modal.id = 'taskDetailModal';
+            modal.className = 'modal';
+            modal.innerHTML = `
+                <div class="modal-content" style="width: 700px; max-height: 85vh; overflow-y: auto;">
+                    <div class="modal-header">
+                        <h3 id="modalTitle"><i class="fas fa-tasks"></i> Task Details</h3>
+                        <span class="close" onclick="closeTaskDetailModal()">&times;</span>
+                    </div>
+                    <div id="modalBody"></div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" onclick="closeTaskDetailModal()">Close</button>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+            return modal;
+        }
+
+        // Close project detail modal
+        function closeProjectDetailModal() {
+            const modal = document.getElementById('projectDetailModal');
+            if (modal) {
+                modal.style.display = 'none';
+            }
+        }
+
+        // Close task detail modal
+        function closeTaskDetailModal() {
+            const modal = document.getElementById('taskDetailModal');
+            if (modal) {
+                modal.style.display = 'none';
+            }
+        }
+
+        // Navigate to project (implemented with modal)
+        function navigateToProject(projectId) {
+            console.log('[Dashboard] Navigating to project:', projectId);
+            // Fetch project details and show modal
+            const token = localStorage.getItem('admin_session_token');
+            if (!token) return;
+            
+            fetch(`${API_BASE}/admin/projects/${projectId}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            })
+            .then(res => res.json())
+            .then(project => showProjectDetails(project.id, project))
+            .catch(err => console.error('Error loading project:', err));
+        }
+
+        // Navigate to task (implemented with modal)
+        function navigateToTask(taskId) {
+            console.log('[Dashboard] Navigating to task:', taskId);
+            // Fetch task details and show modal
+            const token = localStorage.getItem('admin_session_token');
+            if (!token) return;
+            
+            fetch(`${API_BASE}/admin/tasks/${taskId}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            })
+            .then(res => res.json())
+            .then(task => showDeadlineDetails(task.id, task))
+            .catch(err => console.error('Error loading task:', err));
+        }
+
+        // Initialize dashboard on load
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('[Dashboard] Initializing with activity loading');
+            loadActivitiesFromBackend();
+        });
+
+        // Periodically refresh activities (every 30 seconds)
+        setInterval(() => {
+            loadActivitiesFromBackend();
+        }, 30000);
     </script>
 </body>
 

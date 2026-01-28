@@ -372,7 +372,8 @@ def index():
 
 @app.route("/login")
 def login_page():
-    return render_template("login.html")
+    return render_template("login.html"),
+    recaptcha_site_key=RECAPTCHA_SITE_KEY
 
 
 @app.route("/admin-dashboard")

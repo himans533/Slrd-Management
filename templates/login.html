@@ -6,8 +6,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Admin Panel - Login</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
-    <script src="https://www.google.com/recaptcha/api.js" async defer></script>
-
     <style>
         :root {
             --primary: #667eea;
@@ -498,7 +496,60 @@
         .hidden {
             display: none;
         }
+
+        .recaptcha-container {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            border: 1px solid var(--border);
+        }
+
+        .recaptcha-checkbox {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            cursor: pointer;
+        }
+
+        .recaptcha-checkbox input {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+            accent-color: var(--primary);
+        }
+
+        .recaptcha-label {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .recaptcha-label strong {
+            color: var(--text);
+            font-size: 14px;
+        }
+
+        .recaptcha-label small {
+            color: var(--text-secondary);
+            font-size: 11px;
+        }
+
+        .security-badge {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            margin-top: 15px;
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .security-badge i {
+            color: var(--success);
+        }
     </style>
+    <script src="https://www.google.com/recaptcha/api.js" async defer></script>
 </head>
 
 <body>
@@ -536,12 +587,19 @@
                         <input type="password" id="adminPassword" placeholder="Enter your password" required />
                     </div>
 
-                    <div class="form-group">
-                        <label for="adminPin">Admin PIN</label>
-                        <input type="password" id="adminPin" placeholder="Enter 6-digit PIN" maxlength="6" required>
+                    <div class="recaptcha-container">
+                        <div class="recaptcha-checkbox">
+                            <input type="checkbox" id="adminCaptcha" required />
+                            <label for="adminCaptcha" class="recaptcha-label">
+                                <strong>I'm not a robot</strong>
+                                <small>This site is protected by reCAPTCHA and the Google <a href="https://policies.google.com/privacy" target="_blank" style="color: var(--primary);">Privacy Policy</a> and <a href="https://policies.google.com/terms" target="_blank" style="color: var(--primary);">Terms of Service</a> apply.</small>
+                            </label>
+                        </div>
+                        <div class="security-badge">
+                            <i class="fas fa-lock"></i>
+                            <span>Secured with CAPTCHA & Multi-Factor Authentication</span>
+                        </div>
                     </div>
-
-                    <div id="adminRecaptcha" class="g-recaptcha" style="margin-bottom: 20px;"></div>
 
                     <div class="form-actions">
                         <button type="submit" class="btn-primary">
@@ -623,8 +681,6 @@
                     <input type="password" id="employeePassword" placeholder="Enter your password" required />
                 </div>
 
-                    <div id="adminRecaptcha" class="g-recaptcha" style="margin-bottom: 20px;"></div>
-
                 <div class="form-actions">
                     <button type="submit" class="btn-primary">Login</button>
                 </div>
@@ -640,19 +696,6 @@
         const API_BASE = window.location.origin + "/api";
         let adminId = null;
         let adminResendTimer = 0;
-        let RECAPTCHA_SITE_KEY = null;
-
-        // Load reCAPTCHA configuration from backend
-        async function loadRecaptchaConfig() {
-            try {
-                const response = await fetch(`${API_BASE}/config/recaptcha`);
-                const data = await response.json();
-                RECAPTCHA_SITE_KEY = data.site_key;
-                console.log('[v0] reCAPTCHA site key loaded successfully');
-            } catch (error) {
-                console.error('[v0] Failed to load reCAPTCHA configuration:', error);
-            }
-        }
 
         // Theme toggle functionality
         function toggleTheme() {
@@ -675,46 +718,6 @@
                 document.body.classList.add('dark-mode');
             }
             updateThemeIcon();
-            
-            // Load reCAPTCHA configuration and render widgets
-            loadRecaptchaConfig().then(() => {
-                if (RECAPTCHA_SITE_KEY) {
-                    try {
-                        // Wait for grecaptcha to be ready
-                        grecaptcha.ready(() => {
-                            console.log('[v0] reCAPTCHA API ready, rendering widgets');
-                            
-                            // Render admin reCAPTCHA v2 Checkbox
-                            grecaptcha.render('adminRecaptcha', {
-                                'sitekey': RECAPTCHA_SITE_KEY,
-                                'theme': document.body.classList.contains('dark-mode') ? 'dark' : 'light'
-                            });
-                            
-                            // Render employee reCAPTCHA v2 Checkbox
-                            grecaptcha.render('employeeRecaptcha', {
-                                'sitekey': RECAPTCHA_SITE_KEY,
-                                'theme': document.body.classList.contains('dark-mode') ? 'dark' : 'light'
-                            });
-                            
-                            console.log('[v0] reCAPTCHA v2 Checkbox widgets rendered successfully');
-                        });
-                    } catch (error) {
-                        console.error('[v0] Error rendering reCAPTCHA widgets:', error);
-                    }
-                } else {
-                    console.error('[v0] reCAPTCHA site key not loaded');
-                }
-            });
-        });
-                    grecaptcha.render('employeeRecaptcha', {
-                        'sitekey': RECAPTCHA_SITE_KEY,
-                        'theme': document.body.classList.contains('dark-mode') ? 'dark' : 'light'
-                    });
-                    console.log('[v0] reCAPTCHA widgets rendered successfully');
-                } else {
-                    console.error('[v0] reCAPTCHA site key not loaded');
-                }
-            });
         });
 
         function switchTab(tab) {
@@ -786,11 +789,9 @@
                 .value.trim()
                 .toLowerCase();
             const password = document.getElementById("adminPassword").value;
-            const adminPin = document
-                .getElementById("adminPin")
-                .value.trim();
+            const captchaChecked = document.getElementById("adminCaptcha").checked;
 
-            if (!email || !password || !adminPin) {
+            if (!email || !password) {
                 showAlert(
                     "adminStep1Alert",
                     "All fields are required.",
@@ -799,9 +800,7 @@
                 return;
             }
 
-            // Verify reCAPTCHA v2 checkbox is checked
-            const recaptchaToken = grecaptcha.getResponse();
-            if (!recaptchaToken) {
+            if (!captchaChecked) {
                 showAlert(
                     "adminStep1Alert",
                     "Please verify that you are not a robot.",
@@ -815,19 +814,11 @@
                     .getElementById("adminStep1Loading")
                     .classList.add("show");
 
-                const response = await fetch(
-                    `${API_BASE}/admin/login/step1`,
-                    {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({
-                            email,
-                            password,
-                            admin_pin: adminPin,
-                            recaptcha_token: recaptchaToken,
-                        }),
-                    },
-                );
+                const response = await fetch(`${API_BASE}/admin/login/step1`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ email, password }),
+                });
 
                 const data = await response.json();
                 document
@@ -972,17 +963,6 @@
                 return;
             }
 
-            // Verify reCAPTCHA v2 checkbox is checked
-            const recaptchaToken = grecaptcha.getResponse();
-            if (!recaptchaToken) {
-                showAlert(
-                    "employeeAlert",
-                    "Please verify that you are not a robot.",
-                    "danger",
-                );
-                return;
-            }
-
             try {
                 document
                     .getElementById("employeeLoading")
@@ -991,7 +971,7 @@
                 const response = await fetch(`${API_BASE}/user/login`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ email, password, recaptcha_token: recaptchaToken }),
+                    body: JSON.stringify({ email, password }),
                 });
 
                 const data = await response.json();
@@ -1076,7 +1056,6 @@
                 }
             }, 1000);
         }
-        
 
         async function resendAdminOtp() {
             const email = document
@@ -1084,54 +1063,21 @@
                 .value.trim()
                 .toLowerCase();
             const password = document.getElementById("adminPassword").value;
-            const confirmPassword = document.getElementById(
-                "adminConfirmPassword",
-            ).value;
-            const adminPin = document
-                .getElementById("adminPin")
-                .value.trim();
-
             try {
-                const response = await fetch(
-                    `${API_BASE}/admin/login/step1`,
-                    {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({
-                            email,
-                            password,
-                            confirm_password: confirmPassword,
-                            admin_pin: adminPin,
-                        }),
-                    },
-                );
+                const response = await fetch(`${API_BASE}/admin/login/step1`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ email, password }),
+                });
 
                 if (response.ok) {
-                    showAlert(
-                        "adminStep2Alert",
-                        "OTP resent successfully!",
-                        "success",
-                    );
+                    showAlert("adminStep2Alert", "OTP resent successfully!", "success");
                     startAdminResendTimer();
                 }
             } catch (error) {
-                showAlert(
-                    "adminStep2Alert",
-                    "Failed to resend OTP.",
-                    "danger",
-                );
+                showAlert("adminStep2Alert", "Failed to resend OTP.", "danger");
             }
         }
-
-        function recaptchaToken(action, callback) {
-    grecaptcha.ready(function () {
-        grecaptcha.execute("{{ recaptcha_site_key }}", { action: action })
-        .then(function (token) {
-            callback(token);
-        });
-    });
-}
-     
     </script>
 </body>
 

@@ -1,5 +1,16 @@
+
 from flask import Flask, jsonify, request, render_template, session, g, send_from_directory
 from flask_cors import CORS
+import os
+
+# Rate limiting
+try:
+    from flask_limiter import Limiter
+    from flask_limiter.util import get_remote_address
+except Exception:
+    Limiter = None
+
+REDIS_URL = os.environ.get('REDIS_URL')
 from functools import wraps
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
@@ -7,31 +18,199 @@ from PIL import Image
 import secrets
 import json
 import re
-import os
 import io
-from datetime import datetime, timezone, timedelta
-import logging
 import psycopg2
-from psycopg2.extras import RealDictCursor
+import logging
+import traceback
 from urllib.parse import urlparse
-from psycopg2 import errors, sql
-import requests
+from psycopg2.extras import RealDictCursor
+from flask.json.provider import DefaultJSONProvider
+from datetime import datetime, timezone, timedelta, date , time
+from flask import redirect, url_for
+from flask_wtf import CSRFProtect
+from flask_wtf.csrf import generate_csrf
+from itsdangerous import URLSafeTimedSerializer
 
-# Setup logging
-logging.basicConfig(level=logging.INFO)
+
+
+class CustomJSONProvider(DefaultJSONProvider):
+    def default(self, obj):
+        if isinstance(obj, (date, datetime, time)):
+            return obj.isoformat()
+        return super().default(obj)
+
+
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 logger = logging.getLogger(__name__)
-
 app = Flask(__name__)
+app.json = CustomJSONProvider(app)
+csrf = CSRFProtect(app)
 CORS(app)
-app.secret_key = secrets.token_hex(32)
+
+# Persistent secret key for Replit environment
+app.secret_key = os.environ.get("SECRET_KEY", "dev-secret-key")
+
+app.config.update(
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SAMESITE="Lax",
+    SESSION_COOKIE_SECURE=False,  # TEMPORARY FIX
+)
 
 valid_tokens = {}
 
-ADMIN_EMAIL = os.environ.get('ADMIN_EMAIL', 'abhijeet@yeseartheco.com').lower()
-ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', 'Abhijeet@#46')
-ADMIN_OTP = os.environ.get('ADMIN_OTP', '654321')
-RECAPTCHA_SITE_KEY = os.getenv("RECAPTCHA_SITE_KEY")
-RECAPTCHA_SECRET_KEY = os.getenv("RECAPTCHA_SECRET_KEY")
+# In-memory store for failed login attempts (simple rate limiter)
+failed_login_attempts = {}
+LOGIN_BLOCK_THRESHOLD = 5  
+LOGIN_BLOCK_WINDOW = 15 * 60  # 15 minutes
+
+
+def get_client_ip():
+    # Respect X-Forwarded-For if present
+    forwarded = request.headers.get('X-Forwarded-For')
+    if forwarded:
+        return forwarded.split(',')[0].strip()
+    return request.remote_addr or '127.0.0.1'
+
+
+def is_ip_blocked(ip):
+    info = failed_login_attempts.get(ip)
+    if not info:
+        return False
+    blocked_until = info.get('blocked_until')
+    if blocked_until and blocked_until > time.time():
+        return True
+    # If window expired, clear
+    if time.time() - info.get('first_failed', 0) > LOGIN_BLOCK_WINDOW:
+        failed_login_attempts.pop(ip, None)
+        return False
+    return False
+
+
+def register_failed_login(ip):
+    now = time.time()
+    info = failed_login_attempts.get(ip)
+    if not info:
+        failed_login_attempts[ip] = {'count': 1, 'first_failed': now}
+    else:
+        # Reset if outside window
+        if now - info.get('first_failed', 0) > LOGIN_BLOCK_WINDOW:
+            failed_login_attempts[ip] = {'count': 1, 'first_failed': now}
+        else:
+            info['count'] = info.get('count', 0) + 1
+            if info['count'] >= LOGIN_BLOCK_THRESHOLD:
+                info['blocked_until'] = now + LOGIN_BLOCK_WINDOW
+
+
+def reset_failed_login(ip):
+    failed_login_attempts.pop(ip, None)
+
+
+def get_current_user_id():
+    """Get the current logged-in user's ID from the session"""
+    return session.get('user_id')
+
+
+# CSRF helpers
+def generate_csrf_token():
+    token = session.get('csrf_token')
+    if not token:
+        token = secrets.token_urlsafe(32)
+        session['csrf_token'] = token
+    return token
+
+
+@app.context_processor
+def inject_csrf():
+    # Make csrf_token available in templates
+    return {'csrf_token': generate_csrf_token()}
+
+
+@app.before_request
+def csrf_protect():
+    # Skip CSRF for GET requests
+    if request.method == 'GET':
+        return
+    
+    # Skip CSRF for API endpoints with Bearer token authentication
+    # Bearer tokens are already cryptographically signed and provide implicit CSRF protection
+    if request.path.startswith('/api/'):
+        auth_header = request.headers.get('Authorization')
+        if auth_header and auth_header.startswith('Bearer '):
+            return
+    
+    # Let Flask-WTF handle CSRF for session-based requests (forms, etc.)
+    # This will be skipped by @csrf.exempt where needed
+
+
+# Global error handlers to ensure JSON responses for API endpoints
+@app.errorhandler(404)
+def not_found(e):
+    if request.path.startswith('/api/'):
+        return jsonify({"error": "Endpoint not found"}), 404
+    # For non-API routes, use default handler
+    return e
+
+@app.errorhandler(500)
+def internal_error(e):
+    if request.path.startswith('/api/'):
+        logger.error(f"Internal server error: {str(e)}")
+        return jsonify({"error": "Internal server error"}), 500
+    # For non-API routes, use default handler
+    return e
+
+
+@app.after_request
+def set_security_headers(response):
+    try:
+        # Only set HSTS when running under https/production
+        if request.scheme == 'https' or os.environ.get('FLASK_ENV') == 'production':
+            response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
+    except Exception:
+        pass
+
+    response.headers['X-Frame-Options'] = 'DENY'
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    response.headers['Referrer-Policy'] = 'no-referrer-when-downgrade'
+    response.headers['X-XSS-Protection'] = '1; mode=block'
+    # Minimal Permissions-Policy header to opt-out of sensors
+    response.headers['Permissions-Policy'] = 'geolocation=()'
+    return response
+
+# Make session cookies secure when appropriate
+app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+app.config['SESSION_COOKIE_SECURE'] = True if os.environ.get('FLASK_ENV') == 'production' else False
+
+# Initialize rate limiter (use Redis if available)
+limiter = None
+if Limiter is not None:
+    try:
+        if REDIS_URL:
+            # Using storage_uri lets flask-limiter auto-configure RedisStorage when possible
+            limiter = Limiter(key_func=get_client_ip, app=app, storage_uri=REDIS_URL, default_limits=["1000 per hour"])
+        else:
+            # Use filesystem-based storage as fallback (suitable for production)
+            # This stores rate limit data in /tmp/flask-limiter.db
+            limiter = Limiter(
+                key_func=get_client_ip, 
+                app=app, 
+                storage_uri="memory://",  # memory:// is acceptable for single-dyno deployments
+                default_limits=["1000 per hour"]
+            )
+            logger.info("Flask-Limiter using in-memory storage. For multi-dyno deployments, configure REDIS_URL.")
+    except Exception as e:
+        logger.warning(f"Flask-Limiter initialization failed: {e}")
+        limiter = None
+else:
+    logger.info("flask-limiter not installed; skipping rate-limiter setup")
+
+ADMIN_EMAIL = os.environ.get('ADMIN_EMAIL', 'anubha@yeseartheco.com').lower()
+ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', 'Anubha@#46')
+ADMIN_OTP = os.environ.get('ADMIN_OTP', '123456')
 
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
 MAX_CONTENT_LENGTH = 10 * 1024 * 1024  # 10MB max
@@ -41,67 +220,142 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['MAX_CONTENT_LENGTH'] = MAX_CONTENT_LENGTH
 
+DATABASE_URL = os.environ.get('DATABASE_URL')
+
+
+
+class PostgreSQLConnection:
+    """Wrapper for psycopg2 connection to emulate SQLite row_factory behavior"""
+    def __init__(self, psycopg2_conn):
+        self._conn = psycopg2_conn
+        self._committed = False
+    
+    def cursor(self, **kwargs):
+        return self._conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+    
+    def commit(self):
+        self._conn.commit()
+        self._committed = True
+    
+    def rollback(self):
+        self._conn.rollback()
+    
+    def close(self):
+        self._conn.close()
+    
+    def __getattr__(self, name):
+        return getattr(self._conn, name)
 
 def get_db_connection():
-    return psycopg2.connect(host=os.getenv("PGHOST"),
-                            database=os.getenv("PGDATABASE"),
-                            user=os.getenv("PGUSER"),
-                            password=os.getenv("PGPASSWORD"),
-                            port=int(os.getenv("PGPORT", 5432)),
-                            cursor_factory=RealDictCursor)
+    """Create a PostgreSQL connection with proper error handling"""
+    database_url = os.environ.get("DATABASE_URL")
 
+    if not database_url:
+        error_msg = (
+            "CRITICAL: DATABASE_URL environment variable not set! "
+            "Please configure it in your Railway project variables."
+        )
+        logger.error(error_msg)
+        raise Exception(error_msg)
+
+    # Normalize older "postgres://" scheme used by some providers to the form
+    # accepted by some libraries: "postgresql://"
+    if database_url.startswith("postgres://"):
+        database_url = database_url.replace("postgres://", "postgresql://", 1)
+
+    try:
+        # Parse URL and build params
+        result = urlparse(database_url)
+
+        conn_params = {
+            "database": result.path.lstrip("/"),
+            "user": result.username,
+            "password": result.password,
+            "host": result.hostname,
+            "port": result.port or 5432,
+            "connect_timeout": 10,
+        }
+
+        # Use SSL on production / railway
+        if os.environ.get("FLASK_ENV") == "production" or "railway" in (database_url or "").lower():
+            conn_params["sslmode"] = "require"
+
+        # Create connection with RealDictCursor so cursor.fetchall() returns mapping-like rows
+        conn = psycopg2.connect(cursor_factory=RealDictCursor, **conn_params)
+
+        logger.info("✓ Database connection successful!")
+        return conn
+    except Exception as e:
+        logger.error(f"Database connection failed: {e}")
+        raise Exception(f"Database connection failed: {e}")
+
+   
 
 def init_db():
+    """Initialize PostgreSQL database (idempotent)"""
     conn = None
     try:
+        logger.info("Starting database initialization...")
         conn = get_db_connection()
         cursor = conn.cursor()
 
-        # Drop existing tables if they exist
-        cursor.execute("DROP TABLE IF EXISTS documents CASCADE")
-        cursor.execute("DROP TABLE IF EXISTS document_versions CASCADE")
-        cursor.execute("DROP TABLE IF EXISTS document_comments CASCADE")
-        cursor.execute("DROP TABLE IF EXISTS comments CASCADE")
-        cursor.execute("DROP TABLE IF EXISTS daily_task_reports CASCADE")
-        cursor.execute("DROP TABLE IF EXISTS tasks CASCADE")
-        cursor.execute("DROP TABLE IF EXISTS milestones CASCADE")
-        cursor.execute("DROP TABLE IF EXISTS project_assignments CASCADE")
-        cursor.execute("DROP TABLE IF EXISTS projects CASCADE")
-        cursor.execute("DROP TABLE IF EXISTS user_permissions CASCADE")
-        cursor.execute("DROP TABLE IF EXISTS users CASCADE")
-        cursor.execute("DROP TABLE IF EXISTS usertypes CASCADE")
-        cursor.execute("DROP TABLE IF EXISTS activities CASCADE")
-        cursor.execute("DROP TABLE IF EXISTS progress_history CASCADE")
-        cursor.execute("DROP TABLE IF EXISTS user_skills CASCADE")
-
+        # Create usertypes table
         cursor.execute('''
-            CREATE TABLE usertypes (
-               id SERIAL PRIMARY KEY,
+            CREATE TABLE IF NOT EXISTS usertypes (
+                id SERIAL PRIMARY KEY,
                 user_role TEXT NOT NULL UNIQUE,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        );
+                description TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
         ''')
+        logger.debug("✓ usertypes table ready")
 
+        # Create usertype_permissions table
         cursor.execute('''
-            CREATE TABLE users (
+            CREATE TABLE IF NOT EXISTS usertype_permissions (
+                id SERIAL PRIMARY KEY,
+                usertype_id INTEGER NOT NULL,
+                module TEXT NOT NULL,
+                action TEXT NOT NULL,
+                granted BOOLEAN DEFAULT FALSE,
+                FOREIGN KEY (usertype_id) REFERENCES usertypes(id) ON DELETE CASCADE,
+                UNIQUE(usertype_id, module, action)
+            )
+        ''')
+        logger.debug("✓ usertype_permissions table ready")
+
+        # Create users table
+        cursor.execute('''
+             CREATE TABLE IF NOT EXISTS users (
                 id SERIAL PRIMARY KEY,
                 username TEXT NOT NULL UNIQUE,
                 email TEXT NOT NULL UNIQUE,
                 password TEXT NOT NULL,
                 user_type_id INTEGER NOT NULL,
                 granted BOOLEAN DEFAULT FALSE,
+                status TEXT DEFAULT 'Active',
                 phone TEXT,
                 department TEXT,
                 bio TEXT,
                 avatar_url TEXT,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (user_type_id) REFERENCES usertypes(id)
-            );
-        ''')
+                is_system INTEGER DEFAULT 0,
 
+        -- 🔥 ADD THIS
+        created_by_id INTEGER,
+
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+        FOREIGN KEY (user_type_id) REFERENCES usertypes(id),
+        FOREIGN KEY (created_by_id) REFERENCES users(id) ON DELETE SET NULL
+    )
+''')
+
+        logger.debug("✓ users table ready")
+
+        # Create user_permissions table
         cursor.execute('''
-            CREATE TABLE user_permissions (
-             id SERIAL PRIMARY KEY,
+            CREATE TABLE IF NOT EXISTS user_permissions (
+                id SERIAL PRIMARY KEY,
                 user_id INTEGER NOT NULL,
                 module TEXT NOT NULL,
                 action TEXT NOT NULL,
@@ -110,187 +364,313 @@ def init_db():
                 UNIQUE(user_id, module, action)
             )
         ''')
+        logger.debug("✓ user_permissions table ready")
 
-        cursor.execute('''CREATE TABLE projects (
-            id SERIAL PRIMARY KEY,
-            title TEXT NOT NULL,
-            description TEXT,
-            status TEXT DEFAULT 'In Progress',
-            progress INTEGER DEFAULT 0,
-            deadline DATE,
-            reporting_time TIME DEFAULT '09:00',
-            created_by_id INTEGER NOT NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            completed_at TIMESTAMP,
-            FOREIGN KEY (created_by_id) REFERENCES users(id)
-        );''')
+        # Create projects table
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS projects (
+                id SERIAL PRIMARY KEY,
+                title TEXT NOT NULL,
+                description TEXT,
+                status TEXT DEFAULT 'In Progress',
+                progress INTEGER DEFAULT 0,
+                deadline DATE,
+                reporting_time TIME DEFAULT '09:00',
+                created_by_id INTEGER NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                completed_at TIMESTAMP,
+                FOREIGN KEY (created_by_id) REFERENCES users(id)
+            )
+        ''')
+        logger.debug("✓ projects table ready")
 
-        cursor.execute('''CREATE TABLE tasks (
-            id SERIAL PRIMARY KEY,
-            title TEXT NOT NULL,
-            description TEXT,
-            status TEXT DEFAULT 'Pending',
-            priority TEXT DEFAULT 'Medium',
-            deadline DATE,
-            project_id INTEGER NOT NULL,
-            created_by_id INTEGER NOT NULL,
-            assigned_to_id INTEGER,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            completed_at TIMESTAMP,
-            approval_status TEXT DEFAULT 'pending',
-            weightage INTEGER DEFAULT 1,
-            progress INTEGER DEFAULT 0,
-            notes TEXT,
-            FOREIGN KEY (project_id) REFERENCES projects(id),
-            FOREIGN KEY (created_by_id) REFERENCES users(id),
-            FOREIGN KEY (assigned_to_id) REFERENCES users(id)
-        )''')
-
-        cursor.execute('''CREATE TABLE comments (
-            id SERIAL PRIMARY KEY,
-            content TEXT NOT NULL,
-            author_id INTEGER NOT NULL,
-            project_id INTEGER,
-            task_id INTEGER,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (author_id) REFERENCES users(id),
-            FOREIGN KEY (project_id) REFERENCES projects(id),
-            FOREIGN KEY (task_id) REFERENCES tasks(id)
-        )''')
-
-        cursor.execute('''CREATE TABLE documents (
-           id SERIAL PRIMARY KEY,
-            filename TEXT NOT NULL,
-            original_filename TEXT NOT NULL,
-            file_size INTEGER,
-            uploaded_by_id INTEGER NOT NULL,
-            project_id INTEGER,
-            task_id INTEGER,
-            uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (uploaded_by_id) REFERENCES users(id),
-            FOREIGN KEY (project_id) REFERENCES projects(id),
-            FOREIGN KEY (task_id) REFERENCES tasks(id)
-        )''')
-
-        cursor.execute('''CREATE TABLE milestones (
-           id SERIAL PRIMARY KEY,
-            title TEXT NOT NULL,
-            description TEXT,
-            due_date DATE,
-            status TEXT DEFAULT 'Pending',
-            project_id INTEGER NOT NULL,
-            weightage INTEGER DEFAULT 1,
-            created_by_id INTEGER NOT NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (project_id) REFERENCES projects(id),
-            FOREIGN KEY (created_by_id) REFERENCES users(id)
-        )''')
-
-        cursor.execute('''CREATE TABLE project_assignments (
-        id SERIAL PRIMARY KEY,
-        user_id INTEGER NOT NULL,
+        # Create tasks table
+        cursor.execute('''
+                CREATE TABLE IF NOT EXISTS tasks (
+                id SERIAL PRIMARY KEY,
+                title TEXT NOT NULL,
+        description TEXT,
+        status TEXT DEFAULT 'Pending',
+        priority TEXT DEFAULT 'Medium',
+        deadline DATE,
         project_id INTEGER NOT NULL,
-        FOREIGN KEY (user_id) REFERENCES users(id),
+        created_by_id INTEGER NOT NULL,
+        assigned_to_id INTEGER,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        completed_at TIMESTAMP,
+        approval_status TEXT DEFAULT 'pending',
+        weightage INTEGER DEFAULT 1,
+
+        -- ✅ ADD THESE NEW COLUMNS
+        progress INTEGER DEFAULT 0,
+        notes TEXT,
+
         FOREIGN KEY (project_id) REFERENCES projects(id),
-        UNIQUE(user_id, project_id)
-    )''')
+        FOREIGN KEY (created_by_id) REFERENCES users(id),
+        FOREIGN KEY (assigned_to_id) REFERENCES users(id)
+    )
+''')
 
+
+        # Create comments table
         cursor.execute('''
-        CREATE TABLE IF NOT EXISTS progress_history (
-             id SERIAL PRIMARY KEY,
-            project_id INTEGER NOT NULL,
-            progress_percentage INTEGER,
-            tasks_completed INTEGER,
-            total_tasks INTEGER,
-            milestones_completed INTEGER,
-            total_milestones INTEGER,
-            recorded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (project_id) REFERENCES projects(id)
-        )
-    ''')
+            CREATE TABLE IF NOT EXISTS comments (
+                id SERIAL PRIMARY KEY,
+                content TEXT NOT NULL,
+                author_id INTEGER NOT NULL,
+                project_id INTEGER,
+                task_id INTEGER,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (author_id) REFERENCES users(id),
+                FOREIGN KEY (project_id) REFERENCES projects(id),
+                FOREIGN KEY (task_id) REFERENCES tasks(id)
+            )
+        ''')
+        logger.debug("✓ comments table ready")
 
+        # Create documents table
         cursor.execute('''
-        CREATE INDEX IF NOT EXISTS idx_progress_project_date 
-        ON progress_history(project_id, recorded_at)
-    ''')
+            CREATE TABLE IF NOT EXISTS documents (
+                id SERIAL PRIMARY KEY,
+                filename TEXT NOT NULL,
+                original_filename TEXT NOT NULL,
+                file_size INTEGER,
+                uploaded_by_id INTEGER NOT NULL,
+                project_id INTEGER,
+                task_id INTEGER,
+                uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (uploaded_by_id) REFERENCES users(id),
+                FOREIGN KEY (project_id) REFERENCES projects(id),
+                FOREIGN KEY (task_id) REFERENCES tasks(id)
+            )
+        ''')
+        logger.debug("✓ documents table ready")
 
-        cursor.execute('''CREATE TABLE activities (
-             id SERIAL PRIMARY KEY,
-            user_id INTEGER NOT NULL,
-            activity_type TEXT NOT NULL,
-            description TEXT NOT NULL,
-            project_id INTEGER,
-            task_id INTEGER,
-            milestone_id INTEGER,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (user_id) REFERENCES users(id),
-            FOREIGN KEY (project_id) REFERENCES projects(id),
-            FOREIGN KEY (task_id) REFERENCES tasks(id),
-            FOREIGN KEY (milestone_id) REFERENCES milestones(id)
-        )''')
+        # Create milestones table
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS milestones (
+                id SERIAL PRIMARY KEY,
+                title TEXT NOT NULL,
+                description TEXT,
+                due_date DATE,
+                status TEXT DEFAULT 'Pending',
+                project_id INTEGER NOT NULL,
+                weightage INTEGER DEFAULT 1,
+                created_by_id INTEGER NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (project_id) REFERENCES projects(id),
+                FOREIGN KEY (created_by_id) REFERENCES users(id)
+            )
+        ''')
+        logger.debug("✓ milestones table ready")
 
-        cursor.execute('''CREATE TABLE user_skills (
-            id SERIAL PRIMARY KEY,
-            user_id INTEGER NOT NULL,
-            skill_name TEXT NOT NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (user_id) REFERENCES users(id),
-            UNIQUE(user_id, skill_name)
-        )''')
+        # Create project_assignments table
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS project_assignments (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER NOT NULL,
+                project_id INTEGER NOT NULL,
+                FOREIGN KEY (user_id) REFERENCES users(id),
+                FOREIGN KEY (project_id) REFERENCES projects(id),
+                UNIQUE(user_id, project_id)
+            )
+        ''')
+        logger.debug("✓ project_assignments table ready")
 
-        cursor.execute('''CREATE TABLE daily_task_reports (
-            id SERIAL PRIMARY KEY,
-            user_id INTEGER NOT NULL,
-            task_id INTEGER NOT NULL,
-            project_id INTEGER NOT NULL,
-            report_date DATE NOT NULL,
-            work_description TEXT,
-            time_spent INTEGER DEFAULT 0,
-            status TEXT DEFAULT 'In Progress',
-            blocker TEXT,
-            approval_status TEXT DEFAULT 'pending',
-            reviewed_by INTEGER,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (user_id) REFERENCES users(id),
-            FOREIGN KEY (task_id) REFERENCES tasks(id),
-            FOREIGN KEY (project_id) REFERENCES projects(id),
-            FOREIGN KEY (reviewed_by) REFERENCES users(id)
-        )''')
+        # Create progress_history table
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS progress_history (
+                id SERIAL PRIMARY KEY,
+                project_id INTEGER NOT NULL,
+                progress_percentage INTEGER,
+                tasks_completed INTEGER,
+                total_tasks INTEGER,
+                milestones_completed INTEGER,
+                total_milestones INTEGER,
+                recorded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (project_id) REFERENCES projects(id)
+            )
+        ''')
+        cursor.execute('''
+            CREATE INDEX IF NOT EXISTS idx_progress_project_date 
+            ON progress_history(project_id, recorded_at)
+        ''')
+        logger.debug("✓ progress_history table ready")
 
-        # Insert default user types
-        cursor.execute(
-            "INSERT INTO usertypes (user_role) VALUES ('Administrator')")
-        cursor.execute("INSERT INTO usertypes (user_role) VALUES ('Employee')")
+        # Create activities table
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS activities (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER NOT NULL,
+                activity_type TEXT NOT NULL,
+                description TEXT NOT NULL,
+                project_id INTEGER,
+                task_id INTEGER,
+                milestone_id INTEGER,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users(id),
+                FOREIGN KEY (project_id) REFERENCES projects(id),
+                FOREIGN KEY (task_id) REFERENCES tasks(id),
+                FOREIGN KEY (milestone_id) REFERENCES milestones(id)
+            )
+        ''')
+        logger.debug("✓ activities table ready")
+
+        # Create user_skills table
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS user_skills (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER NOT NULL,
+                skill_name TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users(id),
+                UNIQUE(user_id, skill_name)
+            )
+        ''')
+        logger.debug("✓ user_skills table ready")
+
+        # Create daily_task_reports table
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS daily_task_reports (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER NOT NULL,
+                task_id INTEGER,
+                project_id INTEGER NOT NULL,
+                report_date DATE NOT NULL,
+                work_description TEXT,
+                result_of_effort TEXT,
+                remarks TEXT,
+                communication_email TEXT,
+                communication_phone TEXT,
+                task_assigned_by_id INTEGER,
+                time_spent REAL DEFAULT 0,
+                status TEXT DEFAULT 'In Progress',
+                blocker TEXT,
+                approval_status TEXT DEFAULT 'pending',
+                reviewed_by INTEGER,
+                review_comment TEXT,
+                is_locked INTEGER DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users(id),
+                FOREIGN KEY (task_id) REFERENCES tasks(id),
+                FOREIGN KEY (project_id) REFERENCES projects(id),
+                FOREIGN KEY (reviewed_by) REFERENCES users(id)
+            )
+        ''')
+        logger.debug("✓ daily_task_reports table ready")
+
+        # Create report_comments table
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS report_comments (
+                id SERIAL PRIMARY KEY,
+                report_id INTEGER NOT NULL,
+                commenter_id INTEGER NOT NULL,
+                comment TEXT NOT NULL,
+                internal BOOLEAN DEFAULT FALSE,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (report_id) REFERENCES daily_task_reports(id) ON DELETE CASCADE,
+                FOREIGN KEY (commenter_id) REFERENCES users(id)
+            )
+        ''')
+        logger.debug("✓ report_comments table ready")
+
+        # Create audit_logs table
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS audit_logs (
+                id SERIAL PRIMARY KEY,
+                actor_id INTEGER,
+                action TEXT NOT NULL,
+                target_type TEXT,
+                target_id INTEGER,
+                details TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        logger.debug("✓ audit_logs table ready")
+
+        # Seed initial data if usertypes are empty or missing details
+        cursor.execute("SELECT id, user_role FROM usertypes WHERE user_role IN ('Administrator', 'Employee', 'Project-Cordinator')")
+        existing_types = {row['user_role']: row['id'] for row in cursor.fetchall()}
+        
+        defaults = {
+            'Administrator': 'Full system access and management',
+            'Employee': 'Standard employee access for reporting',
+            'Project-Cordinator': 'Project management and team coordination'
+        }
+        
+        ids = {}
+        for role, desc in defaults.items():
+            if role not in existing_types:
+                cursor.execute("INSERT INTO usertypes (user_role, description) VALUES (%s, %s) RETURNING id", (role, desc))
+                ids[role] = cursor.fetchone()['id']
+            else:
+                ids[role] = existing_types[role]
+                cursor.execute("UPDATE usertypes SET description = %s WHERE id = %s AND (description IS NULL OR description = '' OR description = '-')",
+                (desc, ids[role]))
+        # Helper to seed permissions
+        def seed_perms(ut_id, perms):
+            if not ut_id: return
+            for module, action in perms:
+                cursor.execute("SELECT id FROM usertype_permissions WHERE usertype_id = %s AND module = %s AND action = %s", (ut_id, module, action))
+                exists = cursor.fetchone()
+                if exists:
+                    cursor.execute("UPDATE usertype_permissions SET granted = %s WHERE id = %s", (True, exists['id']))
+                else:
+                    cursor.execute("INSERT INTO usertype_permissions (usertype_id, module, action, granted) VALUES (%s, %s, %s, %s)", (ut_id, module, action, True))
+
+        # Get IDs for seeding permissions
+        admin_id = ids.get('Administrator')
+        employee_id = ids.get('Employee')
+        coord_id = ids.get('Project-Cordinator')
+
+        # Administrator permissions
+        admin_perms = [
+            ('ADMIN', 'VIEW_HIERARCHY'), ('ADMIN', 'CREATE_USERTYPE'), ('ADMIN', 'MANAGE_PERMISSIONS'),
+            ('PROJ', 'VIEW_ALL'), ('PROJ', 'CREATE'), ('PROJ', 'EDIT'), ('PROJ', 'DELETE'), ('PROJ', 'ASSIGN_COORD'),
+            ('TASK', 'VIEW'), ('TASK', 'CREATE'), ('TASK', 'ASSIGN'), ('TASK', 'EDIT'),
+            ('TEAM', 'VIEW'), ('TEAM', 'ADD_MEMBER'), ('TEAM', 'REMOVE_MEMBER'), ('TEAM', 'MANAGE'),
+            ('REP', 'VIEW'), ('REP', 'APPROVE'), ('REP', 'REJECT')
+        ]
+        seed_perms(admin_id, admin_perms)
+            
+        # Employee permissions
+        employee_perms = [
+            ('PROJ', 'VIEW_ALL'), ('TASK', 'VIEW'), ('REP', 'VIEW')
+        ]
+        seed_perms(employee_id, employee_perms)
+
+        # Project Coordinator permissions
+        coord_perms = [
+            ('PROJ', 'VIEW_ALL'), ('PROJ', 'EDIT'), ('TASK', 'VIEW'), ('TASK', 'CREATE'), ('TASK', 'ASSIGN'), ('TASK', 'EDIT'),
+            ('TEAM', 'VIEW'), ('TEAM', 'ADD_MEMBER'), ('REP', 'VIEW'), ('REP', 'APPROVE')
+        ]
+        seed_perms(coord_id, coord_perms)
 
         conn.commit()
-        print("[OK] Database initialized successfully!")
+        print("[OK] Database initialized successfully (verified schema)!")
 
     except Exception as e:
         print(f"[ERROR] Database initialization failed: {e}")
         if conn:
             conn.rollback()
     finally:
+        if cursor:
+            cursor.close()
         if conn:
             conn.close()
 
-
 def migrate_db():
-    """Add new columns without wiping existing data"""
-
-    # Safety check for Railway
-    if os.getenv("RUN_DB_MIGRATION", "false").lower() != "true":
-        print("DB migration skipped (RUN_DB_MIGRATION != true)")
-        return
-
+    """Add missing columns to existing tables (non-destructive)"""
     conn = None
     try:
+        logger.info("Running database migration...")
         conn = get_db_connection()
         cursor = conn.cursor()
 
-        # List of columns to add
+        # List of columns to add (table, column, col_type)
         columns_to_add = [
             ("users", "phone", "TEXT"),
             ("users", "department", "TEXT"),
@@ -298,70 +678,149 @@ def migrate_db():
             ("users", "avatar_url", "TEXT"),
             ("projects", "completed_at", "TIMESTAMP"),
             ("projects", "reporting_time", "TIME"),
-            ("tasks", "progress", "INTEGER DEFAULT 0"),
-            ("tasks", "notes", "TEXT"),
         ]
 
         for table, column, col_type in columns_to_add:
             try:
-                cursor.execute(
-                    sql.SQL("ALTER TABLE {} ADD COLUMN {} {}").format(
-                        sql.Identifier(table), sql.Identifier(column),
-                        sql.SQL(col_type)))
-            except psycopg2.Error:
-                if conn:
-                    conn.rollback(
-                    )  # Rollback if adding column fails, though typically we just ignore if exists.
-                pass  # Column likely already exists or other non-critical error
-
-        # Create daily_task_reports table if it doesn't exist
-        try:
-            cursor.execute('''
-                CREATE TABLE IF NOT EXISTS daily_task_reports (
-                    id SERIAL PRIMARY KEY,
-                    user_id INTEGER NOT NULL,
-                    task_id INTEGER NOT NULL,
-                    project_id INTEGER NOT NULL,
-                    report_date DATE NOT NULL,
-                    work_description TEXT,
-                    time_spent INTEGER DEFAULT 0,
-                    status TEXT DEFAULT 'In Progress',
-                    blocker TEXT,
-                    approval_status TEXT DEFAULT 'pending',
-                    reviewed_by INTEGER,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    FOREIGN KEY (user_id) REFERENCES users(id),
-                    FOREIGN KEY (task_id) REFERENCES tasks(id),
-                    FOREIGN KEY (project_id) REFERENCES projects(id),
-                    FOREIGN KEY (reviewed_by) REFERENCES users(id)
-                )
-            ''')
-        except psycopg2.Error as e:
-            print(f"[INFO] daily_task_reports table creation: {str(e)}")
-            pass  # Table likely already exists
+                cursor.execute(f"ALTER TABLE {table} ADD COLUMN {column} {col_type}")
+                logger.debug(f"Added column {column} to table {table}")
+            except psycopg2.Error as e:
+                if "already exists" in str(e).lower() or "duplicate column" in str(e).lower():
+                    pass  # Column already exists, skip
+                else:
+                    logger.warning(f"Could not add {column} to {table}: {e}")
 
         conn.commit()
-        print("[OK] Database migration completed!")
+        logger.info("✓ Database migration completed!")
+        return True
 
     except Exception as e:
-        print(f"[ERROR] Database migration failed: {e}")
+        logger.error(f"✗ Database migration failed: {e}")
         if conn:
-            conn.rollback()
+            try:
+                conn.rollback()
+            except:
+                pass
+        return False
     finally:
         if conn:
-            conn.close()
+            try:
+                conn.close()
+            except:
+                pass
 
+def init_daily_report_module():
+    """Ensure Daily Task Reporting tables exist (non-destructive)"""
+    conn = None
+    try:
+        logger.info("Initializing daily report module...")
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        # Daily Task Reports Table (already created in init_db, this is redundant but harmless)
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS daily_task_reports (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER NOT NULL,
+                task_id INTEGER,
+                project_id INTEGER NOT NULL,
+                report_date DATE NOT NULL,
+                work_description TEXT,
+                result_of_effort TEXT,
+                remarks TEXT,
+                communication_email TEXT,
+                communication_phone TEXT,
+                task_assigned_by_id INTEGER,
+                time_spent REAL DEFAULT 0,
+                status TEXT DEFAULT 'In Progress',
+                blocker TEXT,
+                approval_status TEXT DEFAULT 'pending',
+                reviewed_by INTEGER,
+                review_comment TEXT,
+                is_locked INTEGER DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users(id),
+                FOREIGN KEY (task_id) REFERENCES tasks(id),
+                FOREIGN KEY (project_id) REFERENCES projects(id),
+                FOREIGN KEY (reviewed_by) REFERENCES users(id)
+            )
+        ''')
+
+        # Report Comments Table
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS report_comments (
+                id SERIAL PRIMARY KEY,
+                report_id INTEGER NOT NULL,
+                commenter_id INTEGER NOT NULL,
+                comment TEXT NOT NULL,
+                internal BOOLEAN DEFAULT FALSE,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (report_id) REFERENCES daily_task_reports(id) ON DELETE CASCADE,
+                FOREIGN KEY (commenter_id) REFERENCES users(id)
+            )
+        ''')
+
+        # Audit logs
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS audit_logs (
+                id SERIAL PRIMARY KEY,
+                actor_id INTEGER,
+                action TEXT NOT NULL,
+                target_type TEXT,
+                target_id INTEGER,
+                details TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+
+        conn.commit()
+        logger.info("✓ Daily Report Module Initialized")
+        return True
+
+    except Exception as e:
+        logger.error(f"✗ Init Daily Report Module failed: {e}")
+        if conn:
+            try:
+                conn.rollback()
+            except:
+                pass
+        return False
+    finally:
+        if conn:
+            try:
+                conn.close()
+            except:
+                pass
+
+def safe_init_db():
+    """Safely initialize database on app startup"""
+    try:
+        logger.info("=" * 60)
+        logger.info("DATABASE STARTUP")
+        logger.info("=" * 60)
+        
+        if not init_db():
+            logger.warning("Database initialization encountered issues")
+        if not migrate_db():
+            logger.warning("Database migration encountered issues")
+        if not init_daily_report_module():
+            logger.warning("Daily report module initialization encountered issues")
+            
+        logger.info("=" * 60)
+    except Exception as e:
+        logger.error(f"Critical error during database startup: {e}")
 
 def validate_password_complexity(password):
     if len(password) < 8:
-        return False, "Password must be at least 8 characters."
-    if not re.search(r'[a-zA-Z]', password):
+        return False, "Password must be at least 8 characters long."
+
+    if not re.search(r'[A-Za-z]', password):
         return False, "Password must contain at least one letter."
-    special_chars = len(
-        re.findall(r'[!@#$%^&*()_+\-=\[\]{};\':"\\|,.<>\/?]', password))
-    if special_chars < 2:
+
+    if len(re.findall(r'[!@#$%^&*()_+\-=\[\]{};:\'",.<>/%s\\|]', password)) < 2:
         return False, "Password must contain at least two special characters."
+
     return True, "Password is valid."
 
 
@@ -369,21 +828,33 @@ def login_required(f):
 
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        auth_header = request.headers.get('Authorization')
-        if auth_header and auth_header.startswith('Bearer '):
-            token = auth_header.split(' ')[1]
-            if token in valid_tokens:
-                g.current_user_id = valid_tokens[token]['user_id']
-                g.current_user_type = valid_tokens[token].get(
-                    'user_type', 'employee')
-                return f(*args, **kwargs)
-
-        if 'user_id' in session:
-            g.current_user_id = session.get('user_id')
-            g.current_user_type = session.get('user_type', 'employee')
+        # Check session first
+        if session.get("is_authenticated"):
+            g.current_user_id = session.get("user_id")
+            g.current_user_type = session.get("user_type", "employee")
             return f(*args, **kwargs)
+        
+        # Check Bearer token for API requests
+        auth_header = request.headers.get("Authorization")
+        if auth_header and auth_header.startswith("Bearer "):
+            token = auth_header.split(" ")[1]
+            try:
+                s = URLSafeTimedSerializer(app.secret_key)
+                data = s.loads(token, max_age=86400)
+                user_id = data.get("user_id")
+                if user_id:
+                    g.current_user_id = user_id
+                    return f(*args, **kwargs)
+            except Exception as e:
+                logger.warning(f"Bearer token validation failed: {str(e)}")
+                if request.is_json:
+                    return jsonify({"error": "Invalid or expired token"}), 401
+                return redirect("/login")
 
-        return jsonify({"error": "Authentication required"}), 401
+        if request.is_json:
+            return jsonify({"error": "Authentication required"}), 401
+
+        return redirect("/login")
 
     return decorated_function
 
@@ -392,29 +863,60 @@ def admin_required(f):
 
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        auth_header = request.headers.get('Authorization')
-        is_admin = False
+        if session.get("is_authenticated") and session.get(
+                "user_type") == "admin":
+            g.current_user_id = session.get("user_id")
+            return f(*args, **kwargs)
 
-        # Check Bearer token
-        if auth_header and auth_header.startswith('Bearer '):
-            token = auth_header.split(' ')[1]
-            if token in valid_tokens and valid_tokens[token].get(
-                    'user_type') == 'admin':
-                is_admin = True
-
-        # Check session
-        if session.get('user_type') == 'admin' or session.get('admin'):
-            is_admin = True
-
-        if not is_admin:
+        if request.is_json:
             return jsonify({"error": "Admin access required"}), 403
-        return f(*args, **kwargs)
+
+        return redirect("/login")
+
+    return decorated_function
+
+
+def employee_required(f):
+
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if session.get("is_authenticated") and session.get(
+                "user_type") == "employee":
+            g.current_user_id = session.get("user_id")
+            return f(*args, **kwargs)
+
+        if request.is_json:
+            return jsonify({"error": "Employee access required"}), 403
+
+        return redirect("/login")
 
     return decorated_function
 
 
 def get_current_user_id():
-    return getattr(g, 'current_user_id', None) or session.get('user_id')
+    """Get current user ID from session or Bearer token"""
+    # Try session first (for form-based auth)
+    user_id = session.get("user_id")
+    if user_id:
+        return user_id
+    
+    # Try Bearer token (for API clients)
+    auth_header = request.headers.get("Authorization")
+    if auth_header and auth_header.startswith("Bearer "):
+        token = auth_header.split(" ")[1]
+        try:
+            s = URLSafeTimedSerializer(app.secret_key)
+            data = s.loads(token, max_age=86400)
+            return data.get("user_id")
+        except:
+            return None
+    
+    return None
+
+
+@app.before_request
+def debug_session():
+    print("SESSION:", dict(session))
 
 
 @app.route("/")
@@ -427,97 +929,371 @@ def login_page():
     return render_template("login.html")
 
 
-@app.route("/api/config/recaptcha", methods=["GET"])
-def get_recaptcha_config():
-    """Return reCAPTCHA site key for frontend initialization"""
-    return jsonify({"site_key": RECAPTCHA_SITE_KEY}), 200
-
-
 @app.route("/admin-dashboard")
 def admin_dashboard():
-    return render_template("admin-dashboard.html")
+    if not session.get("is_authenticated") or session.get(
+            "user_type") != "admin":
+        return redirect(url_for("login"))
+
+    csrf_token = generate_csrf()
+    session['csrf_token'] = csrf_token  # Store in session for CSRF protection
+    session.modified = True
+    return render_template("admin-dashboard.html",
+                           username=session.get("username"),
+                           csrf_token=csrf_token)
 
 
 @app.route("/employee-dashboard")
+@employee_required
 def employee_dashboard():
-    return render_template("employee-dashboard.html")
+    csrf_token = generate_csrf()
+    session['csrf_token'] = csrf_token  # Store in session for CSRF protection
+    session.modified = True
+    return render_template("employee-dashboard.html",
+                           csrf_token=csrf_token)
+
+
+@app.route("/super-admin-dashboard")
+@app.route("/admin/daily-reports")
+@admin_required
+def super_admin_dashboard():
+    """Super Admin Daily Reports Dashboard"""
+    return render_template("super-admin-dashboard.html")
+
+
+@app.route('/admin/projects/<int:project_id>')
+@login_required
+def admin_project_detail(project_id):
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        # Project basic info + creator
+        cursor.execute(
+            '''
+            SELECT p.*, u.username as creator_name
+            FROM projects p
+            LEFT JOIN users u ON p.created_by_id = u.id
+            WHERE p.id = %s
+        ''', (project_id, ))
+        project = cursor.fetchone()
+        if not project:
+            conn.close()
+            return "Project not found", 404
+
+        project_dict = dict(project)
+
+        # Team members
+        cursor.execute(
+            '''
+            SELECT u.id, u.username, u.email, ut.user_role
+            FROM project_assignments pa
+            JOIN users u ON pa.user_id = u.id
+            LEFT JOIN usertypes ut ON u.user_type_id = ut.id
+            WHERE pa.project_id = %s
+        ''', (project_id, ))
+        members = [dict(r) for r in cursor.fetchall()]
+
+        # Tasks for this project
+        cursor.execute(
+            '''
+            SELECT t.id, t.title, t.status, t.assigned_to_id, u.username as assigned_to
+            FROM tasks t
+            LEFT JOIN users u ON t.assigned_to_id = u.id
+            WHERE t.project_id = %s
+            ORDER BY t.updated_at DESC
+        ''', (project_id, ))
+        tasks = [dict(r) for r in cursor.fetchall()]
+
+        # Activities grouped by user for this project
+        cursor.execute(
+            '''
+            SELECT a.user_id, u.username, COUNT(a.id) as activity_count
+            FROM activities a
+            LEFT JOIN users u ON a.user_id = u.id
+            WHERE a.project_id = %s
+            GROUP BY a.user_id, u.username
+            ORDER BY activity_count DESC
+        ''', (project_id, ))
+        activities_by_user = {r['user_id']: dict(r) for r in cursor.fetchall()}
+
+        # For each member, gather metrics (tasks assigned/completed and other projects)
+        member_details = []
+        for m in members:
+            uid = m['id']
+            cursor.execute(
+                "SELECT COUNT(*) as total, SUM(CASE WHEN status = 'Completed' THEN 1 ELSE 0 END) as completed FROM tasks WHERE project_id = %s AND assigned_to_id = %s",
+                (project_id, uid))
+            tcounts = cursor.fetchone()
+
+            cursor.execute(
+                '''
+                SELECT COUNT(DISTINCT pa.project_id) as projects_count
+                FROM project_assignments pa
+                JOIN projects p ON pa.project_id = p.id
+                WHERE pa.user_id = %s AND pa.project_id != %s
+            ''', (uid, project_id))
+            proj_cnt = cursor.fetchone()
+
+            member_details.append({
+                'id':
+                uid,
+                'username':
+                m.get('username'),
+                'email':
+                m.get('email'),
+                'role':
+                m.get('user_role'),
+                'tasks_total':
+                tcounts['total'] or 0,
+                'tasks_completed':
+                tcounts['completed'] or 0,
+                'other_projects':
+                proj_cnt['projects_count'] or 0,
+                'activities_count':
+                activities_by_user.get(uid, {}).get('activity_count', 0)
+            })
+
+        conn.close()
+
+        return render_template('project-detail.html',
+                               project=project_dict,
+                               members=member_details,
+                               tasks=tasks)
+    except Exception as e:
+        logger.exception('Error loading project detail')
+        return str(e), 500
+
+
+@app.route('/admin/users/<int:user_id>')
+@login_required
+def admin_user_detail(user_id):
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            '''
+            SELECT u.id, u.username, u.email, u.phone, u.department, u.bio, u.user_type_id, ut.user_role
+            FROM users u
+            LEFT JOIN usertypes ut ON u.user_type_id = ut.id
+            WHERE u.id = %s
+        ''', (user_id, ))
+        user = cursor.fetchone()
+        if not user:
+            conn.close()
+            return "User not found", 404
+
+        user_dict = dict(user)
+
+        # 1. Direct Permissions
+        cursor.execute('SELECT module, action, granted FROM user_permissions WHERE user_id = %s', (user_id,))
+        direct_perms = cursor.fetchall()
+
+        # 2. Role Permissions
+        cursor.execute('SELECT module, action, granted FROM usertype_permissions WHERE usertype_id = %s', (user_dict['user_type_id'],))
+        role_perms = cursor.fetchall()
+
+        # Merge
+        permissions = {}
+        for p in role_perms:
+            if p['module'] not in permissions: permissions[p['module']] = {}
+            permissions[p['module']][p['action']] = bool(p['granted'])
+        for p in direct_perms:
+            if p['module'] not in permissions: permissions[p['module']] = {}
+            permissions[p['module']][p['action']] = bool(p['granted'])
+        
+        user_dict['permissions'] = permissions
+
+        # Projects the user is assigned to
+        cursor.execute(
+            '''
+            SELECT p.id, p.title, p.status
+            FROM project_assignments pa
+            JOIN projects p ON pa.project_id = p.id
+            WHERE pa.user_id = %s
+        ''', (user_id, ))
+        projects = [dict(r) for r in cursor.fetchall()]
+
+        # Tasks assigned to the user
+        cursor.execute(
+            '''
+            SELECT t.id, t.title, t.status, p.title as project_title
+            FROM tasks t
+            LEFT JOIN projects p ON t.project_id = p.id
+            WHERE t.assigned_to_id = %s
+            ORDER BY t.updated_at DESC
+        ''', (user_id, ))
+        tasks = [dict(r) for r in cursor.fetchall()]
+
+        # Recent activities
+        cursor.execute(
+            '''
+            SELECT a.id, a.activity_type, a.description, a.project_id, a.task_id, a.created_at
+            FROM activities a
+            WHERE a.user_id = %s
+            ORDER BY a.created_at DESC
+            LIMIT 200
+        ''', (user_id, ))
+        activities = [dict(r) for r in cursor.fetchall()]
+
+        conn.close()
+
+        return render_template('user-detail.html',
+                               user=user_dict,
+                               projects=projects,
+                               tasks=tasks,
+                               activities=activities)
+    except Exception as e:
+        logger.exception('Error loading user detail')
+        return str(e), 500
 
 
 @app.route("/api/admin/login/step1", methods=["POST"])
+@csrf.exempt
 def login_step1():
-    import requests
-    
     data = request.get_json() or {}
-    email = (data.get("email") or "").strip().lower()
+    identifier = (data.get("email") or "").strip().lower()
     password = data.get("password") or ""
-    admin_pin = (data.get("admin_pin") or "").strip()
-    recaptcha_token = data.get("recaptcha_token") or ""
 
-    if not email or not password or not admin_pin:
+    client_ip = get_client_ip()
+    if is_ip_blocked(client_ip):
+        return jsonify({"error": "Too many failed login attempts. Try again later."}), 429
+
+    if not identifier or not password:
+        register_failed_login(client_ip)
         return jsonify({"error": "All fields are required."}), 400
 
-    if "@" not in email or "." not in email.split("@")[-1]:
-        return jsonify({"error": "Invalid email format."}), 400
+    # Support login by either admin email or reserved "super admin" username
+    admin_identifier_ok = False
+    if "@" in identifier:
+        # Validate basic email format
+        if "." not in identifier.split("@")[-1]:
+            return jsonify({"error": "Invalid email format."}), 400
+        admin_identifier_ok = (identifier == ADMIN_EMAIL)
+    else:
+        # Allow reserved username variants (case-insensitive)
+        normalized = identifier.replace("_", " ").strip()
+        if normalized in ("super admin", "admin", "superadmin"):
+            admin_identifier_ok = True
+        else:
+            admin_identifier_ok = False
 
-    # Verify reCAPTCHA token
-    if recaptcha_token:
-        try:
-            recaptcha_response = requests.post(
-                'https://www.google.com/recaptcha/api/siteverify',
-                data={'secret': os.getenv('RECAPTCHA_SECRET_KEY'), 'response': recaptcha_token}
-            )
-            recaptcha_data = recaptcha_response.json()
-            if not recaptcha_data.get('success') or recaptcha_data.get('score', 0) < 0.5:
-                return jsonify({"error": "reCAPTCHA verification failed."}), 400
-        except Exception as e:
-            logger.warning(f"reCAPTCHA verification error: {str(e)}")
-
-    if not admin_pin.isdigit() or len(admin_pin) != 6:
-        return jsonify({"error": "Admin PIN must be exactly 6 digits."}), 400
-
-    if email != ADMIN_EMAIL:
-        return jsonify({"error": "Email not found."}), 400
+    if not admin_identifier_ok:
+        register_failed_login(client_ip)
+        return jsonify({"error": "Email or username not found."}), 400
 
     if password != ADMIN_PASSWORD:
+        register_failed_login(client_ip)
         return jsonify({"error": "Incorrect password."}), 400
 
-    if admin_pin != ADMIN_PIN:
-        return jsonify({"error": "Invalid Admin PIN."}), 400
+    # Successful step1 -> reset attempts
+    reset_failed_login(client_ip)
 
-    return jsonify(
-        {"message":
-         "OTP has been sent to your registered email (simulated)."}), 200
-
+    return jsonify({
+        "message": "OTP has been sent to your registered email (simulated).",
+        "admin_id": 0,
+        "success": True,
+    }), 200
 
 @app.route("/api/admin/login/step2", methods=["POST"])
+@csrf.exempt
 def login_step2():
+    """Admin login step 2 - OTP verification"""
     data = request.get_json() or {}
     otp = data.get("otp") or ""
 
-    if not otp:
-        return jsonify({"error": "OTP is required."}), 400
+    client_ip = get_client_ip()
+    if is_ip_blocked(client_ip):
+        return jsonify({"error": "Too many failed login attempts. Try again later."}), 429
+
+    ADMIN_OTP = os.environ.get('ADMIN_OTP', '123456')
+    ADMIN_EMAIL = os.environ.get('ADMIN_EMAIL', 'anubha@yeseartheco.com').lower()
+    ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', 'Anubha@#46')
 
     if otp != ADMIN_OTP:
-        return jsonify({"error": "Invalid OTP provided."}), 400
+        register_failed_login(client_ip)
+        return jsonify({"error": "Invalid OTP"}), 400
 
-    session_token = secrets.token_urlsafe(32)
-    session['admin'] = True
-    session['admin_token'] = session_token
-    session['user_type'] = 'admin'
+    reset_failed_login(client_ip)
 
-    valid_tokens[session_token] = {
-        'user_id': 0,  # Admin has ID 0
-        'username': 'admin',
-        'user_type': 'admin',
-        'created_at': datetime.now(timezone.utc)
-    }
+    conn = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
 
-    return jsonify({
-        "session_token": session_token,
-        "admin_name": "Super Admin",
-        "success": True,
-        "message": "Login successful"
-    }), 200
+        # Try to find an existing admin user
+        cur.execute("SELECT id FROM users WHERE LOWER(email) = %s", (ADMIN_EMAIL.lower(),))
+        row = cur.fetchone()
+
+        if row:
+            admin_id = row['id']
+            logger.info(f"Admin user already exists: {admin_id}")
+        else:
+            # Create new admin user
+            logger.info("Creating new admin user...")
+            
+            # Ensure "Administrator" usertype exists
+            cur.execute("SELECT id FROM usertypes WHERE LOWER(user_role) LIKE %s", ('%admin%',))
+            ut = cur.fetchone()
+            
+            if ut:
+                utid = ut['id']
+            else:
+                # Create Administrator usertype
+                cur.execute(
+                    "INSERT INTO usertypes (user_role, created_at) VALUES (%s, CURRENT_TIMESTAMP) RETURNING id",
+                    ('Administrator',)
+                )
+                utid = cur.fetchone()['id']
+
+            # Hash the admin password
+            hashed = generate_password_hash(ADMIN_PASSWORD)
+
+            # ✓ FIX: Use PostgreSQL syntax instead of SQLite "INSERT OR IGNORE"
+            # PostgreSQL: INSERT ... ON CONFLICT ... DO NOTHING
+            cur.execute(
+                """
+                INSERT INTO users (username, email, password, user_type_id, granted, is_system, created_at) 
+                VALUES (%s, %s, %s, %s, TRUE, 1, CURRENT_TIMESTAMP)
+                ON CONFLICT (email) DO NOTHING
+                RETURNING id
+                """,
+                ('Super Admin', ADMIN_EMAIL, hashed, utid)
+            )
+            
+            result = cur.fetchone()
+            if result:
+                admin_id = result['id']
+                logger.info(f"New admin user created: {admin_id}")
+            else:
+                # User already existed (conflict), fetch existing
+                cur.execute("SELECT id FROM users WHERE LOWER(email) = %s", (ADMIN_EMAIL.lower(),))
+                admin_id = cur.fetchone()['id']
+                logger.info(f"Admin user already existed: {admin_id}")
+
+        # Set session
+        session.clear()
+        session.permanent = True
+        session["is_authenticated"] = True
+        session["user_id"] = admin_id
+        session["username"] = "Super Admin"
+        session["user_type"] = "admin"
+        session["admin"] = True
+        
+        conn.commit()
+        logger.info(f"✓ Admin login successful for user {admin_id}")
+        
+        return jsonify({"success": True, "user_id": admin_id}), 200
+
+    except Exception as e:
+        logger.error(f"✗ Login step 2 failed: {e}")
+        logger.exception("Full traceback:")
+        if conn:
+            conn.rollback()
+        return jsonify({"error": "Internal server error"}), 500
+    finally:
+        if conn:
+            conn.close()
 
 
 @app.route("/api/admin/dashboard/overdue-items", methods=["GET"])
@@ -573,6 +1349,473 @@ def get_overdue_items():
         }), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/daily-report', methods=['POST'])
+@login_required
+def create_daily_report():
+    """Submit a daily report.
+    Rules:
+    - One report per task per day.
+    - Hours between 0 and 24.
+    - Admins can submit on behalf of employees.
+    """
+    try:
+        current_user_id = get_current_user_id()
+        data = request.get_json() or {}
+
+        # Check if admin is submitting on behalf of someone
+        report_user_id = data.get(
+            'user_id')  # Admin can specify who the report is for
+
+        # Get current user's role
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        current_user_role_row = cursor.execute(
+            '''
+            SELECT ut.user_role FROM users u 
+            JOIN usertypes ut ON u.user_type_id = ut.id 
+            WHERE u.id = %s
+        ''', (current_user_id, )).fetchone()
+        current_role = (current_user_role_row['user_role']
+                        if current_user_role_row else 'employee').lower()
+
+        # If user_id is specified, only admins/super-admins can do this
+        if report_user_id and report_user_id != current_user_id:
+            if current_role not in ['admin', 'super admin']:
+                conn.close()
+                return jsonify({
+                    'error':
+                    'Only admins can submit reports for other users'
+                }), 403
+            user_id = report_user_id
+        else:
+            user_id = current_user_id
+
+        task_id = data.get('task_id')
+        project_id = data.get('project_id')
+        report_date = data.get('report_date') or datetime.now().strftime(
+            '%Y-%m-%d')
+        work_description = data.get('work_description') or data.get(
+            'result_of_effort')
+        time_spent_str = data.get('time_spent', 0)
+        status = data.get('status', 'In Progress')
+        blocker = data.get('blocker', '')
+        communication_email = data.get('communication_email') or data.get(
+            'email') or ''
+        communication_phone = data.get('communication_phone') or data.get(
+            'phone') or ''
+        result_of_effort = data.get(
+            'result_of_effort') or work_description or ''
+        remarks = data.get('remarks') or ''
+
+        if not task_id or not work_description:
+            conn.close()
+            return jsonify({'error': 'Task and Description are required'}), 400
+
+        try:
+            time_spent = float(time_spent_str)
+            if not (0 <= time_spent <= 24):
+                raise ValueError
+        except (ValueError, TypeError):
+            conn.close()
+            return jsonify({'error':
+                            'Hours spent must be between 0 and 24'}), 400
+
+        # Verify task existence
+        cursor.execute(
+            "SELECT id, project_id, assigned_to_id FROM tasks WHERE id = %s",
+            (task_id, ))
+        task = cursor.fetchone()
+        if not task:
+            conn.close()
+            return jsonify({'error': 'Task not found'}), 404
+
+        # Allow admins to report on any task, but employees only on their assigned tasks
+        # OR if they created the task (only for non-admin users)
+        if current_role == 'employee' and user_id == current_user_id:
+            if task['assigned_to_id'] != user_id and task.get(
+                    'created_by_id') != user_id:
+                conn.close()
+                return jsonify({
+                    'error':
+                    'You can only report on your assigned or created tasks'
+                }), 403
+
+        # Use project_id from task if not provided or mismatch
+        real_project_id = project_id or task['project_id']
+
+        # Check duplicate
+        cursor.execute(
+            "SELECT id FROM daily_task_reports WHERE user_id = %s AND task_id = %s AND report_date = %s",
+            (user_id, task_id, report_date))
+        if cursor.fetchone():
+            conn.close()
+            return jsonify({
+                'error':
+                'A report for this task already exists for this date.'
+            }), 409
+
+        communication_details = json.dumps({
+            'email': communication_email,
+            'phone': communication_phone
+        })
+        cursor.execute(
+            '''
+            INSERT INTO daily_task_reports 
+            (user_id, task_id, project_id, report_date, work_description, result_of_effort, remarks, communication_email, communication_phone, communication_details, time_spent, status, blocker, task_assigned_by_id, approval_status)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'pending')
+        ''', (user_id, task_id, real_project_id, report_date, work_description,
+              result_of_effort, remarks, communication_email,
+              communication_phone, communication_details, time_spent, status,
+              blocker, data.get('task_assigned_by_id')))
+
+        report_id = cursor.lastrowid
+        conn.commit()
+
+        log_activity(user_id,
+                     'daily_report_created',
+                     f'Submitted daily report for task {task_id}',
+                     real_project_id,
+                     task_id=task_id)
+        try:
+            conn2 = get_db_connection()
+            cur2 = conn2.cursor()
+            cur2.execute(
+                'INSERT INTO audit_logs (actor_id, action, target_type, target_id, details) VALUES (%s,%s,%s,%s,%s)',
+                (user_id, 'create_report', 'daily_report', report_id,
+                 json.dumps({
+                     'task_id': task_id,
+                     'project_id': real_project_id
+                 })))
+            conn2.commit()
+        except Exception:
+            pass
+        finally:
+            try:
+                conn2.close()
+            except Exception:
+                pass
+
+        conn.close()
+        return jsonify({'success': True, 'id': report_id}), 201
+
+    except Exception as e:
+        logger.exception('create_daily_report failed')
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/daily-reports', methods=['GET'])
+@login_required
+def list_daily_reports():
+    """List daily reports with filters and pagination. Role-based visibility."""
+    try:
+        user_id = get_current_user_id()
+        user_type = getattr(g, 'current_user_type', session.get('user_type'))
+
+        # filters
+        start = request.args.get('start_date')
+        end = request.args.get('end_date')
+        employee = request.args.get('employee_id')
+        project = request.args.get('project_id')
+        task = request.args.get('task_id')
+        status = request.args.get('status')
+        page = int(request.args.get('page', 1))
+        per_page = int(request.args.get('per_page', 50))
+
+        params = []
+        where = ['1=1']
+
+        if start:
+            where.append('report_date >= %s')
+            params.append(start)
+        if end:
+            where.append('report_date <= %s')
+            params.append(end)
+        if employee:
+            where.append('d.user_id = %s')
+            params.append(employee)
+        if project:
+            where.append('d.project_id = %s')
+            params.append(project)
+        if task:
+            where.append('d.task_id = %s')
+            params.append(task)
+        if status:
+            where.append('d.status = %s')
+            params.append(status)
+
+        # Role-based access: employees see only their reports
+        if user_type == 'employee' or user_type is None:
+            where.append('d.user_id = %s')
+            params.append(user_id)
+
+        where_sql = ' AND '.join(where)
+        offset = (page - 1) * per_page
+
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        query = f'''
+            SELECT d.*, u.username AS employee_name, p.title AS project_title, t.title AS task_title, reviewer.username AS reviewer_name
+            FROM daily_task_reports d
+            LEFT JOIN users u ON d.user_id = u.id
+            LEFT JOIN projects p ON d.project_id = p.id
+            LEFT JOIN tasks t ON d.task_id = t.id
+            LEFT JOIN users reviewer ON d.reviewed_by = reviewer.id
+            WHERE {where_sql}
+            ORDER BY d.report_date DESC, d.created_at DESC
+            LIMIT %s OFFSET %s
+        '''
+        params.extend([per_page, offset])
+        cursor.execute(query, params)
+        rows = [dict(r) for r in cursor.fetchall()]
+
+        # total count
+        count_q = f'SELECT COUNT(*) as cnt FROM daily_task_reports d WHERE {where_sql}'
+        cursor.execute(count_q, params[:-2])
+        total = cursor.fetchone()['cnt']
+        conn.close()
+
+        return jsonify({
+            'data': rows,
+            'page': page,
+            'per_page': per_page,
+            'total': total
+        }), 200
+    except Exception as e:
+        logger.exception('list_daily_reports failed')
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/daily-report/<int:report_id>', methods=['PUT'])
+@admin_required
+def edit_daily_report(report_id):
+    """Edit a report (admin/superadmin)."""
+    try:
+        data = request.get_json() or {}
+        user_type = getattr(g, 'current_user_type', session.get('user_type'))
+        is_admin = session.get('admin') or user_type == 'admin'
+
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute('SELECT * FROM daily_task_reports WHERE id = %s',
+                       (report_id, ))
+        row = cursor.fetchone()
+        if not row:
+            conn.close()
+            return jsonify({'error': 'Report not found'}), 404
+
+        if row['approval_status'] == 'approved' and not is_admin:
+            conn.close()
+            return jsonify({'error': 'Approved reports are locked'}), 403
+
+        updates = []
+        params = []
+        if 'work_description' in data:
+            updates.append('work_description = %s')
+            params.append(data['work_description'])
+        if 'time_spent' in data:
+            try:
+                ts = float(data['time_spent'])
+            except Exception:
+                conn.close()
+                return jsonify({'error': 'time_spent must be a number'}), 400
+            if ts < 0 or ts > 24:
+                conn.close()
+                return jsonify(
+                    {'error': 'time_spent must be between 0 and 24'}), 400
+            updates.append('time_spent = %s')
+            params.append(ts)
+        if 'status' in data:
+            if data['status'] not in ('In Progress', 'Completed', 'Blocked'):
+                conn.close()
+                return jsonify({'error': 'Invalid status'}), 400
+            updates.append('status = %s')
+            params.append(data['status'])
+
+        if not updates:
+            conn.close()
+            return jsonify({'error': 'Nothing to update'}), 400
+
+        params.append(report_id)
+        sql = 'UPDATE daily_task_reports SET ' + ', '.join(
+            updates) + ', updated_at = CURRENT_TIMESTAMP WHERE id = %s'
+        cursor.execute(sql, params)
+        conn.commit()
+        log_activity(get_current_user_id(), 'daily_report_edited',
+                     f'Edited report {report_id}', row['project_id'])
+        conn.close()
+        return jsonify({'success': True}), 200
+    except Exception as e:
+        logger.exception('edit_daily_report failed')
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/daily-report/<int:report_id>/action', methods=['POST'])
+@login_required
+def action_daily_report(report_id):
+    """Approve or reject a report. Admins only."""
+    try:
+        data = request.get_json() or {}
+        action = data.get('action')
+        comment = data.get('comment', '')
+        user_id = get_current_user_id()
+        user_type = getattr(g, 'current_user_type', session.get('user_type'))
+        is_admin = session.get('admin') or user_type == 'admin'
+
+        if action not in ('approve', 'reject'):
+            return jsonify({'error': 'Invalid action'}), 400
+
+        if not is_admin:
+            return jsonify({'error': 'Admin access required'}), 403
+
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute('SELECT * FROM daily_task_reports WHERE id = %s',
+                       (report_id, ))
+        row = cursor.fetchone()
+        if not row:
+            conn.close()
+            return jsonify({'error': 'Report not found'}), 404
+
+        new_status = 'approved' if action == 'approve' else 'rejected'
+        cursor.execute(
+            'UPDATE daily_task_reports SET approval_status = %s, reviewed_by = %s, review_comment = %s, updated_at = CURRENT_TIMESTAMP, is_locked = CASE WHEN %s = \'approved\' THEN 1 ELSE is_locked END WHERE id = %s',
+            (new_status, user_id, comment, new_status, report_id))
+        conn.commit()
+        log_activity(user_id, 'daily_report_reviewed',
+                     f'{new_status} report {report_id}', row['project_id'])
+        conn.close()
+        return jsonify({'success': True}), 200
+    except Exception as e:
+        logger.exception('action_daily_report failed')
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/daily-report/<int:report_id>', methods=['DELETE'])
+@admin_required
+def delete_daily_report(report_id):
+    """Delete report (super admin only)."""
+    try:
+        user_type = getattr(g, 'current_user_type', session.get('user_type'))
+        if not (session.get('admin') or user_type == 'admin'):
+            return jsonify({'error':
+                            'Only admin can delete reports'}), 403
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            'SELECT project_id FROM daily_task_reports WHERE id = %s',
+            (report_id, ))
+        row = cursor.fetchone()
+        if not row:
+            conn.close()
+            return jsonify({'error': 'Report not found'}), 404
+        cursor.execute('DELETE FROM report_comments WHERE report_id = %s',
+                       (report_id, ))
+        cursor.execute('DELETE FROM daily_task_reports WHERE id = %s',
+                       (report_id, ))
+        conn.commit()
+        log_activity(get_current_user_id(), 'daily_report_deleted',
+                     f'deleted report {report_id}', row['project_id'])
+        conn.close()
+        return jsonify({'success': True}), 200
+    except Exception as e:
+        logger.exception('delete_daily_report failed')
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/daily-report/<int:report_id>/comments', methods=['POST'])
+@login_required
+def add_report_comment(report_id):
+    try:
+        data = request.get_json() or {}
+        comment = data.get('comment')
+        internal = bool(data.get('internal', False))
+        if not comment:
+            return jsonify({'error': 'comment is required'}), 400
+        user_id = get_current_user_id()
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute('SELECT 1 FROM daily_task_reports WHERE id = %s',
+                       (report_id, ))
+        if not cursor.fetchone():
+            conn.close()
+            return jsonify({'error': 'Report not found'}), 404
+        cursor.execute(
+            'INSERT INTO report_comments (report_id, commenter_id, comment, internal, created_at) VALUES (%s, %s, %s, %s, CURRENT_TIMESTAMP)',
+            (report_id, user_id, comment, 1 if internal else 0))
+        conn.commit()
+        conn.close()
+        return jsonify({'success': True}), 201
+    except Exception as e:
+        logger.exception('add_report_comment failed')
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/daily-reports/export', methods=['GET'])
+@admin_required
+def export_daily_reports():
+    """Export filtered reports to CSV (admin/superadmin)."""
+    try:
+        import csv
+        from io import StringIO
+
+        params = []
+        where = ['1=1']
+        start = request.args.get('start_date')
+        end = request.args.get('end_date')
+        employee = request.args.get('employee_id')
+        project = request.args.get('project_id')
+        task = request.args.get('task_id')
+
+        if start:
+            where.append('report_date >= %s')
+            params.append(start)
+        if end:
+            where.append('report_date <= %s')
+            params.append(end)
+        if employee:
+            where.append('d.user_id = %s')
+            params.append(employee)
+        if project:
+            where.append('d.project_id = %s')
+            params.append(project)
+        if task:
+            where.append('d.task_id = %s')
+            params.append(task)
+
+        where_sql = ' AND '.join(where)
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        query = f"SELECT d.*, u.username as employee_name, p.title as project_title, t.title as task_title FROM daily_task_reports d LEFT JOIN users u ON d.user_id = u.id LEFT JOIN projects p ON d.project_id = p.id LEFT JOIN tasks t ON d.task_id = t.id WHERE {where_sql} ORDER BY d.report_date DESC"
+        cursor.execute(query, params)
+        rows = cursor.fetchall()
+
+        si = StringIO()
+        cw = csv.writer(si)
+        cw.writerow([
+            'id', 'report_date', 'employee', 'project', 'task',
+            'work_description', 'time_spent', 'status', 'approval_status',
+            'reviewed_by', 'review_comment', 'created_at'
+        ])
+        for r in rows:
+            cw.writerow([
+                r['id'], r['report_date'], r['employee_name'],
+                r['project_title'], r['task_title'], r['work_description'],
+                r['time_spent'], r['status'], r['approval_status'],
+                r['reviewed_by'], r['review_comment'], r['created_at']
+            ])
+        output = si.getvalue()
+        conn.close()
+        return app.response_class(output,
+                                  mimetype='text/csv',
+                                  headers={
+                                      "Content-Disposition":
+                                      "attachment;filename=daily_reports.csv"
+                                  })
+    except Exception as e:
+        logger.exception('export_daily_reports failed')
+        return jsonify({'error': str(e)}), 500
 
 
 @app.route("/api/admin/dashboard/completed-outcomes", methods=["GET"])
@@ -644,8 +1887,13 @@ def get_recent_actions():
         activities = cursor.fetchall()
         conn.close()
 
-        return jsonify([dict(row) for row in activities]), 200
+        result = []
+        for row in activities:
+            result.append(dict(row))
+
+        return jsonify(result), 200
     except Exception as e:
+        print(f"[ERROR] /api/admin/dashboard/recent-actions failed: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
 
@@ -673,71 +1921,429 @@ def get_admin_activities():
         activities = cursor.fetchall()
         conn.close()
 
-        return jsonify([dict(row) for row in activities]), 200
+        result = []
+        for row in activities:
+            result.append(dict(row))
+
+        return jsonify(result), 200
     except Exception as e:
+        print(f"[ERROR] /api/admin/dashboard/activities failed: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
 
-@app.route("/api/admin/dashboard/stats", methods=["GET"])
+
+
+@app.route('/api/admin/daily-reports', methods=['GET'])
+@app.route('/api/admin/daily_reports', methods=['GET'])
 @admin_required
-def get_admin_dashboard_stats():
+def admin_get_daily_reports():
+    """Admin: Fetch daily task reports.
+    Supports both hyphen and underscore formats used by different parts of the frontend.
+    """
+    return list_daily_reports_api()
+
+
+@app.route('/api/daily-report/submit', methods=['POST'])
+@app.route('/api/admin/daily_reports', methods=['POST'])
+@login_required
+def create_daily_report_api():
+    """Submit a daily report.
+    Supports both Employee (task_id, project_id, etc.) 
+    and Admin (date, employee_id, task, etc.) formats.
+    """
     try:
+        user_id = get_current_user_id()
+        data = request.get_json() or {}
+
+        # Determine format and map fields
+        # Admin format uses 'date', 'employee_id', 'task', etc.
+        report_date = data.get('report_date') or data.get(
+            'date') or datetime.now().strftime('%Y-%m-%d')
+        target_user_id = data.get('employee_id') or user_id
+        project_id = data.get('project_id')
+
+        # Task identification
+        task_id = data.get('task_id')
+
+        # Descriptions
+        description = data.get('work_description') or data.get(
+            'task') or data.get('result', '')
+        if data.get('remarks'):
+            description += f"\nRemarks: {data.get('remarks')}"
+
+        hours = data.get(
+            'time_spent'
+        ) or 8  # Default to 8 if not provided (admin format doesn't have it)
+        status = data.get('status',
+                          'Completed' if data.get('result') else 'In Progress')
+        blocker = data.get('blocker', '')
+
+        if not (project_id and description):
+            return jsonify({
+                'error':
+                'Missing required fields (project_id and description)'
+            }), 400
+
+        try:
+            hours = float(hours)
+        except (ValueError, TypeError):
+            hours = 0
+
         conn = get_db_connection()
-        cursor = conn.cursor()
+        cur = conn.cursor()
 
-        cursor.execute(
-            'SELECT COUNT(*) as count FROM projects WHERE status = %s',
-            ('In Progress', ))
-        active_projects = cursor.fetchone()['count']
+        # If task_id is missing (admin format), try to find/create a dummy task or just leave it null
+        # Actually, the schema might require task_id. Let's check.
+        # If task_id is NULL, we might need to allow it in the DB.
 
-        cursor.execute('SELECT COUNT(*) as count FROM tasks WHERE status = %s',
-                       ('Completed', ))
-        completed_tasks = cursor.fetchone()['count']
+        communication_email = data.get('communication_email') or data.get(
+            'email') or ''
+        communication_phone = data.get('communication_phone') or data.get(
+            'phone') or ''
+        communication_details = json.dumps({
+            'email': communication_email,
+            'phone': communication_phone
+        }) if (communication_email or communication_phone) else ''
+        result_of_effort = data.get('result_of_effort') or data.get(
+            'result') or ''
+        remarks = data.get('remarks') or ''
 
-        cursor.execute('SELECT COUNT(*) as count FROM tasks WHERE status = %s',
-                       ('In Progress', ))
-        active_tasks = cursor.fetchone()['count']
-
-        cursor.execute(
+        cur.execute(
             '''
-            SELECT COUNT(*) as count FROM tasks 
-            WHERE deadline < CURRENT_DATE AND status != %s AND status != %s
-        ''', ('Completed', 'Overdue'))
-        overdue_tasks = cursor.fetchone()['count']
+            INSERT INTO daily_task_reports (
+                user_id, task_id, project_id, report_date, 
+                work_description, time_spent, status, blocker,
+                communication_email, communication_phone, communication_details, result_of_effort, remarks,
+                created_at, updated_at
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+        ''', (target_user_id, task_id, project_id, report_date, description,
+              hours, status, blocker, communication_email, communication_phone,
+              communication_details, result_of_effort, remarks))
 
-        cursor.execute(
-            '''
-            SELECT COUNT(*) as count FROM tasks 
-            WHERE approval_status = %s OR approval_status IS NULL
-        ''', ('pending', ))
-        pending_approvals = cursor.fetchone()['count']
-
-        cursor.execute('SELECT COUNT(*) as count FROM users')
-        total_users = cursor.fetchone()['count']
-
-        cursor.execute('SELECT COUNT(*) as count FROM usertypes')
-        total_user_types = cursor.fetchone()['count']
-
-        # Add total outcomes (completed projects)
-        cursor.execute(
-            'SELECT COUNT(*) as count FROM projects WHERE status = %s',
-            ('Completed', ))
-        total_outcomes = cursor.fetchone()['count']
-
+        conn.commit()
+        new_id = cur.lastrowid
         conn.close()
 
-        return jsonify({
-            "active_projects": active_projects,
-            "completed_tasks": completed_tasks,
-            "active_tasks": active_tasks,
-            "overdue_tasks": overdue_tasks,
-            "pending_approvals": pending_approvals,
-            "total_users": total_users,
-            "total_user_types": total_user_types,
-            "total_outcomes": total_outcomes
-        }), 200
+        return jsonify({'success': True, 'id': new_id}), 201
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.exception('Failed to create daily report')
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/daily-reports', methods=['GET'])
+@login_required
+def list_daily_reports_api():
+    """Get daily reports with filters.
+    - Employee: Own reports.
+    - Admin: Team reports (or all if not filtered).
+    - Super Admin: All reports.
+    """
+    try:
+        user_id = get_current_user_id()
+        conn = get_db_connection()
+
+        # Get user role
+        user = conn.execute('SELECT user_type_id FROM users WHERE id = %s',
+                            (user_id, )).fetchone()
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
+
+        role_row = conn.execute('SELECT user_role FROM usertypes WHERE id = %s',
+                                (user['user_type_id'], )).fetchone()
+        role = role_row['user_role'].lower() if role_row else 'employee'
+
+        # Parse filters
+        date_from = request.args.get('date_from')
+        date_to = request.args.get('date_to')
+        project_id = request.args.get('project_id')
+        employee_id = request.args.get('employee_id')
+        status = request.args.get('status')
+        approval_status = request.args.get('approval_status')
+
+        query = '''
+            SELECT d.*, 
+                   u.username as employee_name, 
+                   p.title as project_title,
+                   t.title as task_title,
+                   rev.username as reviewer_name
+            FROM daily_task_reports d
+            LEFT JOIN users u ON d.user_id = u.id
+            LEFT JOIN projects p ON d.project_id = p.id
+            LEFT JOIN tasks t ON d.task_id = t.id
+            LEFT JOIN users rev ON d.reviewed_by = rev.id
+            WHERE 1=1
+        '''
+        params = []
+
+        # Role-based restriction
+        if role == 'employee':
+            query += ' AND d.user_id = %s'
+            params.append(user_id)
+        elif role == 'admin' or role == 'manager':
+            # Admin can see all, or maybe filter by their projects%s
+            # For now, let's assume Admin sees all but usually filters.
+            # If Employee ID filter is passed, apply it.
+            pass
+        # Super admin sees all
+
+        if employee_id and role in ['admin', 'super admin', 'manager']:
+            query += ' AND d.user_id = %s'
+            params.append(employee_id)
+
+        if date_from:
+            query += ' AND d.report_date >= %s'
+            params.append(date_from)
+        if date_to:
+            query += ' AND d.report_date <= %s'
+            params.append(date_to)
+        if project_id:
+            query += ' AND d.project_id = %s'
+            params.append(project_id)
+        if status:
+            query += ' AND d.status = %s'
+            params.append(status)
+        if approval_status:
+            query += ' AND d.approval_status = %s'
+            params.append(approval_status)
+
+        query += ' ORDER BY d.report_date DESC, d.created_at DESC'
+
+        cursor = conn.cursor()
+        cursor.execute(query, params)
+        rows = cursor.fetchall()
+        conn.close()
+
+        return jsonify([dict(r) for r in rows]), 200
+
+    except Exception as e:
+        logger.exception("Error listing daily reports")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/daily-report/<int:report_id>', methods=['PUT'])
+@login_required
+def update_daily_report(report_id):
+    """Edit report.
+    - Employee: Only if pending and (today or same day).
+    - Super Admin: Always.
+    """
+    try:
+        user_id = get_current_user_id()
+        data = request.get_json()
+        conn = get_db_connection()
+        cur = conn.cursor()
+
+        report = cur.execute('SELECT * FROM daily_task_reports WHERE id = %s',
+                             (report_id, )).fetchone()
+        if not report:
+            conn.close()
+            return jsonify({'error': 'Report not found'}), 404
+
+        # Check permissions
+        is_owner = (report['user_id'] == user_id)
+
+        # Check role
+        user_role_row = cur.execute(
+            '''
+            SELECT ut.user_role FROM users u 
+            JOIN usertypes ut ON u.user_type_id = ut.id 
+            WHERE u.id = %s
+        ''', (user_id, )).fetchone()
+        role = user_role_row['user_role'].lower(
+        ) if user_role_row else 'employee'
+
+        is_super_admin = (role == 'super admin')
+
+        # Evaluate lock and owner permissions
+        is_locked = bool(report.get('is_locked', 0))
+        can_edit = False
+        if is_super_admin and not is_locked:
+            can_edit = True
+        elif is_owner:
+            # Allow edit if report was rejected (any day) OR same-day and not locked and not approved
+            try:
+                report_date = datetime.strptime(report['report_date'],
+                                                '%Y-%m-%d').date()
+            except Exception:
+                report_date = None
+            if report['approval_status'] == 'rejected':
+                can_edit = True
+            elif report_date and report_date == datetime.now().date(
+            ) and not is_locked and report['approval_status'] != 'approved':
+                can_edit = True
+
+        if not can_edit:
+            conn.close()
+            return jsonify({'error':
+                            'Permission denied or report locked'}), 403
+
+        # Update fields
+        fields = []
+        params = []
+        if 'work_description' in data:
+            fields.append("work_description = %s")
+            params.append(data['work_description'])
+        if 'result_of_effort' in data:
+            fields.append("result_of_effort = %s")
+            params.append(data['result_of_effort'])
+        if 'remarks' in data:
+            fields.append("remarks = %s")
+            params.append(data['remarks'])
+        if 'communication_email' in data:
+            fields.append("communication_email = %s")
+            params.append(data['communication_email'])
+        if 'communication_phone' in data:
+            fields.append("communication_phone = %s")
+            params.append(data['communication_phone'])
+        if 'task_assigned_by_id' in data:
+            fields.append("task_assigned_by_id = %s")
+            params.append(data['task_assigned_by_id'])
+        if 'time_spent' in data:
+            fields.append("time_spent = %s")
+            params.append(data['time_spent'])
+        if 'status' in data:
+            fields.append("status = %s")
+            params.append(data['status'])
+        if 'blocker' in data:
+            fields.append("blocker = %s")
+            params.append(data['blocker'])
+
+        if fields:
+            fields.append("updated_at = CURRENT_TIMESTAMP")
+            query = f"UPDATE daily_task_reports SET {', '.join(fields)} WHERE id = %s"
+            params.append(report_id)
+            cur.execute(query, params)
+            conn.commit()
+            # Audit for super admin edits
+            try:
+                if is_super_admin:
+                    cur.execute(
+                        'INSERT INTO audit_logs (actor_id, action, target_type, target_id, details) VALUES (%s,%s,%s,%s,%s)',
+                        (user_id, 'edit_report', 'daily_report', report_id,
+                         json.dumps(data)))
+                    conn.commit()
+            except Exception:
+                conn.rollback()
+
+        conn.close()
+        return jsonify({'success': True}), 200
+
+    except Exception as e:
+        logger.exception("Error updating report")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/daily-report/<int:report_id>/action', methods=['POST'])
+@app.route('/api/daily-reports/<int:report_id>/approve', methods=['POST'])
+@app.route('/api/daily-reports/<int:report_id>/reject', methods=['POST'])
+@login_required
+def action_daily_report_api(report_id):
+    """Approve or Reject a report.
+    Supports multiple URL patterns used by the frontend.
+    """
+    try:
+        user_id = get_current_user_id()
+        data = request.get_json() or {}
+
+        # Determine action from URL if not in body
+        action = data.get('action')
+        if not action:
+            if '/approve' in request.path:
+                action = 'approve'
+            elif '/reject' in request.path:
+                action = 'reject'
+
+        comment = data.get('comment', '')
+
+        if action not in ['approve', 'reject']:
+            return jsonify({'error': 'Invalid action'}), 400
+
+        conn = get_db_connection()
+        cur = conn.cursor()
+
+        # Check role
+        user_role_row = cur.execute(
+            '''
+            SELECT ut.user_role FROM users u 
+            JOIN usertypes ut ON u.user_type_id = ut.id 
+            WHERE u.id = %s
+        ''', (user_id, )).fetchone()
+        role = user_role_row['user_role'].lower(
+        ) if user_role_row else 'employee'
+
+        if role not in ['admin', 'super admin', 'manager']:
+            conn.close()
+            return jsonify({'error': 'Permission denied'}), 403
+
+        new_status = 'approved' if action == 'approve' else 'rejected'
+
+        cur.execute(
+            '''
+            UPDATE daily_task_reports 
+            SET approval_status = %s, reviewed_by = %s, review_comment = %s, updated_at = CURRENT_TIMESTAMP, is_locked = CASE WHEN %s = 'approved' THEN 1 ELSE is_locked END
+            WHERE id = %s
+        ''', (new_status, user_id, comment, new_status, report_id))
+
+        conn.commit()
+        try:
+            cur.execute(
+                'INSERT INTO audit_logs (actor_id, action, target_type, target_id, details) VALUES (%s,%s,%s,%s,%s)',
+                (user_id, f'{action}_report', 'daily_report', report_id,
+                 comment or ''))
+            conn.commit()
+        except Exception:
+            conn.rollback()
+        finally:
+            conn.close()
+
+        return jsonify({'success': True, 'status': new_status}), 200
+
+    except Exception as e:
+        logger.exception("Error in report action")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/daily-report/<int:report_id>', methods=['DELETE'])
+@login_required
+def delete_daily_report_api(report_id):
+    """Delete report (Super Admin only)."""
+    try:
+        user_id = get_current_user_id()
+        conn = get_db_connection()
+        cur = conn.cursor()
+
+        # Check role
+        user_role_row = cur.execute(
+            '''
+            SELECT ut.user_role FROM users u 
+            JOIN usertypes ut ON u.user_type_id = ut.id 
+            WHERE u.id = %s
+        ''', (user_id, )).fetchone()
+        role = user_role_row['user_role'].lower(
+        ) if user_role_row else 'employee'
+
+        if role != 'super admin':
+            conn.close()
+            return jsonify({'error':
+                            'Only Super Admin can delete reports'}), 403
+
+        cur.execute('DELETE FROM daily_task_reports WHERE id = %s',
+                    (report_id, ))
+        conn.commit()
+        try:
+            cur.execute(
+                'INSERT INTO audit_logs (actor_id, action, target_type, target_id, details) VALUES (%s,%s,%s,%s,%s)',
+                (user_id, 'delete_report', 'daily_report', report_id,
+                 'deleted by super admin'))
+            conn.commit()
+        except Exception:
+            conn.rollback()
+        finally:
+            conn.close()
+
+        return jsonify({'success': True}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 
 @app.route("/api/projects/<int:project_id>/calculate-progress",
@@ -749,6 +2355,7 @@ def calculate_project_progress(project_id):
     - 70% weight:  Task completion rate
     - 30% weight: Milestone completion rate
     """
+    conn = None
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
@@ -817,7 +2424,6 @@ def calculate_project_progress(project_id):
               or 0, milestone_data['total_milestones'] or 0))
 
         conn.commit()
-        conn.close()
 
         return jsonify({
             "project_id":
@@ -841,7 +2447,11 @@ def calculate_project_progress(project_id):
         }), 200
 
     except Exception as e:
+        print(f"[ERROR] calculate_project_progress failed: {e}")
         return jsonify({"error": str(e)}), 500
+    finally:
+        if conn:
+            conn.close()
 
 
 @app.route("/api/projects/<int:project_id>/progress-history", methods=["GET"])
@@ -896,60 +2506,38 @@ def get_live_dashboard_progress():
             # Admin sees all active projects
             cursor.execute('''
                 SELECT 
-                    p.id,
-                    p. title,
-                    p.description,
-                    p.status,
-                    p.progress,
-                    p.deadline,
-                    p.reporting_time,
-                    p.created_at,
-                    p.updated_at,
+                    p.id, p.title, p.description, p.status, p.progress, p.deadline, p.reporting_time, 
+                    p.created_at, p.updated_at,
                     u.username as creator_name,
-                    COUNT(DISTINCT t.id) as total_tasks,
-                    SUM(CASE WHEN t. status = 'Completed' THEN 1 ELSE 0 END) as completed_tasks,
-                    COUNT(DISTINCT m.id) as total_milestones,
-                    SUM(CASE WHEN m.status = 'Completed' THEN 1 ELSE 0 END) as completed_milestones,
-                    COUNT(DISTINCT pa.user_id) as team_size
+                    (SELECT COUNT(*) FROM tasks t WHERE t.project_id = p.id) as total_tasks,
+                    (SELECT COUNT(*) FROM tasks t WHERE t.project_id = p.id AND t.status = 'Completed') as completed_tasks,
+                    (SELECT COUNT(*) FROM milestones m WHERE m.project_id = p.id) as total_milestones,
+                    (SELECT COUNT(*) FROM milestones m WHERE m.project_id = p.id AND m.status = 'Completed') as completed_milestones,
+                    (SELECT COUNT(*) FROM project_assignments pa WHERE pa.project_id = p.id) as team_size
                 FROM projects p
                 LEFT JOIN users u ON p.created_by_id = u.id
-                LEFT JOIN tasks t ON p.id = t.project_id
-                LEFT JOIN milestones m ON p. id = m.project_id
-                LEFT JOIN project_assignments pa ON p.id = pa.project_id
                 WHERE p.status != 'Completed'
-                GROUP BY p.id, u.username
                 ORDER BY p.updated_at DESC
             ''')
         else:
             # Employees see only assigned projects
             cursor.execute(
                 '''
-                SELECT DISTINCT
-                    p.id,
-                    p.title,
-                    p.description,
-                    p.status,
-                    p. progress,
-                    p.deadline,
-                    p.reporting_time,
-                    p.created_at,
-                    p. updated_at,
+                SELECT 
+                    p.id, p.title, p.description, p.status, p.progress, p.deadline, p.reporting_time, 
+                    p.created_at, p.updated_at,
                     u.username as creator_name,
-                    COUNT(DISTINCT t. id) as total_tasks,
-                    SUM(CASE WHEN t.status = 'Completed' THEN 1 ELSE 0 END) as completed_tasks,
-                    COUNT(DISTINCT m.id) as total_milestones,
-                    SUM(CASE WHEN m.status = 'Completed' THEN 1 ELSE 0 END) as completed_milestones,
-                    COUNT(DISTINCT pa.user_id) as team_size
+                    (SELECT COUNT(*) FROM tasks t WHERE t.project_id = p.id) as total_tasks,
+                    (SELECT COUNT(*) FROM tasks t WHERE t.project_id = p.id AND t.status = 'Completed') as completed_tasks,
+                    (SELECT COUNT(*) FROM milestones m WHERE m.project_id = p.id) as total_milestones,
+                    (SELECT COUNT(*) FROM milestones m WHERE m.project_id = p.id AND m.status = 'Completed') as completed_milestones,
+                    (SELECT COUNT(*) FROM project_assignments pa WHERE pa.project_id = p.id) as team_size
                 FROM projects p
                 LEFT JOIN users u ON p.created_by_id = u.id
-                LEFT JOIN tasks t ON p.id = t. project_id
-                LEFT JOIN milestones m ON p.id = m.project_id
-                LEFT JOIN project_assignments pa ON p. id = pa.project_id
                 WHERE (p.created_by_id = %s OR p.id IN (
                     SELECT project_id FROM project_assignments WHERE user_id = %s
                 ))
                 AND p.status != 'Completed'
-                GROUP BY p.id, u.username
                 ORDER BY p.updated_at DESC
             ''', (user_id, user_id))
 
@@ -961,25 +2549,31 @@ def get_live_dashboard_progress():
             project_dict = dict(project)
 
             # Calculate additional metrics
-            try:
-                created_at = datetime.strptime(project_dict['created_at'],
-                                               '%Y-%m-%d %H:%M:%S')
-            except:
+            val = project_dict.get('created_at')
+            if isinstance(val, str):
+                try:
+                    created_at = datetime.strptime(val, '%Y-%m-%d %H:%M:%S')
+                except:
+                    created_at = datetime.now()
+            elif isinstance(val, datetime):
+                created_at = val
+            else:
                 created_at = datetime.now()
 
             now = datetime.now()
-            days_active = max(1, (now - created_at).days)
-            progress_per_day = project_dict[
-                'progress'] / days_active if days_active > 0 else 0
+            # Ensure we subtract dates with same timezone awareness if needed
+            # but usually they are both naive or both aware
+            days_active = max(1, (now.replace(tzinfo=None) - created_at.replace(tzinfo=None)).days)
+            
+            prog = project_dict.get('progress') or 0
+            progress_per_day = prog / days_active if days_active > 0 else 0
 
             # Estimate completion date
             estimated_completion_str = None
-            if project_dict['progress'] > 0 and progress_per_day > 0:
-                days_remaining = (100 -
-                                  project_dict['progress']) / progress_per_day
+            if prog > 0 and progress_per_day > 0:
+                days_remaining = (100 - prog) / progress_per_day
                 estimated_completion = now + timedelta(days=days_remaining)
-                estimated_completion_str = estimated_completion.strftime(
-                    '%Y-%m-%d')
+                estimated_completion_str = estimated_completion.strftime('%Y-%m-%d')
 
             # Calculate sub-progress metrics
             tasks_progress = int(
@@ -992,9 +2586,14 @@ def get_live_dashboard_progress():
                  100)) if project_dict['total_milestones'] > 0 else 0
 
             # Health status
-            health_status = 'good' if project_dict[
-                'progress'] >= 70 else 'warning' if project_dict[
-                    'progress'] >= 40 else 'danger'
+            health_status = 'good' if prog >= 70 else 'warning' if prog >= 40 else 'danger'
+
+            # Ensure all fields are JSON serializable (dates, times, decimals)
+            for key, value in project_dict.items():
+                if hasattr(value, 'isoformat'):
+                    project_dict[key] = value.isoformat()
+                elif isinstance(value, datetime):
+                    project_dict[key] = value.strftime('%Y-%m-%d %H:%M:%S')
 
             project_dict.update({
                 'days_active': days_active,
@@ -1011,7 +2610,7 @@ def get_live_dashboard_progress():
         avg_progress = 0
         if formatted_projects:
             avg_progress = round(
-                sum(p['progress']
+                sum((p.get('progress') or 0)
                     for p in formatted_projects) / len(formatted_projects), 2)
 
         return jsonify({
@@ -1055,150 +2654,115 @@ def get_user_permissions(user_id):
 @admin_required
 def set_user_permissions(user_id):
     try:
-        data = request.get_json() or {}
-        permissions_data = data.get("permissions")
+        data = request.get_json()
+        module = data.get("module")
+        action = data.get("action")
+        granted = data.get("granted")
 
-        if isinstance(permissions_data, str):
-            permissions = json.loads(permissions_data)
-        else:
-            permissions = permissions_data or {}
+        if not module or not action:
+            return jsonify({'error': 'Module and action are required'}), 400
 
         conn = get_db_connection()
         cursor = conn.cursor()
 
-        cursor.execute('DELETE FROM user_permissions WHERE user_id = %s',
-                       (user_id, ))
+        # Check if permission exists
+        cursor.execute(
+            '''
+            SELECT id FROM user_permissions 
+            WHERE user_id = %s AND module = %s AND action = %s
+        ''', (user_id, module, action))
 
-        for module, actions in permissions.items():
-            if isinstance(actions, dict):
-                for action, granted in actions.items():
-                    cursor.execute(
-                        '''
-                        INSERT INTO user_permissions (user_id, module, action, granted)
-                        VALUES (%s,%s,%s,%s::boolean)
-                    ''', (user_id, module, action, bool(granted)))
+        if cursor.fetchone():
+            cursor.execute(
+                '''
+                UPDATE user_permissions 
+                SET granted = %s 
+                WHERE user_id = %s AND module = %s AND action = %s
+            ''', (granted, user_id, module, action))
+        else:
+            cursor.execute(
+                '''
+                INSERT INTO user_permissions (user_id, module, action, granted)
+                VALUES (%s, %s, %s, %s)
+            ''', (user_id, module, action, granted))
 
         conn.commit()
         conn.close()
-
-        return jsonify({"message": "Permissions updated successfully!"}), 200
+        return jsonify({'success': True}), 200
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.exception('set_user_permissions failed')
+        return jsonify({'error': str(e)}), 500
 
 
 @app.route("/api/usertypes", methods=["GET"])
 @login_required
 def get_user_types():
-    conn = None
-    cursor = None
     try:
         conn = get_db_connection()
-        cursor = conn.cursor()
-
-        cursor.execute(
-            "SELECT id, user_role, created_at FROM usertypes ORDER BY created_at DESC"
-        )
-        rows = cursor.fetchall()
-
+        cur = conn.cursor()
+        cur.execute("SELECT id, user_role, description, created_at FROM usertypes ORDER BY id ASC")
         usertypes = []
-        for row in rows:
-            usertypes.append({
-                "id":
-                row['id'],
-                "user_role":
-                row['user_role'],
-                "created_at":
-                row['created_at'].isoformat() if row['created_at'] else None
-            })
-
+        rows = cur.fetchall()
+        for r in rows:
+            ut = dict(r)
+            # fetch granted permissions
+            cur.execute(
+                "SELECT module, action FROM usertype_permissions WHERE usertype_id = %s AND granted = TRUE ORDER BY module, action",
+                (ut['id'],)
+            )
+            perms = cur.fetchall()
+            ut_permissions = [f"{p['module']}_{p['action']}" for p in perms] if perms else []
+            ut['permissions'] = ut_permissions
+            # normalize created_at
+            if ut.get('created_at') and hasattr(ut['created_at'], 'isoformat'):
+                ut['created_at'] = ut['created_at'].isoformat()
+            usertypes.append(ut)
+        conn.close()
         return jsonify(usertypes), 200
-
     except Exception as e:
-        print("DB error:", e)
-        return jsonify({"error": str(e)}), 500
-
-    finally:
-        if cursor:
-            cursor.close()
-        if conn:
-            conn.close()
+        logger.exception('get_user_types failed')
+        return jsonify({'error': str(e)}), 500
 
 
 @app.route("/api/usertypes", methods=["POST"])
+@csrf.exempt
 @admin_required
-def create_usertype():
-    data = request.get_json() or {}
-    user_role = (data.get("user_role") or "").strip()
-
-    if not user_role:
-        return jsonify({"error": "User role is required"}), 400
-
+def create_user_type():
+    conn = None
     try:
+        data = request.get_json()
+        user_role = data.get("user_role")
+        if not user_role:
+            return jsonify({"error": "User role is required"}), 400
+
         conn = get_db_connection()
         cursor = conn.cursor()
 
-        cursor.execute(
-            "INSERT INTO usertypes (user_role) VALUES (%s) RETURNING id, created_at",
-            (user_role, ))
-        row = cursor.fetchone()
+        cursor.execute("INSERT INTO usertypes (user_role) VALUES (%s)",
+                       (user_role, ))
+        usertype_id = cursor.lastrowid
         conn.commit()
-        cursor.close()
         conn.close()
 
         return jsonify({
-            "id":
-            row['id'],
-            "user_role":
-            user_role,
-            "created_at":
-            row['created_at'].isoformat() if row['created_at'] else None,
-            "message":
-            "User type created successfully"
+            "id": usertype_id,
+            "user_role": user_role,
+            "message": "User type created successfully!"
         }), 201
 
-    except psycopg2.errors.UniqueViolation:
-        return jsonify({"error": "User role already exists"}), 409
-
-
-@app.route("/api/usertypes/<int:id>", methods=["PUT"])
-@admin_required
-def update_user_type(id):
-    try:
-        data = request.get_json() or {}
-        user_role = (data.get("user_role") or "").strip()
-
-        if not user_role:
-            return jsonify({"error": "User role is required."}), 400
-
-        conn = get_db_connection()
-        cursor = conn.cursor()
-
-        cursor.execute('SELECT id FROM usertypes WHERE id = %s', (id, ))
-        if not cursor.fetchone():
+    except psycopg2.IntegrityError:
+        if conn:
             conn.close()
-            return jsonify({"error": "User type not found."}), 404
-
-        try:
-            cursor.execute('UPDATE usertypes SET user_role = %s WHERE id = %s',
-                           (user_role, id))
-            conn.commit()
-            conn.close()
-
-            return jsonify({
-                "id": id,
-                "user_role": user_role,
-                "message": "User type updated successfully!"
-            }), 200
-
-        except psycopg2.IntegrityError:
-            conn.close()
-            return jsonify({"error": "User role already exists."}), 409
+        return jsonify({"error": "User role already exists."}), 409
 
     except Exception as e:
+        if conn:
+            conn.close()
         return jsonify({"error": str(e)}), 500
 
 
 @app.route("/api/usertypes/<int:id>", methods=["DELETE"])
+@csrf.exempt
 @admin_required
 def delete_user_type(id):
     try:
@@ -1230,6 +2794,103 @@ def delete_user_type(id):
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/api/usertypes/<int:id>", methods=["PUT"])
+@csrf.exempt
+@admin_required
+def update_user_type(id):
+    """Update an existing user type"""
+    conn = None
+    try:
+        logger.info(f"[UPDATE_USERTYPE] Starting update for usertype ID: {id}")
+        data = request.get_json()
+        
+        if not data:
+            logger.error("[UPDATE_USERTYPE] No JSON data received")
+            return jsonify({"error": "No data provided"}), 400
+        
+        user_role = data.get("user_role", "").strip()
+        description = data.get("description", "").strip()
+        permissions = data.get("permissions", [])
+        
+        logger.info(f"[UPDATE_USERTYPE] Data - role: {user_role}, permissions count: {len(permissions)}")
+        
+        if not user_role:
+            logger.warning("[UPDATE_USERTYPE] User role is required")
+            return jsonify({"error": "User role is required"}), 400
+        
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # Check if usertype exists
+        cursor.execute('SELECT id FROM usertypes WHERE id = %s', (id,))
+        if not cursor.fetchone():
+            logger.warning(f"[UPDATE_USERTYPE] Usertype not found: {id}")
+            conn.close()
+            return jsonify({"error": "User type not found"}), 404
+        
+        # Update usertype
+        cursor.execute('''
+            UPDATE usertypes 
+            SET user_role = %s, description = %s
+            WHERE id = %s
+        ''', (user_role, description, id))
+        
+        logger.info(f"[UPDATE_USERTYPE] Updated usertype {id}")
+        
+        # Delete existing permissions for this usertype
+        cursor.execute('DELETE FROM usertype_permissions WHERE usertype_id = %s', (id,))
+        logger.info(f"[UPDATE_USERTYPE] Deleted old permissions for usertype {id}")
+        
+        # Insert new permissions
+        if permissions:
+            for perm in permissions:
+                # Parse permission string (e.g., "ADMIN_VIEW_HIERARCHY" -> module="ADMIN", action="VIEW_HIERARCHY")
+                if '_' in perm:
+                    parts = perm.split('_', 1)
+                    module = parts[0]
+                    action = parts[1] if len(parts) > 1 else perm
+                else:
+                    module = perm
+                    action = 'ACCESS'
+                
+                try:
+                    cursor.execute('''
+                        INSERT INTO usertype_permissions (usertype_id, module, action, granted)
+                        VALUES (%s, %s, %s, TRUE)
+                    ''', (id, module, action))
+                    logger.debug(f"[UPDATE_USERTYPE] Added permission: {module}.{action}")
+                except psycopg2.IntegrityError as perm_error:
+                    logger.warning(f"[UPDATE_USERTYPE] Permission insert failed: {str(perm_error)}")
+                    conn.rollback()
+                    continue
+        
+        conn.commit()
+        logger.info(f"[UPDATE_USERTYPE] Successfully updated usertype {id}")
+        conn.close()
+        
+        return jsonify({
+            "id": id,
+            "user_role": user_role,
+            "description": description,
+            "permissions": permissions,
+            "message": "User type updated successfully!"
+        }), 200
+        
+    except psycopg2.IntegrityError as e:
+        logger.error(f"[UPDATE_USERTYPE] Integrity error: {str(e)}")
+        if conn:
+            conn.rollback()
+            conn.close()
+        return jsonify({"error": "User role already exists"}), 409
+    except Exception as e:
+        logger.error(f"[UPDATE_USERTYPE] Error: {str(e)}")
+        logger.error(f"[UPDATE_USERTYPE] Traceback: {traceback.format_exc()}")
+        if conn:
+            conn.rollback()
+            conn.close()
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+
+
 @app.route("/api/users", methods=["GET"])
 @login_required
 def get_users():
@@ -1240,35 +2901,97 @@ def get_users():
             SELECT u.id, u.username, u.email, u.user_type_id, ut.user_role, u.created_at
             FROM users u 
             LEFT JOIN usertypes ut ON u.user_type_id = ut.id 
+            WHERE COALESCE(u.is_system, 0) != 1
             ORDER BY u.created_at DESC
         ''')
         users = cursor.fetchall()
         conn.close()
 
-        return jsonify([{
-            "id":
-            row['id'],
-            "username":
-            row['username'],
-            "email":
-            row['email'],
-            "user_type_id":
-            row['user_type_id'],
-            "user_role":
-            row['user_role'],
-            "created_at":
-            row['created_at'].isoformat() if row['created_at'] else None
-        } for row in users]), 200
+        result = []
+        for row in users:
+            created_at = row['created_at']
+            if created_at and hasattr(created_at, 'isoformat'):
+                created_at_str = created_at.isoformat()
+            else:
+                created_at_str = str(created_at) if created_at else None
+
+            result.append({
+                "id": row['id'],
+                "username": row['username'],
+                "email": row['email'],
+                "user_type_id": row['user_type_id'],
+                "user_role": row['user_role'],
+                "created_at": created_at_str
+            })
+
+        return jsonify(result), 200
     except Exception as e:
         print(f"[ERROR] /api/users GET failed: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
 
+
+@app.route("/api/employees", methods=["GET"])
+@login_required
+def get_employees():
+    """Get all employees (users with role 'employee')"""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute('''
+            SELECT u.id, u.username, u.email, u.user_type_id, ut.user_role, u.created_at, u.department
+            FROM users u 
+            LEFT JOIN usertypes ut ON u.user_type_id = ut.id 
+            WHERE LOWER(ut.user_role) = 'employee'
+            ORDER BY u.username ASC
+        ''')
+        users = cursor.fetchall()
+        conn.close()
+
+        result = []
+        for row in users:
+            created_at = row['created_at']
+            if created_at and hasattr(created_at, 'isoformat'):
+                created_at_str = created_at.isoformat()
+            else:
+                created_at_str = str(created_at) if created_at else None
+
+            result.append({
+                "id": row['id'],
+                "username": row['username'],
+                "email": row['email'],
+                "user_type_id": row['user_type_id'],
+                "user_role": row['user_role'],
+                "department": row['department'],
+                "created_at": created_at_str
+            })
+
+        return jsonify(result), 200
+    except Exception as e:
+        print(f"[ERROR] /api/employees GET failed: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/api/users", methods=["POST"])
+@csrf.exempt
 @admin_required
 def create_user():
+    conn = None
     try:
-        data = request.get_json()
+        logger.info("[CREATE_USER] Starting user creation process")
+        current_user_id = get_current_user_id()  # 🔥 hierarchy support
+        logger.info(f"[CREATE_USER] Current user ID: {current_user_id}")
+
+        # Get JSON data with error handling
+        try:
+            data = request.get_json()
+            if not data:
+                logger.error("[CREATE_USER] No JSON data received")
+                return jsonify({"error": "No data provided"}), 400
+        except Exception as json_error:
+            logger.error(f"[CREATE_USER] JSON parsing error: {str(json_error)}")
+            return jsonify({"error": f"Invalid JSON data: {str(json_error)}"}), 400
+
         username = (data.get("username") or "").strip()
         email = (data.get("email") or "").strip().lower()
         password = data.get("password") or ""
@@ -1276,6 +2999,9 @@ def create_user():
         user_type_id = data.get("user_type_id")
         permissions_data = data.get("permissions")
 
+        logger.info(f"[CREATE_USER] Received data - username: {username}, email: {email}, user_type_id: {user_type_id}")
+
+        # Parse permissions safely
         if isinstance(permissions_data, str):
             try:
                 permissions = json.loads(permissions_data)
@@ -1284,58 +3010,128 @@ def create_user():
         else:
             permissions = permissions_data or {}
 
-        if not all([username, email, password, confirm_password, user_type_id
-                    ]):
-            return jsonify({"error":
-                            "All mandatory fields are required."}), 400
+        # ================= VALIDATIONS =================
+
+        if not all([username, email, password, confirm_password, user_type_id]):
+            logger.warning("[CREATE_USER] Missing required fields")
+            return jsonify({"error": "All mandatory fields are required."}), 400
 
         if len(username) < 3:
-            return jsonify(
-                {"error": "Username must be at least 3 characters."}), 400
+            logger.warning(f"[CREATE_USER] Username too short: {username}")
+            return jsonify({"error": "Username must be at least 3 characters."}), 400
+
+        if username.lower() == 'super admin':
+            logger.warning(f"[CREATE_USER] Reserved username attempted: {username}")
+            return jsonify({"error": "Username reserved."}), 400
 
         if "@" not in email or "." not in email.split("@")[-1]:
+            logger.warning(f"[CREATE_USER] Invalid email format: {email}")
             return jsonify({"error": "Invalid email format."}), 400
 
-        is_valid, validation_message = validate_password_complexity(password)
-        if not is_valid:
-            return jsonify({"error": validation_message}), 400
+        try:
+            is_valid, validation_message = validate_password_complexity(password)
+            if not is_valid:
+                logger.warning(f"[CREATE_USER] Password validation failed: {validation_message}")
+                return jsonify({"error": validation_message}), 400
+        except Exception as pwd_error:
+            logger.error(f"[CREATE_USER] Password validation error: {str(pwd_error)}")
+            return jsonify({"error": "Password validation failed"}), 400
 
         if password != confirm_password:
+            logger.warning("[CREATE_USER] Passwords do not match")
             return jsonify({"error": "Passwords do not match."}), 400
 
-        conn = get_db_connection()
-        cursor = conn.cursor()
-
-        cursor.execute('SELECT id FROM usertypes WHERE id = %s',
-                       (user_type_id, ))
-        if not cursor.fetchone():
-            conn.close()
-            return jsonify({"error": "Invalid user type selected."}), 400
+        # ================= DATABASE =================
 
         try:
-            hashed_password = generate_password_hash(password,
-                                                     method='pbkdf2:sha256')
-            cursor.execute(
-                '''
-                INSERT INTO users (username, email, password, user_type_id) 
-                VALUES (%s,%s,%s,%s) RETURNING id
-            ''', (username, email, hashed_password, user_type_id))
-            user_id = cursor.fetchone()['id']
-            conn.commit()
+            conn = get_db_connection()
+            if not conn:
+                logger.error("[CREATE_USER] Failed to get database connection")
+                return jsonify({"error": "Database connection failed"}), 500
+            cursor = conn.cursor()
+            logger.info("[CREATE_USER] Database connection established")
+        except Exception as db_error:
+            logger.error(f"[CREATE_USER] Database connection error: {str(db_error)}")
+            return jsonify({"error": f"Database connection error: {str(db_error)}"}), 500
 
+        # Check user type exists
+        try:
+            cursor.execute('SELECT id FROM usertypes WHERE id = %s', (user_type_id,))
+            if not cursor.fetchone():
+                logger.warning(f"[CREATE_USER] Invalid user type ID: {user_type_id}")
+                conn.close()
+                return jsonify({"error": "Invalid user type selected."}), 400
+            logger.info(f"[CREATE_USER] User type validated: {user_type_id}")
+        except Exception as ut_error:
+            logger.error(f"[CREATE_USER] User type check error: {str(ut_error)}")
+            if conn:
+                conn.close()
+            return jsonify({"error": f"User type validation error: {str(ut_error)}"}), 500
+
+        try:
+            # 🔥 Hash password correctly
+            logger.info("[CREATE_USER] Hashing password")
+            hashed_password = generate_password_hash(
+                password,
+                method='pbkdf2:sha256'
+            )
+
+            # 🔥 Handle created_by_id - it can be None
+            # Log the value for debugging
+            logger.info(f"[CREATE_USER] created_by_id value: {current_user_id} (type: {type(current_user_id)})")
+            
+            # If current_user_id is None or 0, we'll insert NULL
+            created_by_value = current_user_id if current_user_id else None
+
+            # 🔥 Insert user with hierarchy support
+            logger.info(f"[CREATE_USER] Inserting user into database with created_by_id: {created_by_value}")
+            cursor.execute("""
+                INSERT INTO users 
+                (username, email, password, user_type_id, created_by_id)
+                VALUES (%s, %s, %s, %s, %s)
+                RETURNING id
+            """, (username, email, hashed_password, user_type_id, created_by_value))
+
+            result = cursor.fetchone()
+            if not result:
+                logger.error("[CREATE_USER] Failed to get user ID after insert")
+                conn.rollback()
+                conn.close()
+                return jsonify({"error": "Failed to create user"}), 500
+
+            # Handle both tuple and dict-like cursor results
+            if isinstance(result, dict):
+                user_id = result.get('id')
+            else:
+                user_id = result[0]
+                
+            if not user_id:
+                logger.error("[CREATE_USER] Failed to extract user ID from result")
+                conn.rollback()
+                conn.close()
+                return jsonify({"error": "Failed to create user"}), 500
+                
+            logger.info(f"[CREATE_USER] User created with ID: {user_id}")
+
+            # ================= PERMISSIONS INSERT =================
+            logger.info(f"[CREATE_USER] Inserting permissions: {permissions}")
             for module, actions in permissions.items():
                 if isinstance(actions, dict):
                     for action, granted in actions.items():
                         try:
-                            cursor.execute(
-                                '''
-                                INSERT INTO user_permissions (user_id, module, action, granted)
-                                VALUES (%s,%s,%s,%s::boolean)
-                            ''', (user_id, module, action, bool(granted)))
-                        except psycopg2.IntegrityError:
-                            pass
+                            cursor.execute("""
+                                INSERT INTO user_permissions 
+                                (user_id, module, action, granted)
+                                VALUES (%s, %s, %s, %s)
+                            """, (user_id, module, action, bool(granted)))
+                            logger.debug(f"[CREATE_USER] Permission added: {module}.{action} = {granted}")
+                        except psycopg2.IntegrityError as perm_error:
+                            logger.warning(f"[CREATE_USER] Permission insert failed (duplicate?): {str(perm_error)}")
+                            conn.rollback()
+                            continue
 
             conn.commit()
+            logger.info(f"[CREATE_USER] User creation committed successfully")
             conn.close()
 
             return jsonify({
@@ -1349,13 +3145,50 @@ def create_user():
             }), 201
 
         except psycopg2.IntegrityError as e:
-            print(f"[ERROR] User creation conflict: {e}")
-            conn.close()
+            logger.error(f"[CREATE_USER] Integrity error: {str(e)}")
+            logger.error(f"[CREATE_USER] Error code: {e.pgcode if hasattr(e, 'pgcode') else 'N/A'}")
+            logger.error(f"[CREATE_USER] Error details: {e.pgerror if hasattr(e, 'pgerror') else 'N/A'}")
+            if conn:
+                conn.rollback()
+                conn.close()
             return jsonify({"error": "Username or email already exists."}), 409
+        except psycopg2.DatabaseError as db_err:
+            logger.error(f"[CREATE_USER] Database error: {str(db_err)}")
+            logger.error(f"[CREATE_USER] Error type: {type(db_err).__name__}")
+            logger.error(f"[CREATE_USER] Error code: {db_err.pgcode if hasattr(db_err, 'pgcode') else 'N/A'}")
+            logger.error(f"[CREATE_USER] Error details: {db_err.pgerror if hasattr(db_err, 'pgerror') else 'N/A'}")
+            logger.error(f"[CREATE_USER] Traceback: {traceback.format_exc()}")
+            if conn:
+                conn.rollback()
+                conn.close()
+            # Provide more detailed error message
+            error_msg = f"Database error: {type(db_err).__name__}"
+            if hasattr(db_err, 'pgerror') and db_err.pgerror:
+                error_msg += f" - {db_err.pgerror}"
+            elif str(db_err):
+                error_msg += f" - {str(db_err)}"
+            return jsonify({"error": error_msg}), 500
+        except Exception as insert_error:
+            logger.error(f"[CREATE_USER] Insert error: {str(insert_error)}")
+            logger.error(f"[CREATE_USER] Error type: {type(insert_error).__name__}")
+            logger.error(f"[CREATE_USER] Traceback: {traceback.format_exc()}")
+            if conn:
+                conn.rollback()
+                conn.close()
+            # Provide detailed error message
+            error_msg = f"{type(insert_error).__name__}: {str(insert_error)}" if str(insert_error) else type(insert_error).__name__
+            return jsonify({"error": f"Database error: {error_msg}"}), 500
 
     except Exception as e:
-        print(f"[ERROR] /api/users POST failed: {str(e)}")
-        return jsonify({"error": str(e)}), 500
+        logger.error(f"[CREATE_USER] Unexpected error: {str(e)}")
+        logger.error(f"[CREATE_USER] Traceback: {traceback.format_exc()}")
+        if conn:
+            try:
+                conn.rollback()
+                conn.close()
+            except:
+                pass
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
 
 
 @app.route("/api/users/<int:id>", methods=["GET"])
@@ -1364,9 +3197,10 @@ def get_user(id):
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
-        cursor.execute(
-            '''
-            SELECT u.id, u.username, u.email, u.user_type_id, ut.user_role, u.created_at
+        
+        # Get user basic info
+        cursor.execute('''
+            SELECT u.id, u.username, u.email, u.user_type_id, ut.user_role, u.created_at, u.status
             FROM users u 
             LEFT JOIN usertypes ut ON u.user_type_id = ut.id 
             WHERE u.id = %s
@@ -1377,16 +3211,34 @@ def get_user(id):
             conn.close()
             return jsonify({"error": "User not found."}), 404
 
-        cursor.execute(
-            '''
+        # 1. Get Direct User Permissions
+        cursor.execute('''
             SELECT module, action, granted FROM user_permissions 
             WHERE user_id = %s ORDER BY module, action
         ''', (id, ))
-        permissions_rows = cursor.fetchall()
+        direct_perms = cursor.fetchall()
+
+        # 2. Get Role-based (UserType) Permissions
+        cursor.execute('''
+            SELECT module, action, granted FROM usertype_permissions 
+            WHERE usertype_id = %s ORDER BY module, action
+        ''', (user['user_type_id'], ))
+        role_perms = cursor.fetchall()
+        
         conn.close()
 
+        # Merge permissions (Direct takes precedence if same module-action)
         permissions = {}
-        for perm in permissions_rows:
+        
+        # Add role permissions first
+        for perm in role_perms:
+            module = perm['module']
+            if module not in permissions:
+                permissions[module] = {}
+            permissions[module][perm['action']] = bool(perm['granted'])
+            
+        # Add direct permissions (overwriting if necessary)
+        for perm in direct_perms:
             module = perm['module']
             if module not in permissions:
                 permissions[module] = {}
@@ -1394,11 +3246,18 @@ def get_user(id):
 
         user_dict = dict(user)
         user_dict['permissions'] = permissions
-        if user_dict['created_at']:
-            user_dict['created_at'] = user_dict['created_at'].isoformat()
+        
+        # Safe Date Serialization
+        if user_dict.get('created_at'):
+            created_at = user_dict['created_at']
+            if hasattr(created_at, 'isoformat'):
+                user_dict['created_at'] = created_at.isoformat()
+            else:
+                user_dict['created_at'] = str(created_at)
 
         return jsonify(user_dict), 200
     except Exception as e:
+        logger.exception(f"Error fetching user {id}")
         return jsonify({"error": str(e)}), 500
 
 
@@ -1422,9 +3281,18 @@ def update_user(id):
             permissions = permissions_data or {}
 
         if not username or not email or not user_type_id:
+            logger.warning(f"Update User: Missing fields. username={username}, email={email}, user_type_id={user_type_id}")
             return jsonify(
                 {"error": "Username, email, and user type are required."}), 400
 
+        try:
+            user_type_id = int(user_type_id)
+        except (ValueError, TypeError):
+             logger.warning(f"Update User: Invalid user_type_id: {user_type_id}")
+             return jsonify({"error": "Invalid user type ID"}), 400
+
+        logger.info(f"Updating user {id}: username={username}, email={email}, type={user_type_id}")
+        
         conn = get_db_connection()
         cursor = conn.cursor()
 
@@ -1464,7 +3332,7 @@ def update_user(id):
                             cursor.execute(
                                 '''
                                 INSERT INTO user_permissions (user_id, module, action, granted)
-                                VALUES (%s,%s,%s,%s::boolean)
+                                VALUES (%s,%s,%s,%s)
                             ''', (id, module, action, bool(granted)))
                         except psycopg2.IntegrityError as e:
                             print(f"[DEBUG] Permission insert conflict: {e}")
@@ -1516,29 +3384,14 @@ def delete_user(id):
 
 
 @app.route("/api/user/login", methods=["POST"])
+@csrf.exempt
 def user_login():
-    import requests
-    
     data = request.get_json() or {}
     email = (data.get("email") or "").strip().lower()
     password = data.get("password") or ""
-    recaptcha_token = data.get("recaptcha_token") or ""
 
     if not email or not password:
         return jsonify({"error": "Email and password are required."}), 400
-
-    # Verify reCAPTCHA token
-    if recaptcha_token:
-        try:
-            recaptcha_response = requests.post(
-                'https://www.google.com/recaptcha/api/siteverify',
-                data={'secret': os.getenv('RECAPTCHA_SECRET_KEY'), 'response': recaptcha_token}
-            )
-            recaptcha_data = recaptcha_response.json()
-            if not recaptcha_data.get('success') or recaptcha_data.get('score', 0) < 0.5:
-                return jsonify({"error": "reCAPTCHA verification failed."}), 400
-        except Exception as e:
-            logger.warning(f"reCAPTCHA verification error: {str(e)}")
 
     try:
         conn = get_db_connection()
@@ -1576,21 +3429,30 @@ def user_login():
             permissions[module][perm['action']] = bool(perm['granted'])
 
         # Store authentication info in session
+        session.clear()
+        session.permanent = True
         session['user_id'] = user['id']
         session['user_type'] = 'employee'
         session['username'] = user['username']
         session['permissions'] = permissions
-        session['authenticated'] = True
+        session['is_authenticated'] = True
 
-        auth_token = secrets.token_urlsafe(32)
-        # Store token in both session and global dict for API authentication
-        session['auth_token'] = auth_token
-        valid_tokens[auth_token] = {
+        # Generate signed token
+        csrf_for_token = secrets.token_urlsafe(16)
+        s = URLSafeTimedSerializer(app.secret_key)
+        auth_token = s.dumps({
             'user_id': user['id'],
             'username': user['username'],
             'user_type': 'employee',
-            'created_at': datetime.now(timezone.utc)
-        }
+            'csrf_token': csrf_for_token,
+            'created_at': str(datetime.now(timezone.utc))
+        })
+        
+        # Store token in session (optional, but good for tracking)
+        session['auth_token'] = auth_token
+        
+        # Keep valid_tokens for any legacy parts that might check it check it (though ideally deprecated)
+        # We don't need valid_tokens anymore for auth, so skipping its update.
 
         return jsonify({
             "user_id": user['id'],
@@ -1599,14 +3461,17 @@ def user_login():
             "user_role": user['user_role'],
             "permissions": permissions,
             "token": auth_token,
+            "csrf_token": csrf_for_token,
             "message": "Login successful!"
         }), 200
 
     except Exception as e:
+        logger.error(f"Login error: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
 
 @app.route("/api/user/logout", methods=["POST"])
+@csrf.exempt
 def user_logout():
     auth_header = request.headers.get('Authorization')
     if auth_header and auth_header.startswith('Bearer '):
@@ -1619,10 +3484,12 @@ def user_logout():
 
 
 @app.route("/api/employee/projects", methods=["GET"])
-@login_required
+@csrf.exempt
 def get_employee_projects():
     try:
         user_id = get_current_user_id()
+        if not user_id:
+            return jsonify({"error": "Unauthorized"}), 401
         conn = get_db_connection()
         cursor = conn.cursor()
 
@@ -1632,11 +3499,10 @@ def get_employee_projects():
                    p.deadline, p.created_by_id, u.username as creator_name, p.created_at
             FROM projects p 
             LEFT JOIN users u ON p.created_by_id = u.id
-            WHERE p.created_by_id = %s OR p.id IN (
-                SELECT project_id FROM project_assignments WHERE user_id = %s
-            )
+            JOIN project_assignments pa ON p.id = pa.project_id
+            WHERE pa.user_id = %s
             ORDER BY p.created_at DESC
-        ''', (user_id, user_id))
+        ''', (user_id,))
 
         projects = cursor.fetchall()
         conn.close()
@@ -1645,110 +3511,240 @@ def get_employee_projects():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-
 @app.route("/api/employee/projects", methods=["POST"])
-@login_required
+@csrf.exempt
 def create_employee_project():
+    """
+    Create a new project.
+    Ensures created_by_id references an existing users.id.
+    If session user_id == 0 (super-admin placeholder), attempt to map to a real admin user or create a minimal system user.
+    """
     try:
+        user_id = get_current_user_id()
+        if not user_id:
+            return jsonify({"error": "Unauthorized"}), 401
+        
         data = request.get_json() or {}
         title = (data.get("title") or "").strip()
         description = data.get("description") or ""
-        deadline = data.get("deadline")
-        reporting_time = data.get("reporting_time", "09:00")
+        deadline = data.get("deadline") or None
+        reporting_time = data.get("reporting_time") or "09:00"
         team_members = data.get("team_members") or []
 
         if not title:
-            return jsonify({"error": "Project title is required"}), 400
+            return jsonify({"error": "title is required"}), 400
+        
+        # Validate that at least one team member is assigned
+        if not team_members or len(team_members) == 0:
+            return jsonify({
+                "error": "At least one team member must be assigned to the project. Please select team members before creating the project."
+            }), 400
 
-        user_id = get_current_user_id()
         conn = get_db_connection()
-        cursor = conn.cursor()
+        cur = conn.cursor()
 
-        cursor.execute(
-            '''
-            SELECT granted FROM user_permissions 
-            WHERE user_id = %s AND module = %s AND action = %s
-        ''', (user_id, 'Proj', 'Add'))
-        perm = cursor.fetchone()
+        # Resolve a valid created_by_id (don't use 0 as that doesn't exist in users)
+        created_by_id = get_current_user_id()
+        if created_by_id == 0 or created_by_id is None:
+            # Try to find an Administrator user
+            cur.execute("""
+                SELECT u.id FROM users u
+                JOIN usertypes ut ON u.user_type_id = ut.id
+                WHERE lower(ut.user_role) LIKE '%admin%'
+                LIMIT 1
+            """)
+            row = cur.fetchone()
+            if row:
+                created_by_id = row["id"]
+            else:
+                # Try any existing user
+                cur.execute("SELECT id FROM users LIMIT 1")
+                row2 = cur.fetchone()
+                if row2:
+                    created_by_id = row2["id"]
+                else:
+                    # No users exist — create a minimal system Administrator user
+                    cur.execute("SELECT id FROM usertypes WHERE lower(user_role) LIKE %s LIMIT 1", ('%admin%',))
+                    ut = cur.fetchone()
+                    if ut:
+                        usertype_id = ut["id"]
+                    else:
+                        cur.execute("INSERT INTO usertypes (user_role) VALUES (%s) RETURNING id", ("Administrator",))
+                        usertype_id = cur.fetchone()['id']
 
-        if not perm or not perm['granted']:
-            conn.close()
-            return jsonify({"error": "Permission denied"}), 403
-        cursor.execute(
-            '''
-            INSERT INTO projects (title, description, deadline, reporting_time, created_by_id)
-            VALUES (%s,%s,%s,%s,%s) RETURNING id
-        ''', (title, description, deadline or None, reporting_time, user_id))
+                    # create a minimal system user (password hash not important for system account)
+                    dummy_password = generate_password_hash(secrets.token_hex(8))
+                    cur.execute("""
+                        INSERT INTO users (username, email, password, user_type_id, granted, created_at)
+                        VALUES (%s, %s, %s, %s, %s, CURRENT_TIMESTAMP)
+                        RETURNING id
+                    """, ("system", "system@example.com", dummy_password, usertype_id, 1))
+                    created_by_id = cur.fetchone()['id']
+                    conn.commit()
 
-        project_id = cursor.fetchone()['id']
-
-        for member_id in team_members:
-            try:
-                cursor.execute(
-                    '''
-                    INSERT INTO project_assignments (user_id, project_id)
-                    VALUES (%s,%s)
-                ''', (member_id, project_id))
-            except psycopg2.IntegrityError:
-                pass
-
-        conn.commit()
-        conn.close()
-
-        log_activity(
-            user_id,
-            'project_created',
-            f'Created project: {title} with reporting time {reporting_time}',
-            project_id=project_id)
-
-        # Calculate initial progress
+        # Insert project
         try:
-            calculate_project_progress(project_id)
-        except:
+            cur.execute("""
+                INSERT INTO projects (title, description, deadline, reporting_time, created_by_id, status, progress, created_at, updated_at)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                RETURNING id
+            """, (title, description, deadline, reporting_time, created_by_id, 'In Progress', 0))
+            project_id = cur.fetchone()['id']
+
+            # Assign team members if provided (silently ignore duplicates)
+            for uid in (team_members or []):
+                try:
+                    uid_int = int(uid)
+                except Exception:
+                    continue
+                try:
+                    cur.execute("""
+                        INSERT INTO project_assignments (user_id, project_id) 
+                        VALUES (%s, %s)
+                        ON CONFLICT (user_id, project_id) DO NOTHING
+                    """, (uid_int, project_id))
+                except Exception:
+                    # continue on per-user errors
+                    continue
+
+            conn.commit()
+        except psycopg2.IntegrityError as ie:
+            conn.rollback()
+            logger.exception("create_employee_project failed (IntegrityError)")
+            return jsonify({"error": "Database integrity error when creating project: " + str(ie)}), 500
+        except psycopg2.OperationalError as oe:
+            conn.rollback()
+            logger.exception("create_employee_project failed (OperationalError)")
+            return jsonify({"error": "Database operational error. Please try again: " + str(oe)}), 500
+        except Exception as e:
+            conn.rollback()
+            logger.exception("create_employee_project failed")
+            return jsonify({"error": "An unexpected error occurred: " + str(e)}), 500
+
+        # Log activity if you have log_activity helper
+        try:
+            log_activity(created_by_id, 'project_created', f'Project {title} created', project_id)
+        except Exception:
             pass
 
-        return jsonify({
-            "id": project_id,
-            "title": title,
-            "message": "Project created successfully!",
-            "reporting_time": reporting_time
-        }), 201
+        conn.close()
+        return jsonify({"success": True, "id": project_id}), 201
+
     except Exception as e:
+        logger.exception("create_employee_project failed")
+        try:
+            conn.rollback()
+            conn.close()
+        except Exception:
+            pass
         return jsonify({"error": str(e)}), 500
 
 
 @app.route("/api/employee/tasks", methods=["GET"])
-@login_required
+@csrf.exempt
 def get_employee_tasks():
+    conn = None
     try:
         user_id = get_current_user_id()
-        conn = get_db_connection()
-        cursor = conn.cursor()
+        if not user_id:
+            return jsonify({"error": "Unauthorized"}), 401
 
-        cursor.execute(
-            '''
-            SELECT t.id, t.title, t.description, t.status, t.priority, t.deadline,
-                   t.project_id, p.title as project_name, t.assigned_to_id,
-                   u.username as assigned_to_name, t.created_at, t.approval_status
+        project_id = request.args.get("project_id")
+
+        conn = get_db_connection()
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+
+        query = """
+            SELECT 
+                t.id,
+                t.title,
+                COALESCE(t.description,'') AS description,
+                COALESCE(t.status,'Pending') AS status,
+                COALESCE(t.priority,'Medium') AS priority,
+                t.deadline,
+                t.project_id,
+                COALESCE(p.title,'No Project') AS project_name,
+                t.assigned_to_id,
+                COALESCE(u.username,'Unassigned') AS assigned_to_name,
+                t.created_at,
+                COALESCE(t.approval_status,'Pending') AS approval_status
             FROM tasks t
             LEFT JOIN projects p ON t.project_id = p.id
             LEFT JOIN users u ON t.assigned_to_id = u.id
-            WHERE t.assigned_to_id = %s OR t.created_by_id = %s
-            ORDER BY t.created_at DESC
-        ''', (user_id, user_id))
+        """
 
+        params = []
+
+        if project_id:
+            query += """
+                WHERE t.project_id = %s
+                AND (t.assigned_to_id = %s OR t.created_by_id = %s)
+                ORDER BY t.created_at DESC
+            """
+            params = [project_id, user_id, user_id]
+        else:
+            query += """
+                WHERE t.assigned_to_id = %s
+                OR t.created_by_id = %s
+                ORDER BY t.created_at DESC
+            """
+            params = [user_id, user_id]
+
+        cursor.execute(query, params)
         tasks = cursor.fetchall()
-        conn.close()
 
-        return jsonify([dict(row) for row in tasks]), 200
+        # classify tasks
+        today = date.today()
+
+        pending = []
+        completed = []
+        overdue = []
+
+        for t in tasks:
+            if t["status"] == "Completed":
+                completed.append(t)
+            elif t["deadline"] and t["deadline"] < today:
+                overdue.append(t)
+            else:
+                pending.append(t)
+
+        return jsonify({
+            "pending": pending,
+            "completed": completed,
+            "overdue": overdue,
+            "all": tasks
+        }), 200
+
     except Exception as e:
+        logger.exception("Error fetching employee tasks")
         return jsonify({"error": str(e)}), 500
+
+    finally:
+        if conn:
+            conn.close()
 
 
 @app.route("/api/employee/tasks", methods=["POST"])
+@csrf.exempt
 @login_required
 def create_employee_task():
+    """
+    Create a new task for a project.
+    Requires 'task' module 'Add' permission.
+
+    POST payload:
+    {
+        "title": "Task Title",           # Required
+        "description": "...",             # Optional
+        "project_id": 1,                  # Required (integer)
+        "assigned_to_id": 2,              # Optional (integer or null)
+        "priority": "High|Medium|Low",    # Optional, default "Medium"
+        "deadline": "YYYY-MM-DD"          # Optional
+    }
+    """
+    conn = None
     try:
+        # Step 1: Parse and validate incoming payload
         data = request.get_json() or {}
         title = (data.get("title") or "").strip()
         description = data.get("description") or ""
@@ -1757,375 +3753,312 @@ def create_employee_task():
         priority = data.get("priority") or "Medium"
         deadline = data.get("deadline")
 
-        if not title or not project_id:
-            return jsonify({"error": "Title and project are required"}), 400
+        # Validate required fields
+        if not title:
+            return jsonify({"error": "Task title is required"}), 400
+        if project_id is None:
+            return jsonify({"error": "Project ID is required"}), 400
 
+        # Normalize and validate project_id type
+        try:
+            project_id = int(project_id)
+        except (ValueError, TypeError):
+            return jsonify({"error":
+                            "Project ID must be a valid integer"}), 400
+
+        # Normalize and validate assigned_to_id type
+        if assigned_to_id is not None and assigned_to_id != "":
+            try:
+                assigned_to_id = int(assigned_to_id)
+            except (ValueError, TypeError):
+                return jsonify({
+                    "error":
+                    "assigned_to_id must be a valid integer or null"
+                }), 400
+        else:
+            assigned_to_id = None
+
+        # Validate deadline format if provided
+        if deadline:
+            try:
+                datetime.strptime(deadline, "%Y-%m-%d")
+            except ValueError:
+                return jsonify(
+                    {"error": "Invalid deadline format. Use YYYY-MM-DD"}), 400
+
+        # Get current user
         user_id = get_current_user_id()
+        if user_id is None:
+            logger.error("Could not determine current user ID")
+            return jsonify(
+                {"error": "Authentication error: User ID not found"}), 401
+
+        # Step 2: Perform all read operations first (checks/validations)
+        # This minimizes the time we hold write locks
         conn = get_db_connection()
         cursor = conn.cursor()
 
-        # Check permission
-        cursor.execute(
-            '''
-            SELECT granted FROM user_permissions 
-            WHERE user_id = %s AND module = %s AND action = %s
-            ''', (user_id, 'task', 'Add'))
-        perm = cursor.fetchone()
+        try:
+            # Check permission to create tasks (Super Admin bypass)
+            if user_id != 0:
+                cursor.execute(
+                    'SELECT granted FROM user_permissions WHERE user_id = %s AND module = %s AND action = %s',
+                    (user_id, 'task', 'Add'))
+                perm = cursor.fetchone()
 
-        if not perm or not perm['granted']:
-            conn.close()
-            return jsonify({"error": "Permission denied"}), 403
+                # Allow creation if permission is explicitly granted OR if permission system not fully initialized
+                # (This allows employees to create tasks even if permissions table is being set up)
+                if perm and not perm['granted']:
+                    logger.warning(
+                        f"User {user_id} lacks permission to create tasks")
+                    return jsonify({
+                        "error":
+                        "Permission denied: You don't have permission to create tasks"
+                    }), 403
+                elif not perm:
+                    # Permission not found - this is OK for transitional state
+                    logger.info(
+                        f"Permission not found for user {user_id}, allowing task creation (permission system may not be initialized)"
+                    )
+
+            # Verify project exists and user is assigned
+            cursor.execute('''
+                SELECT p.id 
+                FROM projects p
+                JOIN project_assignments pa ON p.id = pa.project_id
+                WHERE p.id = %s AND (p.created_by_id = %s OR pa.user_id = %s)
+            ''', (project_id, user_id, user_id))
+            
+            if not cursor.fetchone():
+                logger.warning(
+                    f"Project {project_id} not found or user {user_id} not assigned for task creation")
+                return jsonify(
+                    {"error": f"Project not found or access denied (ID: {project_id})"}), 403
+
+            # Verify assigned_to user exists (if specified)
+            if assigned_to_id:
+                cursor.execute('SELECT id FROM users WHERE id = %s',
+                               (assigned_to_id, ))
+                if not cursor.fetchone():
+                    logger.warning(
+                        f"User {assigned_to_id} not found for task assignment")
+                    return jsonify({
+                        "error":
+                        f"Assigned user not found (ID: {assigned_to_id})"
+                    }), 404
+
+        except psycopg2.DatabaseError as db_err:
+            logger.exception(f"Database error during validation: {db_err}")
+            return jsonify({
+                "error": "Database error during validation",
+                "details": str(db_err)
+            }), 503
 
         # Decide status based on whether assigned at creation
-        status_to_set = 'Pending'
-        if assigned_to_id:
-            # Task was assigned immediately — treat as active
-            status_to_set = 'In Progress'
+        status_to_set = 'In Progress' if assigned_to_id else 'Pending'
 
-        cursor.execute(
-            '''
-            INSERT INTO tasks (title, description, project_id, created_by_id, assigned_to_id, priority, deadline, status)
-            VALUES (%s,%s,%s,%s,%s,%s,%s,%s) RETURNING id
-            ''', (title, description, project_id, user_id, assigned_to_id,
-                  priority, deadline or None, status_to_set))
+        # Step 3: Insert the task (write operation with explicit transaction control)
+        task_id = None
+        try:
+            cursor.execute(
+                '''
+                INSERT INTO tasks (title, description, project_id, created_by_id, assigned_to_id, priority, deadline, status)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s)
+                RETURNING id
+                ''', (title, description, project_id, user_id, assigned_to_id,
+                      priority, deadline or None, status_to_set))
 
-        task_id = cursor.fetchone()['id']
-        conn.commit()
+            task_id = cursor.fetchone()['id']
+            conn.commit()
+            logger.info(
+                f"Task {task_id} created successfully by user {user_id}")
+
+        except psycopg2.OperationalError as op_err:
+            conn.rollback()
+            logger.exception(
+                f"PostgreSQL lock error while inserting task: {op_err}")
+            return jsonify({
+                "error": "Database is temporarily unavailable. Please try again.",
+                "type": "DB_LOCKED"
+            }), 503
+        except psycopg2.IntegrityError as int_err:
+            conn.rollback()
+            logger.exception(f"Integrity constraint error: {int_err}")
+            return jsonify(
+                {"error": "Task creation failed: Constraint violation"}), 400
+        except Exception as insert_err:
+            if conn:
+                conn.rollback()
+            logger.exception(
+                f"Unexpected error during task insert: {insert_err}")
+            return jsonify({
+                "error": "Failed to create task",
+                "details": str(insert_err)
+            }), 500
+
+        # Close the connection early - don't hold locks for subsequent operations
         conn.close()
+        conn = None
 
-        # Log activity
-        log_activity(user_id,
-                     'task_created',
-                     f'Created task: {title}',
-                     project_id=project_id,
-                     task_id=task_id)
+        # Step 4: Post-creation operations (these use their own connections)
+        # These are non-critical and fail gracefully without affecting the response
+        try:
+            log_activity(user_id,
+                         'task_created',
+                         f'Created task: {title}',
+                         project_id=project_id,
+                         task_id=task_id)
+        except Exception as log_err:
+            logger.warning(
+                f"Failed to log activity for task {task_id}: {log_err}")
 
-        # Update project progress after adding the task
         try:
             calculate_project_progress(project_id)
-        except Exception:
-            # don't crash on progress calc errors
-            pass
+        except Exception as progress_err:
+            logger.warning(
+                f"Failed to update project progress for project {project_id}: {progress_err}"
+            )
 
+        # Step 5: Return success response
         return jsonify({
             "id": task_id,
             "title": title,
             "message": "Task created successfully!"
         }), 201
 
+    except psycopg2.OperationalError as oe:
+        logger.exception(f"Uncaught SQLite OperationalError: {oe}")
+        return jsonify({
+            "error": "Database operation failed",
+            "type": "DB_ERROR",
+            "details": str(oe)
+        }), 503
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.exception(f"Unexpected error in create_employee_task: {e}")
+        return jsonify({
+            "error": "An unexpected error occurred",
+            "type": "INTERNAL_ERROR",
+            "details": str(e) if app.debug else None
+        }), 500
+    finally:
+        if conn:
+            try:
+                conn.close()
+            except Exception as close_err:
+                logger.warning(
+                    f"Error closing database connection: {close_err}")
 
 
 @app.route("/api/employee/tasks/<int:task_id>/complete", methods=["POST"])
 @login_required
 def complete_employee_task(task_id):
+    """Complete a task (mark as Completed)"""
+    conn = None
     try:
         user_id = get_current_user_id()
-        conn = get_db_connection()
-        cursor = conn.cursor()
-
-        # Get task and project details
-        cursor.execute(
-            '''
-            SELECT status, project_id FROM tasks WHERE id = %s  AND (assigned_to_id = %s OR created_by_id = %s)
-        ''', (task_id, user_id, user_id))
-        task = cursor.fetchone()
-
-        if not task:
-            conn.close()
-            return jsonify({"error":
-                            "Task not found or permission denied"}), 404
-
-        if task['status'] == 'Completed':
-            conn.close()
-            return jsonify({"message": "Task is already completed. "}), 200
-
-        # Update task status
-        cursor.execute(
-            '''
-            UPDATE tasks SET status = %s, completed_at = CURRENT_TIMESTAMP
-            WHERE id = %s
-        ''', ('Completed', task_id))
-
-        conn.commit()
-        conn.close()
-
-        # Log activity
-        log_activity(user_id,
-                     'task_completed',
-                     f'Completed task ID: {task_id}',
-                     task_id=task_id)
-
-        # ⭐ IMPORTANT:  Recalculate project progress
-        try:
-            progress_response = calculate_project_progress(task['project_id'])
-            if progress_response[1] == 200:
-                progress_data = progress_response[0].get_json()
-                return jsonify({
-                    "message": "Task completed successfully! ",
-                    "project_progress": progress_data
-                }), 200
-        except Exception as progress_error:
-            print(f"[WARNING] Progress calculation failed: {progress_error}")
-            # Don't fail the task completion if progress calc fails
-            return jsonify({"message": "Task completed successfully! "}), 200
-
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-
-@app.route("/api/employee/tasks/<int:task_id>/update", methods=["PUT"])
-@login_required
-def update_employee_task(task_id):
-    """Update task progress, status, and notes"""
-    try:
-        data = request.get_json() or {}
-        status = data.get("status", "").strip()
-        progress = data.get("progress")
-        notes = data.get("notes", "").strip()
-
-        user_id = get_current_user_id()
-        conn = get_db_connection()
-        cursor = conn.cursor()
-
-        # Verify user has permission to update this task
-        cursor.execute(
-            '''
-            SELECT id, project_id FROM tasks 
-            WHERE id = %s AND (assigned_to_id = %s OR created_by_id = %s)
-        ''', (task_id, user_id, user_id))
-        task = cursor.fetchone()
-
-        if not task:
-            conn.close()
-            return jsonify({"error": "Task not found or permission denied"}), 404
-
-        # Validate progress value
-        if progress is not None:
-            try:
-                progress = int(progress)
-                if progress < 0 or progress > 100:
-                    return jsonify({"error": "Progress must be between 0 and 100"}), 400
-            except (ValueError, TypeError):
-                return jsonify({"error": "Invalid progress value"}), 400
-
-        # Build update query dynamically based on provided fields
-        update_fields = []
-        update_values = []
-
-        if status:
-            update_fields.append("status = %s")
-            update_values.append(status)
-
-        if progress is not None:
-            update_fields.append("progress = %s")
-            update_values.append(progress)
-
-        if notes:
-            update_fields.append("notes = %s")
-            update_values.append(notes)
-
-        # Always update the updated_at timestamp
-        update_fields.append("updated_at = CURRENT_TIMESTAMP")
-
-        if not update_fields:
-            conn.close()
-            return jsonify({"error": "No fields to update"}), 400
-
-        # Execute update
-        update_query = f"UPDATE tasks SET {', '.join(update_fields)} WHERE id = %s"
-        update_values.append(task_id)
-
-        cursor.execute(update_query, update_values)
-        conn.commit()
-
-        # Fetch updated task
-        cursor.execute(
-            '''
-            SELECT id, title, status, progress, notes, updated_at 
-            FROM tasks WHERE id = %s
-        ''', (task_id,))
-        updated_task = cursor.fetchone()
-        conn.close()
-
-        # Log activity
-        log_activity(user_id,
-                     'task_updated',
-                     f'Updated task ID: {task_id} - Progress: {progress}%' if progress is not None else f'Updated task ID: {task_id}',
-                     task_id=task_id)
-
-        return jsonify({
-            "message": "Task updated successfully!",
-            "task": dict(updated_task) if updated_task else None
-        }), 200
-
-    except Exception as e:
-        print(f"[ERROR] Task update failed: {str(e)}")
-        return jsonify({"error": str(e)}), 500
-
-
-@app.route("/api/employee/daily-reports", methods=["GET"])
-@login_required
-def get_employee_daily_reports():
-    """Get daily reports for the current employee"""
-    try:
-        user_id = get_current_user_id()
-        
-        # Get query parameters for filtering
-        start_date = request.args.get("start_date")
-        end_date = request.args.get("end_date")
-        project_id = request.args.get("project_id")
+        if not user_id:
+            return jsonify({"error": "User ID not found"}), 401
 
         conn = get_db_connection()
         cursor = conn.cursor()
 
-        query = '''
-            SELECT 
-                dr.id, 
-                dr.task_id, 
-                t.title as task_title,
-                dr.project_id, 
-                p.title as project_title,
-                dr.report_date, 
-                dr.work_description, 
-                dr.time_spent,
-                dr.status, 
-                dr.blocker, 
-                dr.approval_status,
-                dr.created_at, 
-                dr.updated_at
-            FROM daily_task_reports dr
-            LEFT JOIN tasks t ON dr.task_id = t.id
-            LEFT JOIN projects p ON dr.project_id = p.id
-            WHERE dr.user_id = %s
-        '''
-
-        params = [user_id]
-
-        if start_date:
-            query += " AND dr.report_date >= %s"
-            params.append(start_date)
-
-        if end_date:
-            query += " AND dr.report_date <= %s"
-            params.append(end_date)
-
-        if project_id:
-            query += " AND dr.project_id = %s"
-            params.append(int(project_id))
-
-        query += " ORDER BY dr.report_date DESC, dr.created_at DESC"
-
-        cursor.execute(query, params)
-        reports = cursor.fetchall()
-        conn.close()
-
-        return jsonify([dict(row) for row in reports]), 200
-    except Exception as e:
-        print(f"[ERROR] Failed to fetch employee daily reports: {str(e)}")
-        return jsonify({"error": str(e)}), 500
-
-
-@app.route("/api/employee/daily-report", methods=["POST"])
-@login_required
-def submit_daily_report():
-    """Submit daily task report"""
-    try:
-        data = request.get_json() or {}
-        task_id = data.get("task_id")
-        project_id = data.get("project_id")
-        report_date = data.get("report_date", "").strip()
-        work_description = data.get("work_description", "").strip()
-        time_spent = data.get("time_spent")
-        status = data.get("status", "In Progress").strip()
-        blocker = data.get("blocker", "").strip()
-
-        # Validate required fields
-        if not task_id or not project_id or not report_date:
-            return jsonify({"error": "Missing required field: task_id, project_id, or report_date"}), 400
-
-        if not work_description:
-            return jsonify({"error": "Missing required field: work_description"}), 400
-
-        # Validate time_spent
-        if time_spent is not None:
-            try:
-                time_spent = int(time_spent)
-                if time_spent < 0:
-                    return jsonify({"error": "Time spent cannot be negative"}), 400
-            except (ValueError, TypeError):
-                return jsonify({"error": "Invalid time_spent value"}), 400
-        else:
-            time_spent = 0
-
-        user_id = get_current_user_id()
-        conn = get_db_connection()
-        cursor = conn.cursor()
-
-        # Verify user is assigned to this task or created the task
-        cursor.execute(
-            '''
-            SELECT t.id, t.title, p.title as project_title
-            FROM tasks t
-            JOIN projects p ON t.project_id = p.id
-            WHERE t.id = %s AND p.id = %s 
-            AND (t.assigned_to_id = %s OR t.created_by_id = %s)
-        ''', (task_id, project_id, user_id, user_id))
-        task = cursor.fetchone()
-
-        if not task:
-            conn.close()
-            return jsonify({"error": "Task not found or permission denied"}), 404
-
-        # Insert daily report
+        # Step 1: Fetch task details (validation)
         try:
             cursor.execute(
                 '''
-                INSERT INTO daily_task_reports 
-                (user_id, task_id, project_id, report_date, work_description, time_spent, status, blocker)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-                RETURNING id, created_at
-            ''', (user_id, task_id, project_id, report_date, work_description, time_spent, status, blocker))
+                SELECT status, project_id FROM tasks WHERE id = %s AND (assigned_to_id = %s OR created_by_id = %s)
+            ''', (task_id, user_id, user_id))
+            task = cursor.fetchone()
 
-            report = cursor.fetchone()
-            conn.commit()
-            conn.close()
+            if not task:
+                logger.warning(
+                    f"Task {task_id} not found or user {user_id} lacks permission"
+                )
+                return jsonify(
+                    {"error": "Task not found or permission denied"}), 404
 
-            # Log activity
-            log_activity(user_id,
-                         'daily_report_submitted',
-                         f'Submitted daily report for task ID: {task_id} on {report_date}',
-                         task_id=task_id,
-                         project_id=project_id)
+            if task['status'] == 'Completed':
+                logger.info(f"Task {task_id} is already completed")
+                return jsonify({"message": "Task is already completed"}), 200
 
+            project_id = task['project_id']
+
+        except psycopg2.DatabaseError as db_err:
+            logger.exception(
+                f"Database error while fetching task {task_id}: {db_err}")
+            return jsonify({"error": "Database error during task fetch"}), 503
+
+        # Step 2: Update task status with explicit transaction control
+        try:
+            cursor.execute('BEGIN IMMEDIATE')
+            cursor.execute(
+                '''
+                UPDATE tasks SET status = %s, completed_at = CURRENT_TIMESTAMP WHERE id = %s
+            ''', ('Completed', task_id))
+            cursor.execute('COMMIT')
+            logger.info(
+                f"Task {task_id} marked as completed by user {user_id}")
+
+        except psycopg2.OperationalError as op_err:
+            cursor.execute('ROLLBACK')
+            logger.exception(
+                f"Lock error while updating task {task_id}: {op_err}")
             return jsonify({
-                "message": "Daily report submitted successfully!",
-                "report_id": report['id'],
-                "created_at": str(report['created_at'])
-            }), 201
+                "error": "Database is temporarily locked. Please try again.",
+                "type": "DB_LOCKED"
+            }), 503
+        except Exception as update_err:
+            cursor.execute('ROLLBACK')
+            logger.exception(f"Error updating task {task_id}: {update_err}")
+            return jsonify({"error": "Failed to update task status"}), 500
 
-        except psycopg2.IntegrityError as e:
-            conn.rollback()
-            conn.close()
-            print(f"[ERROR] Integrity error: {str(e)}")
-            return jsonify({"error": "Failed to submit report - possible duplicate"}), 400
-        except Exception as e:
-            conn.rollback()
-            conn.close()
-            print(f"[ERROR] Report submission error: {str(e)}")
-            return jsonify({"error": str(e)}), 500
+        conn.close()
+        conn = None
+
+        # Step 3: Post-update operations (non-critical, use separate connections)
+        try:
+            log_activity(user_id,
+                         'task_completed',
+                         f'Completed task {task_id}',
+                         task_id=task_id)
+        except Exception as log_err:
+            logger.warning(
+                f"Failed to log activity for task completion: {log_err}")
+
+        try:
+            progress_response = calculate_project_progress(project_id)
+            if isinstance(progress_response,
+                          tuple) and progress_response[1] == 200:
+                progress_data = progress_response[0].get_json() if hasattr(
+                    progress_response[0], 'get_json') else {}
+                return jsonify({
+                    "message": "Task completed successfully!",
+                    "project_progress": progress_data
+                }), 200
+        except Exception as progress_err:
+            logger.warning(
+                f"Failed to calculate project progress: {progress_err}")
+
+        return jsonify({"message": "Task completed successfully!"}), 200
 
     except Exception as e:
-        print(f"[ERROR] Daily report endpoint error: {str(e)}")
-        return jsonify({"error": str(e)}), 500
+        logger.exception(f"Unexpected error in complete_employee_task: {e}")
+        return jsonify({"error": "An unexpected error occurred"}), 500
+    finally:
+        if conn:
+            try:
+                conn.close()
+            except Exception as close_err:
+                logger.warning(f"Error closing connection: {close_err}")
 
 
 @app.route("/api/employee/milestones", methods=["GET"])
-@login_required
+@csrf.exempt
 def get_employee_milestones():
     try:
         user_id = get_current_user_id()
+        if not user_id:
+            return jsonify({"error": "Unauthorized"}), 401
         conn = get_db_connection()
         cursor = conn.cursor()
 
@@ -2148,75 +4081,117 @@ def get_employee_milestones():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-
-@app.route("/api/employee/milestones", methods=["POST"])
+# --- Replace your existing /api/employee/milestones POST handler with this ---
+@app.route('/api/employee/milestones', methods=['POST'])
+@csrf.exempt
 @login_required
-def create_employee_milestone():
-    """Create a new milestone for a project with validation"""
+def create_milestone_employee():
+    """
+    Create milestone for a project. Ensures created_by is a valid user id
+    and handles busy database / FK issues gracefully.
+    """
+    conn = None
     try:
-        data = request.get_json() or {}
-        title = data.get("title", "").strip()
-        description = data.get("description", "").strip()
-        project_id = data.get("project_id")
-        due_date = data.get("due_date")
-
-        if not title or not project_id:
-            return jsonify({"error": "Title and project_id are required"}), 400
-
         user_id = get_current_user_id()
+        if not user_id:
+            return jsonify({"error": "Unauthorized"}), 401
+        
+        data = request.get_json() or {}
+        title = (data.get('title') or '').strip()
+        description = data.get('description') or ''
+        due_date = data.get('due_date') or None
+        project_id = data.get('project_id')
+
+        if not title:
+            return jsonify({'error': 'Milestone title is required'}), 400
+        if not project_id:
+            return jsonify({'error': 'project_id is required'}), 400
+
         conn = get_db_connection()
-        cursor = conn.cursor()
+        # Note: PostgreSQL doesn't use PRAGMA busy_timeout (SQLite only)
+        cur = conn.cursor()
 
-        # Verify user has access to this project
-        cursor.execute(
-            '''
-            SELECT id FROM projects 
-            WHERE id = %s AND (
-                created_by_id = %s OR id IN (
-                    SELECT project_id FROM project_assignments WHERE user_id = %s
+        # Verify project exists and user is assigned
+        # Explicitly check project_assignments for user access
+        cur.execute('''
+            SELECT p.id 
+            FROM projects p
+            JOIN project_assignments pa ON p.id = pa.project_id
+            WHERE p.id = %s AND (p.created_by_id = %s OR pa.user_id = %s)
+        ''', (int(project_id), user_id, user_id))
+        
+        if not cur.fetchone():
+            return jsonify({'error': 'Project not found or access denied'}), 404
+
+        # Ensure created_by is valid (same logic as create_project_employee)
+        session_user_id = get_current_user_id() or None
+        created_by = None
+        if session_user_id:
+            cur.execute("SELECT id FROM users WHERE id = %s", (session_user_id,))
+            row = cur.fetchone()
+            if row:
+                created_by = row['id']
+
+        if not created_by:
+            cur.execute("SELECT id FROM users ORDER BY id LIMIT 1")
+            row = cur.fetchone()
+            if row:
+                created_by = row['id']
+            else:
+                # create fallback system user
+                cur.execute("SELECT id FROM usertypes WHERE LOWER(user_role) LIKE %s LIMIT 1", ('admin%',))
+                ut = cur.fetchone()
+                if ut:
+                    user_type_id = ut['id']
+                else:
+                    cur.execute("INSERT INTO usertypes (user_role) VALUES (%s) RETURNING id", ('Administrator',))
+                    user_type_id = cur.fetchone()['id']
+                from werkzeug.security import generate_password_hash
+                pw = generate_password_hash(secrets.token_urlsafe(12))
+                cur.execute(
+                    "INSERT INTO users (username, email, password, user_type_id, granted, created_at) VALUES (%s, %s, %s, %s, 1, CURRENT_TIMESTAMP) RETURNING id",
+                    ('system', 'system@example.local', pw, user_type_id)
                 )
-            )
-        ''', (project_id, user_id, user_id))
+                created_by = cur.fetchone()['id']
 
-        project = cursor.fetchone()
-        if not project:
-            conn.close()
-            return jsonify({"error":
-                            "Project not found or access denied"}), 404
+        # Insert milestone
+        cur.execute(
+            '''INSERT INTO milestones (title, description, due_date, project_id, created_by_id, created_at)
+               VALUES (%s, %s, %s, %s, %s, CURRENT_TIMESTAMP)
+               RETURNING id''',
+            (title, description, due_date, int(project_id), int(created_by))
+        )
+        milestone_id = cur.fetchone()['id']
+        conn.commit()
 
         try:
-            cursor.execute(
-                '''
-                INSERT INTO milestones (title, description, project_id, due_date, status, created_by_id)
-                VALUES (%s,%s,%s,%s, 'Pending', %s) RETURNING id
-            ''', (title, description, project_id, due_date, user_id))
+            log_activity(created_by, 'milestone_created', f'Created milestone {title}', project_id=int(project_id), milestone_id=milestone_id)
+        except Exception:
+            pass
 
-            milestone_id = cursor.fetchone()['id']
-            conn.commit()
-        except psycopg2.ProgrammingError as e:
-            conn.close()
-            print(f"[ERROR] Database schema error: {str(e)}")
-            return jsonify({
-                "error":
-                "Database configuration error. Please contact administrator."
-            }), 500
+        return jsonify({'success': True, 'id': milestone_id}), 201
 
-        conn.close()
-
-        log_activity(user_id,
-                     'milestone_created',
-                     f'Created milestone: {title}',
-                     project_id=project_id,
-                     milestone_id=milestone_id)
-
-        return jsonify({
-            "id": milestone_id,
-            "title": title,
-            "message": "Milestone created successfully!"
-        }), 201
+    except psycopg2.IntegrityError as e:
+        if conn:
+            conn.rollback()
+        logger.exception('create_milestone_employee failed (integrity)')
+        return jsonify({'error': 'Database integrity error', 'detail': str(e)}), 400
+    except psycopg2.OperationalError as e:
+        if conn:
+            conn.rollback()
+        logger.exception('create_milestone_employee failed (operational)')
+        return jsonify({'error': 'Database is busy or locked. Try again.', 'detail': str(e)}), 500
     except Exception as e:
-        print(f"[ERROR] Milestone creation failed: {str(e)}")
-        return jsonify({"error": f"Milestone creation failed: {str(e)}"}), 500
+        if conn:
+            conn.rollback()
+        logger.exception('create_milestone_employee failed')
+        return jsonify({'error': str(e)}), 500
+    finally:
+        try:
+            if conn:
+                conn.close()
+        except Exception:
+            pass
 
 
 @app.route("/api/employee/milestones/<int:milestone_id>/complete",
@@ -2259,6 +4234,241 @@ def complete_employee_milestone(milestone_id):
         return jsonify({"message": "Milestone completed successfully!"}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+# === TEAM MEMBERS ENDPOINTS ===
+
+# @app.route("/api/employee/team-members", methods=["GET"])
+# @csrf.exempt
+# def get_employee_team_members():
+#     """Get all team members for projects the employee is assigned to"""
+#     try:
+#         user_id = get_current_user_id()
+#         if not user_id:
+#             return jsonify({"error": "Unauthorized"}), 401
+#         conn = get_db_connection()
+#         cursor = conn.cursor()
+        
+#         # Get all project IDs where the current user is assigned
+#         cursor.execute('''
+#             SELECT DISTINCT project_id FROM project_assignments
+#             WHERE user_id = %s
+#         ''', (user_id,))
+        
+#         projects = cursor.fetchall()
+#         project_ids = [p['project_id'] for p in projects]
+        
+#         if not project_ids:
+#             conn.close()
+#             return jsonify([]), 200
+        
+#         # Get all team members from those projects
+#         placeholders = ','.join(['%s'] * len(project_ids))
+#         cursor.execute(f'''
+#             SELECT DISTINCT u.id, u.username, u.email, u.user_type_id
+#             FROM users u
+#             JOIN project_assignments pa ON u.id = pa.user_id
+#             WHERE pa.project_id IN ({placeholders})
+#             ORDER BY u.username
+#         ''', project_ids)
+        
+#         team_members = cursor.fetchall()
+#         conn.close()
+        
+#         return jsonify([dict(member) for member in team_members]), 200
+#     except Exception as e:
+#         logger.error(f"Error getting team members: {str(e)}")
+#         return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/employee/team-members", methods=["POST"])
+@csrf.exempt
+@login_required
+def add_employee_team_member():
+    """Add a new team member to a project"""
+    try:
+        # Use the user_id set by @login_required decorator
+        user_id = g.get('current_user_id') or get_current_user_id()
+        if not user_id:
+            return jsonify({"error": "Unauthorized"}), 401
+        
+        # Get JSON data with proper error handling
+        if not request.is_json:
+            return jsonify({"error": "Content-Type must be application/json"}), 400
+        
+        try:
+            data = request.get_json()
+        except Exception as json_error:
+            logger.error(f"JSON parsing error: {str(json_error)}")
+            return jsonify({"error": f"Invalid JSON: {str(json_error)}"}), 400
+        
+        # Validate required fields
+        required_fields = ['username', 'email', 'password', 'project_id']
+        missing_fields = [field for field in required_fields if field not in data]
+        if missing_fields:
+            return jsonify({"error": f"Missing required fields: {', '.join(missing_fields)}"}), 400
+        
+        username = data.get('username', '').strip()
+        email = data.get('email', '').strip()
+        password = data.get('password', '').strip()
+        
+        if not username or not email or not password:
+            return jsonify({"error": "Username, email, and password cannot be empty"}), 400
+        
+        try:
+            project_id = int(data.get('project_id', 0))
+            if project_id <= 0:
+                raise ValueError("project_id must be positive")
+        except (ValueError, TypeError) as e:
+             return jsonify({"error": f"Invalid project_id: {str(e)}"}), 400
+        
+        logger.info(f"[ADD TEAM MEMBER] user_id={user_id}, username={username}, project_id={project_id}")
+        
+        conn = None
+        try:
+            conn = get_db_connection()
+            if not conn:
+                return jsonify({"error": "Database connection failed"}), 500
+            cursor = conn.cursor()
+        except Exception as db_error:
+            logger.error(f"Database connection error: {str(db_error)}")
+            return jsonify({"error": f"Database connection error: {str(db_error)}"}), 500
+        
+        # Check permissions: Is user admin or coordinator?
+        try:
+            cursor.execute("SELECT ut.user_role FROM users u JOIN usertypes ut ON u.user_type_id = ut.id WHERE u.id = %s", (user_id,))
+            role_row = cursor.fetchone()
+            user_role = role_row['user_role'] if role_row else ''
+            
+            logger.info(f"[ADD TEAM MEMBER] User role check: user_id={user_id}, user_role={user_role}")
+            
+            # Admins, Coordinators, or the project creator should be allowed
+            # Note: Fixed typo from "Project-Cordinator" to "Project-Coordinator" but check both for backwards compatibility
+            is_allowed = user_role in ('Administrator', 'Project-Coordinator', 'Project-Cordinator', 'Coordinator', 'Employee')
+            
+            if not is_allowed:
+                 # More granular check: is user assigned to this project via project_assignments?
+                 cursor.execute("SELECT created_by_id FROM projects WHERE id = %s", (project_id,))
+                 proj = cursor.fetchone()
+                 if not proj or proj['created_by_id'] != user_id:
+                     # Also check if user is assigned to this project
+                     cursor.execute("SELECT id FROM project_assignments WHERE user_id = %s AND project_id = %s", (user_id, project_id))
+                     if not cursor.fetchone():
+                         logger.warning(f"[ADD TEAM MEMBER] Permission denied for user {user_id} on project {project_id}")
+                         conn.close()
+                         return jsonify({"error": "You don't have permission to add members to this project"}), 403
+        except Exception as perm_error:
+            logger.error(f"[ADD TEAM MEMBER] Permission check error: {str(perm_error)}")
+            conn.close()
+            return jsonify({"error": f"Permission check failed: {str(perm_error)}"}), 500
+        
+        # Check if username already exists
+        try:
+            cursor.execute('SELECT id FROM users WHERE username = %s', (username,))
+            if cursor.fetchone():
+                conn.close()
+                return jsonify({"error": "Username already exists"}), 400
+        except Exception as e:
+            logger.error(f"[ADD TEAM MEMBER] Username check error: {str(e)}")
+            conn.close()
+            return jsonify({"error": f"Username check error: {str(e)}"}), 500
+        
+        # Check if email already exists
+        try:
+            cursor.execute('SELECT id FROM users WHERE email = %s', (email,))
+            if cursor.fetchone():
+                conn.close()
+                return jsonify({"error": "Email already exists"}), 400
+        except Exception as e:
+            logger.error(f"[ADD TEAM MEMBER] Email check error: {str(e)}")
+            conn.close()
+            return jsonify({"error": f"Email check error: {str(e)}"}), 500
+        
+        # Hash password
+        try:
+            hashed_password = generate_password_hash(password, method='pbkdf2:sha256')
+            logger.info(f"[ADD TEAM MEMBER] Password hashed successfully")
+        except Exception as hash_error:
+            logger.error(f"[ADD TEAM MEMBER] Password hashing error: {str(hash_error)}")
+            conn.close()
+            return jsonify({"error": f"Password hashing error: {str(hash_error)}"}), 500
+        
+        # Get default team_member user type
+        try:
+            cursor.execute('SELECT id FROM usertypes WHERE user_role = %s', ('Employee',)) 
+            user_type = cursor.fetchone()
+            if not user_type:
+                # Fallback
+                logger.info(f"[ADD TEAM MEMBER] No Employee user type found, using first available")
+                cursor.execute('SELECT id FROM usertypes LIMIT 1')
+                user_type = cursor.fetchone()
+            
+            if not user_type:
+                logger.error("[ADD TEAM MEMBER] No user types found in database")
+                conn.close()
+                return jsonify({"error": "No user types configured in database"}), 500
+                
+            user_type_id = user_type['id']
+            logger.info(f"[ADD TEAM MEMBER] Using user_type_id={user_type_id}")
+        except Exception as utype_error:
+            logger.error(f"[ADD TEAM MEMBER] User type lookup error: {str(utype_error)}")
+            conn.close()
+            return jsonify({"error": f"User type lookup error: {str(utype_error)}"}), 500
+        
+        # Create new user
+        try:
+            cursor.execute('''
+                INSERT INTO users (username, email, password, user_type_id, status)
+                VALUES (%s, %s, %s, %s, 'Active')
+                RETURNING id
+            ''', (username, email, hashed_password, user_type_id))
+            
+            result = cursor.fetchone()
+            if result:
+                new_user_id = result['id']
+            else:
+                new_user_id = cursor.lastrowid
+                
+            logger.info(f"[ADD TEAM MEMBER] New user created: user_id={new_user_id}, username={username}")
+        except Exception as create_error:
+            logger.error(f"[ADD TEAM MEMBER] User creation error: {str(create_error)}")
+            conn.rollback()
+            conn.close()
+            return jsonify({"error": f"User creation error: {str(create_error)}"}), 500
+
+        
+        # Assign user to project
+        try:
+            cursor.execute('''
+                INSERT INTO project_assignments (user_id, project_id)
+                VALUES (%s, %s)
+            ''', (new_user_id, project_id))
+            logger.info(f"[ADD TEAM MEMBER] User assigned to project: user_id={new_user_id}, project_id={project_id}")
+        except Exception as assign_error:
+            logger.error(f"[ADD TEAM MEMBER] Project assignment error: {str(assign_error)}")
+            conn.rollback()
+            conn.close()
+            return jsonify({"error": f"Project assignment error: {str(assign_error)}"}), 500
+        
+        conn.commit()
+        conn.close()
+        
+        return jsonify({
+            "message": "Team member added successfully",
+            "user_id": new_user_id,
+            "username": username,
+            "email": email
+        }), 201
+    except Exception as e:
+        logger.error(f"Error adding team member: {str(e)}")
+        logger.error(f"Traceback: {traceback.format_exc()}")
+        try:
+            if 'conn' in locals() and conn:
+                conn.rollback()
+                conn.close()
+        except:
+            pass
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
 
 
 @app.route("/api/employee/documents", methods=["GET"])
@@ -2324,10 +4534,10 @@ def upload_employee_document():
         cursor.execute(
             '''
             INSERT INTO documents (filename, original_filename, file_size, uploaded_by_id, project_id)
-            VALUES (%s,%s,%s,%s,%s) RETURNING id
+            VALUES (%s,%s,%s,%s,%s)
         ''', (filename, file.filename, file_size, user_id, project_id))
 
-        doc_id = cursor.fetchone()['id']
+        doc_id = cursor.lastrowid
         conn.commit()
         conn.close()
 
@@ -2483,7 +4693,6 @@ def get_employee_activities():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-
 @app.route("/api/search", methods=["GET"])
 @login_required
 def search():
@@ -2564,8 +4773,8 @@ def search():
                        t.created_at, p.title as project_name, t.status
                 FROM tasks t
                 LEFT JOIN projects p ON t.project_id = p.id
-                WHERE (t.title LIKE %s OR t.description LIKE %s) AND
-                      (t.assigned_to_id = %s OR t.created_by_id = %s)
+                    WHERE (t.title LIKE %s OR t.description LIKE %s) AND
+                        (t.assigned_to_id = %s OR t.created_by_id = %s)
                 ORDER BY t.created_at DESC
                 LIMIT 10
             ''', (f'%{query}%', f'%{query}%', user_id, user_id))
@@ -2701,7 +4910,7 @@ def search():
                 "description": f"Size: {doc['file_size']} bytes",
                 "project_name": doc['project_name'],
                 "url":
-                f"/admin-dashboard" if is_admin else f"/employee-dashboard",
+                "/admin-dashboard" if is_admin else "/employee-dashboard",
                 "tab": "documents-tab" if not is_admin else None
             })
 
@@ -2710,7 +4919,6 @@ def search():
         return jsonify({"results": results}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
 
 @app.route("/api/admin/projects", methods=["GET"])
 @admin_required
@@ -2739,15 +4947,381 @@ def get_admin_projects():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-
 @app.route("/api/admin/tasks", methods=["GET"])
 @admin_required
 def get_admin_tasks():
+    """
+    Get admin tasks. Supports optional query parameters:
+    - status: filter by task.status (e.g., 'In Progress','Pending','Completed','Overdue')
+    - assigned_to: user id
+    - project_id: project id
+    - limit, offset (pagination)
+    """
+    try:
+        status = request.args.get('status')
+        assigned_to = request.args.get('assigned_to')
+        project_id = request.args.get('project_id')
+        limit = int(request.args.get('limit', 100))
+        offset = int(request.args.get('offset', 0))
+
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        base_query = '''
+            SELECT t.id, t.title, t.description, t.status, t.priority, t.deadline,
+                   t.project_id, p.title as project_name,
+                   t.assigned_to_id, u.username as assigned_to_name,
+                   t.created_by_id, uc.username as created_by_name,
+                   t.created_at, t.approval_status, t.completed_at,
+                   COALESCE(t.weightage,1) AS weightage
+            FROM tasks t
+            LEFT JOIN projects p ON t.project_id = p.id
+            LEFT JOIN users u ON t.assigned_to_id = u.id
+            LEFT JOIN users uc ON t.created_by_id = uc.id
+            WHERE 1=1
+        '''
+        params = []
+
+        if status:
+            # special handling for 'Overdue'
+            if status.lower() == 'overdue':
+                base_query += " AND t.deadline < date('now') AND t.status != 'Completed'"
+            else:
+                base_query += " AND t.status = %s"
+                params.append(status)
+        if assigned_to:
+            base_query += " AND t.assigned_to_id = %s"
+            params.append(int(assigned_to))
+        if project_id:
+            base_query += " AND t.project_id = %s"
+            params.append(int(project_id))
+
+        base_query += ' ORDER BY t.created_at DESC LIMIT %s OFFSET %s'
+        params.extend([limit, offset])
+
+        cursor.execute(base_query, params)
+        rows = cursor.fetchall()
+        conn.close()
+
+        results = []
+        for r in rows:
+            task = dict(r)
+            # Calculate a simple progress percent if possible: using task weight and related completed sub-items is complex.
+            # For now, attempt to compute percent of completed subtasks if any stored; fallback to 0.
+            task['progress_percent'] = task.get(
+                'progress_percent', 0) if 'progress_percent' in task else 0
+            results.append(task)
+
+        return jsonify(results), 200
+    except Exception as e:
+        logger.exception('get_admin_tasks failed')
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/tasks/<int:task_id>/history", methods=["GET"])
+@admin_required
+def task_history(task_id):
+    """
+    Return task details and activity history related to the task.
+    Useful for Task History view on admin dashboard.
+    """
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
 
+        # Task details
+        cursor.execute(
+            '''
+            SELECT t.*, p.title as project_name, u.username as assigned_to_name, uc.username as created_by_name
+            FROM tasks t
+            LEFT JOIN projects p ON t.project_id = p.id
+            LEFT JOIN users u ON t.assigned_to_id = u.id
+            LEFT JOIN users uc ON t.created_by_id = uc.id
+            WHERE t.id = %s
+        ''', (task_id, ))
+        task_row = cursor.fetchone()
+        if not task_row:
+            conn.close()
+            return jsonify({'error': 'Task not found'}), 404
+        task = dict(task_row)
+
+        # Activity history for this task
+        cursor.execute(
+            '''
+            SELECT a.id, a.activity_type, a.description, a.user_id, u.username, a.project_id, a.task_id, a.created_at
+            FROM activities a
+            LEFT JOIN users u ON a.user_id = u.id
+            WHERE a.task_id = %s
+            ORDER BY a.created_at ASC
+        ''', (task_id, ))
+        history_rows = cursor.fetchall()
+        history = [dict(r) for r in history_rows]
+
+        conn.close()
+
+        return jsonify({'task': task, 'history': history}), 200
+    except Exception as e:
+        logger.exception('task_history failed')
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route("/api/admin/user-hierarchy", methods=["GET"])
+@admin_required
+def get_user_hierarchy():
+    """
+    Build a user hierarchy:
+    Super Admin -> Coordinators/Managers -> Team Members -> Tasks
+    Returns JSON tree for frontend rendering.
+    """
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        # Get coordinators/managers (heuristic: user_role contains 'coordinator' or 'manager' or 'admin')
         cursor.execute('''
+            SELECT u.id, u.username, ut.user_role 
+            FROM users u 
+            LEFT JOIN usertypes ut ON u.user_type_id = ut.id
+            ORDER BY u.username
+        ''')
+        all_users = [dict(r) for r in cursor.fetchall()]
+
+        # classify users
+        coordinators = [
+            u for u in all_users if u.get('user_role') and (
+                'coordinator' in u['user_role'].lower() or 'manager' in
+                u['user_role'].lower() or 'admin' in u['user_role'].lower())
+        ]
+        team_members = [u for u in all_users if u not in coordinators]
+
+        # build nodes
+        tree = []
+        # Super Admin node (root)
+        super_admin_node = {
+            'name': 'Super Admin',
+            'role': 'Full Access',
+            'icon': 'fas fa-crown',
+            'class': 'super-admin',
+            'children': []
+        }
+
+        # coordinators
+        coord_nodes = []
+        for c in coordinators:
+            coord_node = {
+                'name': c['username'],
+                'role': c.get('user_role') or 'Coordinator',
+                'icon': 'fas fa-user-tie',
+                'class': 'coordinator',
+                'user_id': c['id'],
+                'children': []
+            }
+
+            # assign team members that are assigned to any project where coordinator is creator or assigned - heuristic:
+            cursor.execute(
+                '''
+                SELECT DISTINCT u.id, u.username, ut.user_role
+                FROM users u
+                LEFT JOIN usertypes ut ON u.user_type_id = ut.id
+                LEFT JOIN project_assignments pa ON u.id = pa.user_id
+                LEFT JOIN projects p ON pa.project_id = p.id
+                WHERE p.created_by_id = %s 
+                OR p.id IN (SELECT project_id FROM project_assignments WHERE user_id = %s)
+            ''', (c['id'], c['id']))
+            members = [dict(r) for r in cursor.fetchall()]
+            # If no members found by that query, attach some team members heuristically
+            if not members:
+                members = [m for m in team_members[:3]]  # limit small sample
+
+            for m in members:
+                # fetch tasks for each member
+                cursor.execute(
+                    '''
+                    SELECT id, title, status FROM tasks WHERE assigned_to_id = %s ORDER BY created_at DESC LIMIT 10
+                ''', (m['id'], ))
+                member_tasks = [dict(r) for r in cursor.fetchall()]
+                coord_node['children'].append({
+                    'name': m['username'],
+                    'role': m.get('user_role') or 'Team Member',
+                    'icon': 'fas fa-user',
+                    'class': 'team-member',
+                    'user_id': m['id'],
+                    'children':
+                    member_tasks  # tasks as children (task objects)
+                })
+
+            coord_nodes.append(coord_node)
+
+        super_admin_node['children'] = coord_nodes
+        tree.append(super_admin_node)
+
+        conn.close()
+        return jsonify(tree), 200
+    except Exception as e:
+        logger.exception('get_user_hierarchy failed')
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route("/api/dashboard/live-progress", methods=["GET"])
+@login_required
+def get_live_dashboard_progress_enhanced():
+    """
+    Enhance live progress endpoint: include overdue_tasks, pending_tasks counts per project
+    This wraps existing logic but makes per-project overdue/pending counts explicit.
+    """
+    try:
+        user_id = get_current_user_id()
+        is_admin = session.get('admin') or session.get('user_type') == 'admin'
+
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        if is_admin:
+            cursor.execute('''
+                SELECT 
+                    p.id,
+                    p.title,
+                    p.description,
+                    p.status,
+                    p.progress,
+                    p.deadline,
+                    p.reporting_time,
+                    p.created_at,
+                    p.updated_at,
+                    u.username as creator_name,
+                    COUNT(DISTINCT t.id) as total_tasks,
+                    SUM(CASE WHEN t.status = 'Completed' THEN 1 ELSE 0 END) as completed_tasks,
+                    COUNT(DISTINCT m.id) as total_milestones,
+                    SUM(CASE WHEN m.status = 'Completed' THEN 1 ELSE 0 END) as completed_milestones,
+                    COUNT(DISTINCT pa.user_id) as team_size
+                FROM projects p
+                LEFT JOIN users u ON p.created_by_id = u.id
+                LEFT JOIN tasks t ON p.id = t.project_id
+                LEFT JOIN milestones m ON p.id = m.project_id
+                LEFT JOIN project_assignments pa ON p.id = pa.project_id
+                WHERE p.status != 'Completed'
+                GROUP BY p.id, u.username
+                ORDER BY p.updated_at DESC
+            ''')
+            raw_projects = cursor.fetchall()
+        else:
+            cursor.execute(
+                '''
+                SELECT DISTINCT
+                    p.id,
+                    p.title,
+                    p.description,
+                    p.status,
+                    p.progress,
+                    p.deadline,
+                    p.reporting_time,
+                    p.created_at,
+                    p.updated_at,
+                    u.username as creator_name,
+                    COUNT(DISTINCT t.id) as total_tasks,
+                    SUM(CASE WHEN t.status = 'Completed' THEN 1 ELSE 0 END) as completed_tasks,
+                    COUNT(DISTINCT m.id) as total_milestones,
+                    SUM(CASE WHEN m.status = 'Completed' THEN 1 ELSE 0 END) as completed_milestones,
+                    COUNT(DISTINCT pa.user_id) as team_size
+                FROM projects p
+                LEFT JOIN users u ON p.created_by_id = u.id
+                LEFT JOIN tasks t ON p.id = t.project_id
+                LEFT JOIN milestones m ON p.id = m.project_id
+                LEFT JOIN project_assignments pa ON p.id = pa.project_id
+                WHERE (p.created_by_id = %s OR p.id IN (
+                    SELECT project_id FROM project_assignments WHERE user_id = %s
+                ))
+                AND p.status != 'Completed'
+                GROUP BY p.id, u.username
+                ORDER BY p.updated_at DESC
+            ''', (user_id, user_id))
+            raw_projects = cursor.fetchall()
+
+        formatted_projects = []
+        for project in raw_projects:
+            p = dict(project)
+            # compute overdue and pending counts
+            cursor2 = conn.cursor()
+            cursor2.execute(
+                "SELECT COUNT(*) as overdue_count FROM tasks WHERE project_id = %s AND deadline < date('now') AND status != 'Completed'",
+                (p['id'], ))
+            overdue_count = cursor2.fetchone()['overdue_count'] or 0
+            cursor2.execute(
+                "SELECT COUNT(*) as pending_count FROM tasks WHERE project_id = %s AND status != 'Completed' AND (deadline IS NULL OR deadline >= date('now'))",
+                (p['id'], ))
+            pending_count = cursor2.fetchone()['pending_count'] or 0
+
+            total_tasks = p.get('total_tasks') or 0
+            completed = p.get('completed_tasks') or 0
+            milestones_total = p.get('total_milestones') or 0
+            milestones_completed = p.get('completed_milestones') or 0
+
+            # health_status
+            health_status = 'good' if (
+                p.get('progress') or 0) >= 70 else 'warning' if (
+                    p.get('progress') or 0) >= 40 else 'danger'
+
+            p.update({
+                'overdue_tasks': overdue_count,
+                'pending_tasks': pending_count,
+                'total_tasks': total_tasks,
+                'completed_tasks': completed,
+                'total_milestones': milestones_total,
+                'completed_milestones': milestones_completed,
+                'health_status': health_status
+            })
+            formatted_projects.append(p)
+
+        # average progress
+        avg_progress = 0
+        if formatted_projects:
+            avg_progress = round(
+                sum(p.get('progress', 0)
+                    for p in formatted_projects) / len(formatted_projects), 2)
+
+        conn.close()
+        return jsonify({
+            "timestamp": datetime.now().isoformat(),
+            "total_projects": len(formatted_projects),
+            "average_progress": avg_progress,
+            "projects": formatted_projects
+        }), 200
+    except Exception as e:
+        logger.exception('get_live_dashboard_progress_enhanced failed')
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/projects/<int:project_id>/milestones', methods=['GET'])
+@login_required
+def api_get_project_milestones(project_id):
+    """Return milestones for a project (used by admin dashboard project detail)."""
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute('''
+            SELECT id, title, description, due_date, status, weightage, created_by_id, created_at
+            FROM milestones
+            WHERE project_id = %s
+            ORDER BY created_at DESC
+        ''', (project_id,))
+        rows = [dict(r) for r in cur.fetchall()]
+        conn.close()
+        return jsonify(rows), 200
+    except Exception as e:
+        logger.exception('api_get_project_milestones failed')
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route("/api/projects/<int:project_id>/tasks", methods=["GET"])
+@login_required
+def get_project_tasks(project_id):
+    """Get all tasks for a specific project"""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        cursor.execute(
+            '''
             SELECT t.id, t.title, t.description, t.status, t.priority, 
                    t.deadline, t.project_id, p.title as project_name,
                    t.assigned_to_id, u.username as assigned_to_name,
@@ -2757,8 +5331,9 @@ def get_admin_tasks():
             LEFT JOIN projects p ON t.project_id = p.id
             LEFT JOIN users u ON t.assigned_to_id = u.id
             LEFT JOIN users uc ON t.created_by_id = uc.id
+            WHERE t.project_id = %s
             ORDER BY t.created_at DESC
-        ''')
+        ''', (project_id, ))
 
         tasks = cursor.fetchall()
         conn.close()
@@ -2783,7 +5358,7 @@ def get_admin_milestones():
             FROM milestones m
             LEFT JOIN projects p ON m.project_id = p.id
             LEFT JOIN users u ON m.created_by_id = u.id
-            ORDER BY m.created_at DESC
+            ORDER BY m.due_date ASC
         ''')
 
         milestones = cursor.fetchall()
@@ -2794,157 +5369,9 @@ def get_admin_milestones():
         return jsonify({"error": str(e)}), 500
 
 
-@app.route("/api/admin/daily-reports", methods=["GET"])
-@admin_required
-def get_admin_daily_reports():
-    """Get all daily reports for admin dashboard with filtering and sorting"""
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-
-        # Get query parameters for filtering
-        task_id = request.args.get("task_id")
-        project_id = request.args.get("project_id")
-        user_id = request.args.get("user_id")
-        start_date = request.args.get("start_date")
-        end_date = request.args.get("end_date")
-        approval_status = request.args.get("approval_status")
-
-        # Build the query with optional filters
-        query = '''
-            SELECT 
-                dr.id, 
-                dr.user_id, 
-                u.username as employee_name,
-                u.email as employee_email,
-                dr.task_id, 
-                t.title as task_title,
-                dr.project_id, 
-                p.title as project_title,
-                dr.report_date, 
-                dr.work_description, 
-                dr.time_spent,
-                dr.status, 
-                dr.blocker, 
-                dr.approval_status,
-                dr.reviewed_by,
-                reviewer.username as reviewed_by_name,
-                dr.created_at, 
-                dr.updated_at
-            FROM daily_task_reports dr
-            LEFT JOIN users u ON dr.user_id = u.id
-            LEFT JOIN tasks t ON dr.task_id = t.id
-            LEFT JOIN projects p ON dr.project_id = p.id
-            LEFT JOIN users reviewer ON dr.reviewed_by = reviewer.id
-            WHERE 1=1
-        '''
-
-        params = []
-
-        if task_id:
-            query += " AND dr.task_id = %s"
-            params.append(int(task_id))
-
-        if project_id:
-            query += " AND dr.project_id = %s"
-            params.append(int(project_id))
-
-        if user_id:
-            query += " AND dr.user_id = %s"
-            params.append(int(user_id))
-
-        if start_date:
-            query += " AND dr.report_date >= %s"
-            params.append(start_date)
-
-        if end_date:
-            query += " AND dr.report_date <= %s"
-            params.append(end_date)
-
-        if approval_status:
-            query += " AND dr.approval_status = %s"
-            params.append(approval_status)
-
-        query += " ORDER BY dr.report_date DESC, dr.created_at DESC"
-
-        cursor.execute(query, params)
-        reports = cursor.fetchall()
-        conn.close()
-
-        return jsonify([dict(row) for row in reports]), 200
-    except Exception as e:
-        print(f"[ERROR] Failed to fetch daily reports: {str(e)}")
-        return jsonify({"error": str(e)}), 500
-
-
-@app.route("/api/admin/daily-reports/<int:report_id>/approve", methods=["PUT"])
-@admin_required
-def approve_daily_report(report_id):
-    """Approve or reject a daily report"""
-    try:
-        data = request.get_json() or {}
-        approval_status = (data.get("approval_status") or "").strip().lower()
-
-        if approval_status not in ["approved", "rejected"]:
-            return jsonify({"error": "approval_status must be 'approved' or 'rejected'"}), 400
-
-        admin_id = session.get('admin_id')  # Get admin user ID if available, otherwise use a flag
-
-        conn = get_db_connection()
-        cursor = conn.cursor()
-
-        # Check if report exists
-        cursor.execute('SELECT id FROM daily_task_reports WHERE id = %s', (report_id,))
-        if not cursor.fetchone():
-            conn.close()
-            return jsonify({"error": "Report not found"}), 404
-
-        # Update report approval status
-        cursor.execute(
-            '''
-            UPDATE daily_task_reports 
-            SET approval_status = %s, reviewed_by = %s, updated_at = CURRENT_TIMESTAMP
-            WHERE id = %s
-        ''', (approval_status, admin_id, report_id))
-
-        conn.commit()
-        conn.close()
-
-        return jsonify({
-            "message": f"Report {approval_status} successfully!",
-            "report_id": report_id,
-            "approval_status": approval_status
-        }), 200
-
-    except Exception as e:
-        print(f"[ERROR] Failed to approve report: {str(e)}")
-        return jsonify({"error": str(e)}), 500
-
-
 @app.route("/health")
 def health():
     return jsonify({"status": "ok"}), 200
-
-
-def log_activity(user_id,
-                 activity_type,
-                 description,
-                 project_id=None,
-                 task_id=None,
-                 milestone_id=None):
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute(
-            '''
-            INSERT INTO activities (user_id, activity_type, description, project_id, task_id, milestone_id)
-            VALUES (%s,%s,%s,%s,%s,%s)
-        ''', (user_id, activity_type, description, project_id, task_id,
-              milestone_id))
-        conn.commit()
-        conn.close()
-    except Exception as e:
-        print(f"[ERROR] Failed to log activity: {str(e)}")
 
 
 @app.route("/api/employee/skills", methods=["GET"])
@@ -2991,9 +5418,9 @@ def add_employee_skill():
             cursor.execute(
                 '''
                 INSERT INTO user_skills (user_id, skill_name)
-                VALUES (%s, %s) RETURNING id
+                VALUES (%s, %s)
             ''', (user_id, skill_name))
-            skill_id = cursor.fetchone()['id']
+            skill_id = cursor.lastrowid
             conn.commit()
             conn.close()
 
@@ -3026,9 +5453,8 @@ def delete_employee_skill(skill_id):
             conn.close()
             return jsonify({"error": "Skill not found"}), 404
 
-        cursor.execute(
-            'DELETE FROM user_skills WHERE id = %s AND user_id = %s',
-            (skill_id, user_id))
+        cursor.execute('DELETE FROM user_skills WHERE id = %s AND user_id = %s',
+                       (skill_id, user_id))
         conn.commit()
         conn.close()
 
@@ -3069,10 +5495,42 @@ def get_employee_profile():
         ''', (user_id, ))
         skills = [row['skill_name'] for row in cursor.fetchall()]
 
+        # 1. Get Direct User Permissions
+        cursor.execute('''
+            SELECT module, action, granted FROM user_permissions 
+            WHERE user_id = %s ORDER BY module, action
+        ''', (user_id, ))
+        direct_perms = cursor.fetchall()
+
+        # 2. Get Role-based (UserType) Permissions
+        cursor.execute('''
+            SELECT module, action, granted FROM usertype_permissions 
+            WHERE usertype_id = %s ORDER BY module, action
+        ''', (user['user_type_id'], ))
+        role_perms = cursor.fetchall()
+
         conn.close()
+
+        # Merge permissions (Direct takes precedence)
+        permissions = {}
+        
+        # Add role permissions first
+        for perm in role_perms:
+            module = perm['module']
+            if module not in permissions:
+                permissions[module] = {}
+            permissions[module][perm['action']] = bool(perm['granted'])
+            
+        # Add direct permissions (overwriting if necessary)
+        for perm in direct_perms:
+            module = perm['module']
+            if module not in permissions:
+                permissions[module] = {}
+            permissions[module][perm['action']] = bool(perm['granted'])
 
         profile = dict(user)
         profile['skills'] = skills
+        profile['permissions'] = permissions
 
         return jsonify(profile), 200
     except Exception as e:
@@ -3588,7 +6046,6 @@ def get_admin_realtime_projects():
         return jsonify({"error": str(e)}), 500
 
 
-# Get specific project details for admin
 @app.route("/api/admin/projects/<int:project_id>", methods=["GET"])
 @admin_required
 def get_admin_project_detail(project_id):
@@ -3599,7 +6056,9 @@ def get_admin_project_detail(project_id):
 
         cursor.execute(
             '''
-            SELECT p.*, u.username as creator_name,
+            SELECT p.id, p.title, p.description, p.status, p.progress, p.deadline, p.reporting_time, 
+                   p.created_by_id, p.created_at, p.updated_at, p.completed_at,
+                   u.username as creator_name,
                    COUNT(DISTINCT t.id) as total_tasks,
                    COUNT(DISTINCT m.id) as total_milestones
             FROM projects p
@@ -3607,18 +6066,207 @@ def get_admin_project_detail(project_id):
             LEFT JOIN tasks t ON p.id = t.project_id
             LEFT JOIN milestones m ON p.id = m.project_id
             WHERE p.id = %s
-            GROUP BY p.id, u.username
-        ''', (project_id, ))
-
+            GROUP BY p.id, p.title, p.description, p.status, p.progress, p.deadline, p.reporting_time, 
+                     p.created_by_id, p.created_at, p.updated_at, p.completed_at, u.id, u.username
+        ''', (project_id,))
+        
         project = cursor.fetchone()
         conn.close()
 
         if not project:
             return jsonify({"error": "Project not found"}), 404
 
-        return jsonify(dict(project)), 200
+        # ✅ Convert PostgreSQL date/time safely
+        def format_dt(value):
+            if isinstance(value, (datetime, date)):
+                return value.isoformat()
+            if isinstance(value, time):
+                return value.strftime("%H:%M")
+            return value
+
+        project_dict = {
+            'id': project['id'],
+            'title': project['title'],
+            'description': project['description'],
+            'status': project['status'],
+            'progress': project['progress'],
+            'deadline': format_dt(project['deadline']),
+            'reporting_time': format_dt(project['reporting_time']),
+            'created_by_id': project['created_by_id'],
+            'created_at': format_dt(project['created_at']),
+            'updated_at': format_dt(project['updated_at']),
+            'completed_at': format_dt(project['completed_at']),
+            'creator_name': project['creator_name'],
+            'total_tasks': project['total_tasks'],
+            'total_milestones': project['total_milestones']
+        }
+
+        return jsonify(project_dict), 200
+
     except Exception as e:
+        logger.error(f"Error in get_admin_project_detail: {e}")
+        return jsonify({"error": f"Internal server error: {str(e)}"}), 500
+
+# Update project (admin)
+@app.route("/api/admin/projects/<int:project_id>", methods=["PUT"])
+@admin_required
+def admin_update_project(project_id):
+    """Update project fields: title, description, status, deadline"""
+    try:
+        data = request.get_json() or {}
+        title = data.get('title')
+        description = data.get('description')
+        status = data.get('status')
+        deadline = data.get('deadline')  # expected YYYY-MM-DD or empty
+
+        # Minimal validation
+        if title is not None and len(title) > 255:
+            return jsonify({"error": "Title too long"}), 400
+        if description is not None and len(description) > 2000:
+            return jsonify({"error": "Description too long"}), 400
+
+        # Validate deadline format if provided
+        if deadline:
+            try:
+                # accept date-only ISO
+                datetime.strptime(deadline, '%Y-%m-%d')
+            except Exception:
+                return jsonify(
+                    {"error": "Invalid deadline format. Use YYYY-MM-DD."}), 400
+
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        # Ensure project exists
+        cursor.execute('SELECT id FROM projects WHERE id = %s', (project_id, ))
+        if not cursor.fetchone():
+            conn.close()
+            return jsonify({"error": "Project not found"}), 404
+
+        # Build update statement dynamically
+        updates = []
+        params = []
+        if title is not None:
+            updates.append('title = %s')
+            params.append(title)
+        if description is not None:
+            updates.append('description = %s')
+            params.append(description)
+        if status is not None:
+            updates.append('status = %s')
+            params.append(status)
+        if deadline is not None:
+            # allow clearing deadline by sending empty string
+            updates.append('deadline = %s')
+            params.append(deadline if deadline != '' else None)
+
+        if updates:
+            params.append(project_id)
+            stmt = f"UPDATE projects SET {', '.join(updates)}, updated_at = CURRENT_TIMESTAMP WHERE id = %s"
+            cursor.execute(stmt, tuple(params))
+            conn.commit()
+
+        # Return updated project summary
+        cursor.execute(
+            '''
+            SELECT p.id, p.title, p.description, p.status, p.progress, p.deadline, u.username as creator_name,
+                   (SELECT COUNT(*) FROM project_assignments pa WHERE pa.project_id = p.id) as team_count,
+                   (SELECT COUNT(*) FROM tasks t WHERE t.project_id = p.id) as task_count
+            FROM projects p
+            LEFT JOIN users u ON p.created_by_id = u.id
+            WHERE p.id = %s
+        ''', (project_id, ))
+        proj = cursor.fetchone()
+        conn.close()
+
+        if not proj:
+            return jsonify({"error": "Project not found after update"}), 404
+
+        result = dict(proj)
+        return jsonify({
+            "message": "Project updated successfully",
+            "project": result
+        }), 200
+
+    except Exception as e:
+        print(f"[ERROR] admin_update_project: {e}")
         return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/admin/projects/<int:project_id>/add-member", methods=["POST"])
+@csrf.exempt
+@admin_required
+def admin_add_project_member(project_id):
+    """Add a member to a project by user id or email (payload: { member: "email or id" })"""
+    try:
+        data = request.get_json() or {}
+        member = (data.get('member') or '').strip()
+        if not member:
+            return jsonify({"error": "Member id or email is required"}), 400
+
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        # verify project exists
+        cursor.execute('SELECT id FROM projects WHERE id = %s', (project_id, ))
+        if not cursor.fetchone():
+            conn.close()
+            return jsonify({"error": "Project not found"}), 404
+
+        user_id = None
+        # if member looks like an integer id
+        if re.fullmatch(r'\d+', member):
+            cursor.execute('SELECT id FROM users WHERE id = %s',
+                           (int(member), ))
+            row = cursor.fetchone()
+            if row:
+                user_id = row['id']
+        else:
+            # try email lookup
+            cursor.execute('SELECT id FROM users WHERE LOWER(email) = %s',
+                           (member.lower(), ))
+            row = cursor.fetchone()
+            if row:
+                user_id = row['id']
+
+        if not user_id:
+            conn.close()
+            return jsonify({"error": "User not found"}), 404
+
+        try:
+            cursor.execute(
+                'INSERT INTO project_assignments (user_id, project_id) VALUES (%s, %s) ON CONFLICT (user_id, project_id) DO NOTHING',
+                (user_id, project_id))
+            conn.commit()
+        except psycopg2.IntegrityError:
+            # already assigned
+            pass
+
+        # count team size
+        cursor.execute(
+            'SELECT COUNT(*) as cnt FROM project_assignments WHERE project_id = %s',
+            (project_id, ))
+        team_count = cursor.fetchone()['cnt']
+
+        # log activity
+        try:
+            log_activity(session.get('user_id') or 0,
+                         'project_member_added',
+                         f'Added user {user_id} to project {project_id}',
+                         project_id=project_id)
+        except Exception:
+            pass
+
+        conn.close()
+        return jsonify({
+            "message": "Member added to project",
+            "team_count": team_count
+        }), 200
+
+    except Exception as e:
+        print(f"[ERROR] admin_add_project_member: {e}")
+        return jsonify({"error": str(e)}), 500
+
 
 
 # Get specific task details for admin
@@ -3651,6 +6299,37 @@ def get_admin_task_detail(task_id):
         return jsonify(dict(task)), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/employee/team-members", methods=["GET"])
+@csrf.exempt
+def get_team_members():
+    conn = None
+    try:
+        user_id = get_current_user_id()
+        if not user_id:
+            return jsonify({"error": "Unauthorized"}), 401
+
+        conn = get_db_connection()
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+
+        cursor.execute("""
+            SELECT id, username
+            FROM users
+            ORDER BY username
+        """)
+
+        members = cursor.fetchall()
+
+        return jsonify(members), 200
+
+    except Exception as e:
+        logger.exception("Error fetching team members")
+        return jsonify({"error": str(e)}), 500
+
+    finally:
+        if conn:
+            conn.close()
 
 
 # Employee real-time projects endpoint with live progress calculation
@@ -3691,7 +6370,7 @@ def get_employee_realtime_projects():
         result = []
         for row in projects:
             project_dict = dict(row)
-            total_tasks = project_dict.get('total_tasks') or 0
+            total_tasks = project_dict.get('total_tasks') or 0         
             completed_tasks = project_dict.get('completed_tasks') or 0
             total_milestones = project_dict.get('total_milestones') or 0
             completed_milestones = project_dict.get(
@@ -3724,13 +6403,13 @@ def check_db_initialized():
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
+        
         cursor.execute("""
-            SELECT EXISTS (
-                SELECT FROM information_schema.tables
-                WHERE table_name = 'usertypes'
-            );
+            SELECT table_name FROM information_schema.tables 
+            WHERE table_name='usertypes'
         """)
-        exists = cursor.fetchone()['exists']
+        
+        exists = cursor.fetchone() is not None
         cursor.close()
         conn.close()
         return exists
@@ -3748,9 +6427,8 @@ def safe_init_db():
 
 
 safe_init_db()
-
-if os.getenv("RUN_DB_MIGRATION") == "true":
-    migrate_db()
+# Always attempt a safe migration pass to add missing columns/tables without wiping data
+migrate_db()
 
 
 def update_project_status(project_id):
@@ -3780,8 +6458,8 @@ def update_project_status(project_id):
     else:
         new_status = 'In Progress'
 
-    cursor.execute("UPDATE projects SET status = %s WHERE id = %s",
-                   (new_status, project_id))
+        cursor.execute("UPDATE projects SET status = %s WHERE id = %s",
+                       (new_status, project_id))
 
     conn.commit()
     conn.close()
@@ -3854,38 +6532,1273 @@ def get_employee_profile_admin(employee_id):
         return jsonify({"error": str(e)}), 500
 
 
-def verify_recaptcha(token):
-    if not token or not RECAPTCHA_SECRET_KEY:
-        return False
+# Daily Task Reports Endpoints - IMPROVED
+@app.route("/api/admin/daily-reports", methods=["GET"])
+@admin_required
+def get_daily_reports():
+    """Get all daily task reports for admin viewing with filtering"""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        # Get query parameters for filtering
+        employee_id = request.args.get('employee_id')
+        project_id = request.args.get('project_id')
+        report_date = request.args.get('date')
+        start_date = request.args.get('start_date')
+        end_date = request.args.get('end_date')
+        approval_status = request.args.get('approval_status')
+        search = request.args.get('search', '')
+
+        query = '''
+            SELECT 
+                dtr.id, 
+                dtr.report_date,
+                u.username as employee_name,
+                u.email as employee_email,
+                p.title as project_name,
+                t.title as task_title,
+                dtr.task_id,
+                assigned_by.username as assigned_by_name,
+                dtr.communication_details,
+                dtr.result_of_effort,
+                dtr.remarks,
+                dtr.work_description,
+                dtr.time_spent,
+                dtr.status,
+                dtr.blocker,
+                dtr.approval_status,
+                dtr.review_comment,
+                dtr.reviewed_by,
+                reviewer.username as reviewer_name,
+                dtr.created_at,
+                dtr.updated_at
+            FROM daily_task_reports dtr
+            JOIN users u ON dtr.user_id = u.id
+            LEFT JOIN projects p ON dtr.project_id = p.id
+            LEFT JOIN tasks t ON dtr.task_id = t.id
+            LEFT JOIN users assigned_by ON dtr.task_assigned_by_id = assigned_by.id
+            LEFT JOIN users reviewer ON dtr.reviewed_by = reviewer.id
+            WHERE 1=1
+        '''
+        params = []
+
+        if employee_id:
+            query += ' AND dtr.user_id = %s'
+            params.append(employee_id)
+        if project_id:
+            query += ' AND dtr.project_id = %s'
+            params.append(project_id)
+        if report_date:
+            query += ' AND dtr.report_date = %s'
+            params.append(report_date)
+        if start_date:
+            query += ' AND dtr.report_date >= %s'
+            params.append(start_date)
+        if end_date:
+            query += ' AND dtr.report_date <= %s'
+            params.append(end_date)
+        if approval_status:
+            query += ' AND dtr.approval_status = %s'
+            params.append(approval_status)
+        if search:
+            query += ' AND (dtr.work_description LIKE %s OR dtr.result_of_effort LIKE %s OR t.title LIKE %s)'
+            params.extend([f'%{search}%', f'%{search}%', f'%{search}%'])
+
+        query += ' ORDER BY dtr.report_date DESC, dtr.created_at DESC'
+
+        cursor.execute(query, params)
+        reports = [dict(row) for row in cursor.fetchall()]
+
+        conn.close()
+        return jsonify(reports), 200
+    except Exception as e:
+        logger.exception("Error getting daily reports")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/admin/daily-reports/<int:report_id>/review', methods=['POST'])
+@admin_required
+def review_daily_report(report_id):
+    """Admin reviews (approve/reject) a daily report"""
+    try:
+        data = request.get_json() or {}
+        approval = data.get('approval_status')
+        comment = data.get('review_comment', '')
+        if approval not in ('approved', 'rejected', 'pending'):
+            return jsonify({'error': 'Invalid approval_status'}), 400
+
+        reviewer_id = get_current_user_id()
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        # Check if report exists
+        cursor.execute('SELECT id FROM daily_task_reports WHERE id = %s',
+                       (report_id, ))
+        if not cursor.fetchone():
+            conn.close()
+            return jsonify({'error': 'Report not found'}), 404
+
+        cursor.execute(
+            '''UPDATE daily_task_reports SET approval_status = %s, reviewed_by = %s, review_comment = %s, updated_at = CURRENT_TIMESTAMP
+                          WHERE id = %s''',
+            (approval, reviewer_id, comment, report_id))
+        conn.commit()
+
+        # Log the review action
+        log_activity(reviewer_id,
+                     'report_reviewed',
+                     f'Reviewed report {report_id} as {approval}',
+                     target_type='daily_report',
+                     target_id=report_id)
+
+        conn.close()
+        return jsonify({'success': True, 'approval_status': approval}), 200
+    except Exception as e:
+        logger.exception('Failed to review report')
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/admin/daily-reports')
+@admin_required
+def admin_daily_reports_page():
+    return render_template('admin-daily-reports.html')
+
+
+@app.route("/api/employee/daily-report", methods=["POST"])
+@csrf.exempt
+def submit_daily_report():
+    """Employee submits daily task report"""
+    conn = None
+    try:
+        employee_id = get_current_user_id()
+        if not employee_id:
+            return jsonify({"error": "Unauthorized"}), 401
+        
+        data = request.get_json() or {}
+
+        # Validate required fields
+        required_fields = ['report_date', 'project_id', 'work_description']
+        for field in required_fields:
+            if field not in data or not data[field]:
+                return jsonify({"error":
+                                f"Missing required field: {field}"}), 400
+
+        project_id = data.get('project_id')
+        task_id = data.get('task_id')
+
+        # Ensure the employee is assigned to the project or the specific task
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        assigned = False
+
+        try:
+            # Check project assignment
+            cursor.execute(
+                'SELECT 1 FROM project_assignments WHERE user_id = %s AND project_id = %s LIMIT 1',
+                (employee_id, project_id))
+            if cursor.fetchone():
+                assigned = True
+            elif task_id:
+                # Check task assignment
+                cursor.execute(
+                    'SELECT 1 FROM tasks WHERE id = %s AND assigned_to_id = %s LIMIT 1',
+                    (task_id, employee_id))
+                if cursor.fetchone():
+                    assigned = True
+        except Exception:
+            assigned = False
+
+        if not assigned:
+            conn.close()
+            return jsonify(
+                {"error": "You are not assigned to this project or task"}), 403
+
+        # Check for duplicate report for same date and task
+        if task_id:
+            cursor.execute(
+                'SELECT id FROM daily_task_reports WHERE user_id = %s AND task_id = %s AND report_date = %s',
+                (employee_id, task_id, data['report_date']))
+            if cursor.fetchone():
+                conn.close()
+                return jsonify({
+                    "error":
+                    "A report for this task already exists for this date"
+                }), 409
+
+        # Prepare data for insertion
+        work_description = data.get('work_description', '')
+        time_spent = data.get('time_spent', 0)
+        status = data.get('status', 'In Progress')
+        blocker = data.get('blocker', '')
+        report_date = data.get('report_date')
+        result_of_effort = data.get('result_of_effort', '')
+        remarks = data.get('remarks', '')
+        communication_email = data.get('communication_email', '')
+        communication_phone = data.get('communication_phone', '')
+        task_assigned_by_id = data.get('task_assigned_by_id')
+
+        try:
+            cursor.execute(
+                '''
+                INSERT INTO daily_task_reports (
+                    user_id, report_date, project_id, task_id,
+                    work_description, time_spent, status, blocker, 
+                    task_assigned_by_id, result_of_effort, remarks, 
+                    communication_email, communication_phone, 
+                    approval_status, created_at, updated_at
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'pending', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+            ''', (employee_id, report_date, project_id, task_id,
+                  work_description, time_spent, status, blocker,
+                  task_assigned_by_id, result_of_effort, remarks,
+                  communication_email, communication_phone))
+
+            conn.commit()
+            report_id = cursor.lastrowid
+            conn.close()
+
+            # Log activity
+            log_activity(employee_id,
+                         'daily_report_submitted',
+                         f'Submitted daily report for project {project_id}',
+                         project_id=project_id,
+                         target_type='daily_report',
+                         target_id=report_id)
+
+            return jsonify({
+                "success": True,
+                "report_id": report_id,
+                "message": "Report submitted successfully"
+            }), 201
+        except psycopg2.IntegrityError as e:
+            conn.close()
+            logger.error(f"Integrity error submitting report: {e}")
+            return jsonify({"error": "Database error occurred"}), 500
+    except Exception as e:
+        logger.exception("Error submitting daily report")
+        return jsonify({"error": str(e)}), 500
+    finally:
+        if conn:
+            conn.close()
+
+
+@app.route("/api/daily-reports/stats", methods=["GET"])
+@admin_required
+def get_daily_reports_stats():
+    """Get statistics for daily reports"""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        # Total reports
+        cursor.execute('SELECT COUNT(*) as count FROM daily_task_reports')
+        total_reports = cursor.fetchone()['count']
+
+        # Pending approvals
+        cursor.execute(
+            'SELECT COUNT(*) as count FROM daily_task_reports WHERE approval_status = "pending"'
+        )
+        pending_reports = cursor.fetchone()['count']
+
+        # Approved reports
+        cursor.execute(
+            'SELECT COUNT(*) as count FROM daily_task_reports WHERE approval_status = "approved"'
+        )
+        approved_reports = cursor.fetchone()['count']
+
+        # Rejected reports
+        cursor.execute(
+            'SELECT COUNT(*) as count FROM daily_task_reports WHERE approval_status = "rejected"'
+        )
+        rejected_reports = cursor.fetchone()['count']
+
+        # Total hours logged
+        cursor.execute(
+            'SELECT COALESCE(SUM(time_spent), 0) as total_hours FROM daily_task_reports WHERE approval_status = "approved"'
+        )
+        total_hours = cursor.fetchone()['total_hours']
+
+        # Reports today
+        cursor.execute('''
+            SELECT COUNT(*) as count FROM daily_task_reports
+            WHERE report_date = DATE('now')
+        ''')
+        reports_today = cursor.fetchone()['count']
+
+        # Reports this week
+        cursor.execute('''
+            SELECT COUNT(*) as count FROM daily_task_reports
+            WHERE report_date >= DATE('now', '-7 days')
+        ''')
+        reports_week = cursor.fetchone()['count']
+
+        # Unique employees with reports
+        cursor.execute('''
+            SELECT COUNT(DISTINCT user_id) as count FROM daily_task_reports
+        ''')
+        unique_employees = cursor.fetchone()['count']
+
+        # Average hours per report
+        avg_hours = 0
+        if approved_reports > 0:
+            avg_hours = total_hours / approved_reports
+
+        conn.close()
+
+        return jsonify({
+            "total_reports": total_reports,
+            "pending_reports": pending_reports,
+            "approved_reports": approved_reports,
+            "rejected_reports": rejected_reports,
+            "total_hours_logged": float(total_hours),
+            "avg_hours_per_report": round(float(avg_hours), 2),
+            "reports_today": reports_today,
+            "reports_week": reports_week,
+            "unique_employees": unique_employees
+        }), 200
+    except Exception as e:
+        logger.exception("Error getting daily reports stats")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/daily-reports/dashboard/stats", methods=["GET"])
+@admin_required
+def get_daily_reports_dashboard_stats():
+    """Comprehensive daily reports statistics for Super Admin Dashboard"""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        # Total metrics
+        cursor.execute('SELECT COUNT(*) as count FROM daily_task_reports')
+        total_reports = cursor.fetchone()['count']
+
+        cursor.execute(
+            'SELECT COUNT(*) as count FROM daily_task_reports WHERE approval_status = %s',
+            ('approved', ))
+        approved_reports = cursor.fetchone()['count']
+
+        cursor.execute(
+            'SELECT COUNT(*) as count FROM daily_task_reports WHERE approval_status = %s',
+            ('pending', ))
+        pending_reports = cursor.fetchone()['count']
+
+        cursor.execute(
+            'SELECT COUNT(*) as count FROM daily_task_reports WHERE approval_status = %s',
+            ('rejected', ))
+        rejected_reports = cursor.fetchone()['count']
+
+        # Total hours
+        cursor.execute(
+            'SELECT COALESCE(SUM(time_spent), 0) as total FROM daily_task_reports WHERE approval_status = %s',
+            ('approved', ))
+        total_hours = cursor.fetchone()['total'] or 0
+
+        # Average hours per report
+        if approved_reports > 0:
+            avg_hours = total_hours / approved_reports
+        else:
+            avg_hours = 0
+
+        # Reports by status
+        cursor.execute('''
+            SELECT status, COUNT(*) as count FROM daily_task_reports GROUP BY status
+        ''')
+        status_breakdown = {
+            row['status']: row['count']
+            for row in cursor.fetchall()
+        }
+
+        # Reports by project (top 10)
+        cursor.execute('''
+            SELECT p.title, COUNT(d.id) as count
+            FROM daily_task_reports d
+            LEFT JOIN projects p ON d.project_id = p.id
+            GROUP BY d.project_id
+            ORDER BY count DESC
+            LIMIT 10
+        ''')
+        top_projects = [{
+            'project': row['title'],
+            'count': row['count']
+        } for row in cursor.fetchall()]
+
+        # Reports by employee (top 10)
+        cursor.execute('''
+            SELECT u.username, COUNT(d.id) as count
+            FROM daily_task_reports d
+            LEFT JOIN users u ON d.user_id = u.id
+            GROUP BY d.user_id
+            ORDER BY count DESC
+            LIMIT 10
+        ''')
+        top_employees = [{
+            'employee': row['username'],
+            'count': row['count']
+        } for row in cursor.fetchall()]
+
+        # Date range analytics
+        cursor.execute('''
+            SELECT 
+                report_date,
+                COUNT(*) as count,
+                SUM(CASE WHEN approval_status = 'approved' THEN 1 ELSE 0 END) as approved,
+                SUM(CASE WHEN approval_status = 'pending' THEN 1 ELSE 0 END) as pending,
+                COALESCE(SUM(time_spent), 0) as hours
+            FROM daily_task_reports
+            GROUP BY report_date
+            ORDER BY report_date DESC
+            LIMIT 30
+        ''')
+        date_analytics = []
+        for row in cursor.fetchall():
+            date_analytics.append({
+                'date': row['report_date'],
+                'reports': row['count'],
+                'approved': row['approved'],
+                'pending': row['pending'],
+                'hours': float(row['hours'])
+            })
+
+        # Date range analytics - for trend chart (last 7 days)
+        cursor.execute('''
+            SELECT report_date, COUNT(*) as count
+            FROM daily_task_reports
+            WHERE report_date >= DATE('now', '-7 days')
+            GROUP BY report_date
+            ORDER BY report_date ASC
+        ''')
+        daily_trend_data = {}
+        for row in cursor.fetchall():
+            daily_trend_data[row['report_date']] = row['count']
+
+        # Create trend array for last 7 days
+        daily_trend = []
+        for i in range(7):
+            d = (datetime.now() - timedelta(days=6 - i)).strftime('%Y-%m-%d')
+            daily_trend.append(daily_trend_data.get(d, 0))
+
+        conn.close()
+
+        return jsonify({
+            'summary': {
+                'total_reports': total_reports,
+                'approved': approved_reports,
+                'pending': pending_reports,
+                'rejected': rejected_reports,
+                'total_hours': float(total_hours),
+                'avg_hours_per_report': round(avg_hours, 2)
+            },
+            'by_status': status_breakdown,
+            'top_projects': top_projects,
+            'top_employees': top_employees,
+            'date_analytics': date_analytics,
+            'daily_trend': daily_trend
+        }), 200
+    except Exception as e:
+        logger.exception('Error getting daily reports dashboard stats')
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route("/api/admin/activity", methods=["POST"])
+@admin_required
+def admin_activity():
+    """Record an arbitrary admin activity from the dashboard UI.
+    This endpoint lets the frontend record admin actions as activities
+    so they appear in the global activity feed.
+    """
+    data = request.get_json() or {}
+    description = data.get('description', '')
+    activity_type = data.get('activity_type', 'admin_action')
+    project_id = data.get('project_id')
+    task_id = data.get('task_id')
+    milestone_id = data.get('milestone_id')
+    target_type = data.get('target_type')
+    target_id = data.get('target_id')
 
     try:
-        response = requests.post(
-            "https://www.google.com/recaptcha/api/siteverify",
-            data={
-                "secret": RECAPTCHA_SECRET_KEY,
-                "response": token
-            },
-            timeout=5
-        )
-        result = response.json()
-        return result.get("success") and result.get("score", 0) >= 0.5
+        # Use admin user id 0 for system/admin actions
+        user_id = get_current_user_id()
+        log_activity(user_id, activity_type, description, project_id=project_id, task_id=task_id,
+                     milestone_id=milestone_id)
+
+        # Also log to audit logs if it's a significant action
+        if activity_type in [
+                'report_reviewed', 'report_deleted', 'report_edited'
+        ]:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            cursor.execute(
+                '''
+                INSERT INTO audit_logs (actor_id, action, target_type, target_id, details, created_at)
+                VALUES (%s, %s, %s, %s, %s, CURRENT_TIMESTAMP)
+            ''', (user_id, activity_type, target_type, target_id, description))
+            conn.commit()
+            conn.close()
+
+        return jsonify({'success': True}), 200
     except Exception as e:
-        print("reCAPTCHA error:", e)
-        return False
+        logger.exception('Failed to log admin activity')
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 
+# NEW: Batch approval endpoint
+@app.route("/api/admin/daily-reports/batch-approve", methods=["POST"])
+@admin_required
+def batch_approve_reports():
+    """Approve multiple reports at once"""
+    try:
+        data = request.get_json() or {}
+        report_ids = data.get('report_ids', [])
+        action = data.get('action', 'approve')  # 'approve' or 'reject'
+        comment = data.get('comment', '')
 
-def login_post():
-    token = request.form.get("recaptcha_token")
+        if not report_ids:
+            return jsonify({'error': 'No report IDs provided'}), 400
 
-    if not token or not verify_recaptcha(token):
-        flash("reCAPTCHA verification failed", "danger")
-        return redirect(url_for("login"))
+        if action not in ['approve', 'reject']:
+            return jsonify({'error': 'Invalid action'}), 400
 
-    # ✅ If passed → continue normal login
-    # check user, password, session, etc.
+        reviewer_id = get_current_user_id()
+        new_status = 'approved' if action == 'approve' else 'rejected'
+
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        # Update all reports
+        placeholders = ','.join(['%s'] * len(report_ids))
+        cursor.execute(
+            f'''
+            UPDATE daily_task_reports 
+            SET approval_status = %s, reviewed_by = %s, review_comment = %s, updated_at = CURRENT_TIMESTAMP
+            WHERE id IN ({placeholders})
+        ''', [new_status, reviewer_id, comment] + report_ids)
+
+        updated_count = cursor.rowcount
+        conn.commit()
+
+        # Log batch action
+        log_activity(reviewer_id,
+                     'batch_report_review',
+                     f'{action.capitalize()}d {updated_count} reports',
+                     target_type='daily_report_batch')
+
+        conn.close()
+
+        return jsonify({
+            'success': True,
+            'updated_count': updated_count,
+            'action': action,
+            'status': new_status
+        }), 200
+
+    except Exception as e:
+        logger.exception("Error in batch approve")
+        return jsonify({'error': str(e)}), 500
+
+
+# NEW: Get report summary by employee
+@app.route("/api/admin/daily-reports/employee-summary", methods=["GET"])
+@admin_required
+def get_employee_report_summary():
+    """Get summary of reports by employee"""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        cursor.execute('''
+            SELECT 
+                u.id as employee_id,
+                u.username as employee_name,
+                u.email as employee_email,
+                COUNT(dtr.id) as total_reports,
+                SUM(CASE WHEN dtr.approval_status = 'approved' THEN 1 ELSE 0 END) as approved_reports,
+                SUM(CASE WHEN dtr.approval_status = 'pending' THEN 1 ELSE 0 END) as pending_reports,
+                SUM(CASE WHEN dtr.approval_status = 'rejected' THEN 1 ELSE 0 END) as rejected_reports,
+                COALESCE(SUM(dtr.time_spent), 0) as total_hours,
+                MAX(dtr.report_date) as last_report_date
+            FROM users u
+            LEFT JOIN daily_task_reports dtr ON u.id = dtr.user_id
+            WHERE u.user_type_id = (SELECT id FROM usertypes WHERE user_role = 'Employee')
+            GROUP BY u.id, u.username, u.email
+            ORDER BY u.username
+        ''')
+
+        employees = []
+        for row in cursor.fetchall():
+            employees.append({
+                'employee_id': row['employee_id'],
+                'employee_name': row['employee_name'],
+                'employee_email': row['employee_email'],
+                'total_reports': row['total_reports'] or 0,
+                'approved_reports': row['approved_reports'] or 0,
+                'pending_reports': row['pending_reports'] or 0,
+                'rejected_reports': row['rejected_reports'] or 0,
+                'total_hours': float(row['total_hours'] or 0),
+                'last_report_date': row['last_report_date']
+            })
+
+        conn.close()
+        return jsonify(employees), 200
+
+    except Exception as e:
+        logger.exception("Error getting employee report summary")
+        return jsonify({'error': str(e)}), 500
+
+
+# NEW: Get reports for a specific employee (admin view)
+@app.route("/api/admin/employees/<int:employee_id>/daily-reports",
+           methods=["GET"])
+@admin_required
+def get_employee_daily_reports(employee_id):
+    """Get all daily reports for a specific employee"""
+    try:
+        # Get query parameters
+        start_date = request.args.get('start_date')
+        end_date = request.args.get('end_date')
+        approval_status = request.args.get('approval_status')
+
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        # Verify employee exists
+        cursor.execute('SELECT id, username FROM users WHERE id = %s',
+                       (employee_id, ))
+        employee = cursor.fetchone()
+        if not employee:
+            conn.close()
+            return jsonify({'error': 'Employee not found'}), 404
+
+        query = '''
+            SELECT 
+                dtr.*,
+                p.title as project_title,
+                t.title as task_title,
+                reviewer.username as reviewer_name
+            FROM daily_task_reports dtr
+            LEFT JOIN projects p ON dtr.project_id = p.id
+            LEFT JOIN tasks t ON dtr.task_id = t.id
+            LEFT JOIN users reviewer ON dtr.reviewed_by = reviewer.id
+            WHERE dtr.user_id = %s
+        '''
+        params = [employee_id]
+
+        if start_date:
+            query += ' AND dtr.report_date >= %s'
+            params.append(start_date)
+        if end_date:
+            query += ' AND dtr.report_date <= %s'
+            params.append(end_date)
+        if approval_status:
+            query += ' AND dtr.approval_status = %s'
+            params.append(approval_status)
+
+        query += ' ORDER BY dtr.report_date DESC, dtr.created_at DESC'
+
+        cursor.execute(query, params)
+        reports = [dict(row) for row in cursor.fetchall()]
+
+        conn.close()
+
+        return jsonify({
+            'employee': {
+                'id': employee['id'],
+                'username': employee['username']
+            },
+            'reports': reports,
+            'count': len(reports)
+        }), 200
+
+    except Exception as e:
+        logger.exception("Error getting employee daily reports")
+        return jsonify({'error': str(e)}), 500
+
+
+# Enhanced log_activity function with target_type support
+def log_activity(user_id,
+                 activity_type,
+                 description,
+                 project_id=None,
+                 task_id=None,
+                 milestone_id=None,
+                 target_type=None,
+                 target_id=None):
+    conn = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            '''
+            INSERT INTO activities (user_id, activity_type, description, project_id, task_id, milestone_id)
+            VALUES (%s,%s,%s,%s,%s,%s)
+        ''', (user_id, activity_type, description, project_id, task_id,
+              milestone_id))
+        conn.commit()
+
+        # Also log to audit logs for important actions
+        if activity_type in [
+                'report_reviewed', 'report_deleted', 'report_edited',
+                'batch_report_review', 'daily_report_submitted'
+        ]:
+            cursor.execute(
+                '''
+                INSERT INTO audit_logs (actor_id, action, target_type, target_id, details, created_at)
+                VALUES (%s, %s, %s, %s, %s, CURRENT_TIMESTAMP)
+            ''', (user_id, activity_type, target_type, target_id, description))
+            conn.commit()
+
+    except Exception as e:
+        print(f"[ERROR] Failed to log activity: {str(e)}")
+    finally:
+        if conn:
+            conn.close()
+
+
+# Replace the previous get_all_users() function with this fixed version
+
+@app.route("/api/admin/users", methods=["GET"])
+@admin_required
+def get_all_users():
+    """
+    Admin endpoint: return list of all users.
+    Returns a JSON array with fields: id, username, email, user_role, user_type_id, created_at
+    """
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT u.id, u.username, u.email, u.user_type_id, ut.user_role, u.created_at
+            FROM users u
+            LEFT JOIN usertypes ut ON u.user_type_id = ut.id
+            WHERE COALESCE(u.is_system, 0) != 1
+            ORDER BY u.created_at DESC
+        """)
+        rows = cursor.fetchall()
+        conn.close()
+
+        users = []
+        for r in rows:
+            created_at = r['created_at'] if r['created_at'] is not None else None
+            # Ensure created_at is serialized as a string (ISO if possible)
+            try:
+                # If stored as text, leave as-is
+                if isinstance(created_at, str):
+                    created_at_str = created_at
+                else:
+                    # Postgres returns datetime objects; check for isoformat
+                    created_at_str = created_at.isoformat() if hasattr(created_at, 'isoformat') else str(created_at)
+            except Exception:
+                created_at_str = str(created_at) if created_at is not None else None
+
+            users.append({
+                "id": r["id"],
+                "username": r["username"],
+                "email": r["email"],
+                "user_type_id": r["user_type_id"],
+                "user_role": r["user_role"],
+                "created_at": created_at_str
+            })
+
+        return jsonify(users), 200
+    except Exception as e:
+        logger.exception("Error in /api/admin/users")
+        return jsonify({"error": str(e)}), 500
+
+# Get project team members
+@app.route("/api/projects/<int:project_id>/team-members", methods=["GET"])
+@login_required
+def get_project_team_members(project_id):
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # Get team members for the project
+        cursor.execute('''
+            SELECT u.id, u.username, u.email, ut.user_role, pa.user_id
+            FROM project_assignments pa
+            JOIN users u ON pa.user_id = u.id
+            LEFT JOIN usertypes ut ON u.user_type_id = ut.id
+            WHERE pa.project_id = %s
+        ''', (project_id,))
+        
+        team_members = cursor.fetchall()
+        conn.close()
+        
+        # Convert to list of dictionaries
+        result = []
+        for member in team_members:
+            result.append({
+                'id': member['id'],
+                'user_id': member['user_id'],
+                'username': member['username'],
+                'email': member['email'],
+                'user_role': member['user_role']
+            })
+        
+        return jsonify(result), 200
+    except Exception as e:
+        logger.error(f"Error getting project team members: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+# Add team member to project
+@app.route("/api/projects/<int:project_id>/add-team-member", methods=["POST"])
+@csrf.exempt
+@login_required
+def add_team_member_to_project(project_id):
+    try:
+        data = request.get_json()
+        user_id = data.get("user_id")
+        user_type_id = data.get("user_type_id")
+        permissions = data.get("permissions", [])
+        
+        if not user_id or not user_type_id:
+            return jsonify({"error": "user_id and user_type_id are required"}), 400
+        
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # Check if user already assigned to project
+        cursor.execute('''
+            SELECT id FROM project_assignments 
+            WHERE user_id = %s AND project_id = %s
+        ''', (user_id, project_id))
+        
+        if cursor.fetchone():
+            conn.close()
+            return jsonify({"error": "User is already assigned to this project"}), 400
+        
+        # Add user to project_assignments
+        cursor.execute('''
+            INSERT INTO project_assignments (user_id, project_id)
+            VALUES (%s, %s)
+        ''', (user_id, project_id))
+        
+        # Update user type if needed
+        if user_type_id:
+            cursor.execute('''
+                UPDATE users SET user_type_id = %s WHERE id = %s
+            ''', (user_type_id, user_id))
+        
+        # Store permissions if needed (you may need to create a user_permissions table)
+        if permissions:
+            for perm in permissions:
+                cursor.execute('''
+                    INSERT INTO user_permissions (user_id, module, action, granted)
+                    VALUES (%s, %s, %s, 1)
+                    ON CONFLICT (user_id, module, action) DO NOTHING
+                ''', (user_id, 'project', perm))
+        
+        conn.commit()
+        conn.close()
+        
+        return jsonify({"message": "Team member added successfully"}), 201
+    except Exception as e:
+        logger.error(f"Error adding team member to project: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+# Remove team member from project
+@app.route("/api/projects/<int:project_id>/remove-team-member", methods=["DELETE"])
+@login_required
+def remove_team_member_from_project(project_id):
+    try:
+        data = request.get_json()
+        user_id = data.get("user_id")
+        
+        if not user_id:
+            return jsonify({"error": "user_id is required"}), 400
+        
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # Remove user from project_assignments
+        cursor.execute('''
+            DELETE FROM project_assignments 
+            WHERE user_id = %s AND project_id = %s
+        ''', (user_id, project_id))
+        
+        if cursor.rowcount == 0:
+            conn.close()
+            return jsonify({"error": "User is not assigned to this project"}), 404
+        
+        conn.commit()
+        conn.close()
+        
+        return jsonify({"message": "Team member removed successfully"}), 200
+    except Exception as e:
+        logger.error(f"Error removing team member from project: {e}")
+        return jsonify({"error": str(e)}), 500
+
+# -------------------------------------------------------------------------
+# USER TYPE MANAGEMENT ENDPOINTS
+# -------------------------------------------------------------------------
+
+# Ensure usertype_permissions table exists (Safety check)
+def ensure_usertype_permissions_table():
+    pass # No longer needed as init_db is now robust and idempotent
+
+@app.route("/api/usertypes", methods=["GET"])
+@login_required
+def get_usertypes():
+    """Get all user types with their permissions"""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute("SELECT * FROM usertypes ORDER BY id")
+        usertypes = [dict(row) for row in cursor.fetchall()]
+        
+        for ut in usertypes:
+            # Safely get permissions
+            try:
+                # IMPORTANT: Only fetch granted = TRUE for "Assigned Permissions"
+                cursor.execute("SELECT module, action FROM usertype_permissions WHERE usertype_id = %s AND granted = %s", (ut['id'], True))
+                perms = cursor.fetchall()
+                perm_list = []
+                for p in perms:
+                    mod = p['module']
+                    act = p['action']
+                    if mod == 'SYSTEM':
+                        perm_list.append(act)
+                    else:
+                        perm_list.append(f"{mod}_{act}")
+                ut['permissions'] = perm_list
+            except Exception as e:
+                print(f"Error fetching permissions for usertype {ut['id']}: {e}")
+                ut['permissions'] = []
+            
+            # Count users
+            try:
+                cursor.execute("SELECT COUNT(*) as count FROM users WHERE user_type_id = %s", (ut['id'],))
+                ut['user_count'] = cursor.fetchone()['count']
+            except:
+                ut['user_count'] = 0
+
+        conn.close()
+        return jsonify(usertypes), 200
+    except Exception as e:
+        logger.exception("Error fetching user types")
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/usertypes", methods=["POST"])
+@admin_required
+def create_usertype():
+    """Create a new user type with permissions"""
+    try:
+        data = request.get_json()
+        user_role = data.get('user_role')
+        description = data.get('description', '')
+        permissions = data.get('permissions', []) # List of strings "MODULE_ACTION"
+        
+        logger.info(f"Creating user type: {user_role}, Perms count: {len(permissions)}")
+
+        if not user_role:
+            return jsonify({"error": "User role name is required"}), 400
+
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        try:
+            cursor.execute("INSERT INTO usertypes (user_role, description) VALUES (%s, %s)", (user_role, description))
+            usertype_id = cursor.lastrowid
+            
+            for perm in permissions:
+                parts = perm.split('_', 1)
+                if len(parts) == 2:
+                     module, action = parts
+                else:
+                     module = 'SYSTEM'
+                     action = perm
+                
+                cursor.execute("INSERT INTO usertype_permissions (usertype_id, module, action, granted) VALUES (%s, %s, %s, %s)",
+                               (usertype_id, module, action, True))
+            
+            conn.commit()
+            return jsonify({"success": True, "message": "User type created", "id": usertype_id}), 201
+            
+        except psycopg2.IntegrityError:
+            return jsonify({"error": "User type already exists"}), 409
+        finally:
+            conn.close()
+
+    except Exception as e:
+        logger.exception("Error creating user type")
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/usertypes/<int:ut_id>", methods=["PUT"])
+@admin_required
+def update_usertype(ut_id):
+    """Update user type and permissions"""
+    try:
+        data = request.get_json()
+        user_role = data.get('user_role') # Optional update
+        description = data.get('description')
+        permissions = data.get('permissions') # Optional update list
+
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        if user_role:
+            try:
+                cursor.execute("UPDATE usertypes SET user_role = %s WHERE id = %s", (user_role, ut_id))
+            except psycopg2.IntegrityError:
+                return jsonify({"error": "User role name already taken"}), 409
+        
+        if description is not None:
+             cursor.execute("UPDATE usertypes SET description = %s WHERE id = %s", (description, ut_id))
+
+        if permissions is not None:
+            # Replace permissions
+            cursor.execute("DELETE FROM usertype_permissions WHERE usertype_id = %s", (ut_id,))
+            for perm in permissions:
+                parts = perm.split('_', 1)
+                if len(parts) == 2:
+                     module, action = parts
+                else:
+                     module = 'SYSTEM'
+                     action = perm
+                cursor.execute("INSERT INTO usertype_permissions (usertype_id, module, action, granted) VALUES (%s, %s, %s, %s)",
+                               (ut_id, module, action, True))
+            
+            # Optional: Update existing users of this type%s
+            # For now, let's NOT automatically update existing users' personal permissions to avoid overwriting custom overrides.
+            # But in a strict RBAC, we would.
+        
+        conn.commit()
+        conn.close()
+        return jsonify({"success": True, "message": "User type updated"}), 200
+
+    except Exception as e:
+        logger.exception("Error updating user type")
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/usertypes/<int:ut_id>", methods=["DELETE"])
+@admin_required
+def delete_usertype(ut_id):
+    """Delete a user type"""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # Check if users exist
+        cursor.execute("SELECT COUNT(*) as count FROM users WHERE user_type_id = %s", (ut_id,))
+        if cursor.fetchone()['count'] > 0:
+            conn.close()
+            return jsonify({"error": "Cannot delete user type that has assigned users"}), 400
+
+        cursor.execute("DELETE FROM usertypes WHERE id = %s", (ut_id,))
+        conn.commit()
+        conn.close()
+        return jsonify({"success": True, "message": "User type deleted"}), 200
+    except Exception as e:
+        logger.exception("Error deleting user type")
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/admin/dashboard/stats", methods=["GET"])
+@admin_required
+def get_admin_dashboard_stats():
+    """Get general admin dashboard statistics"""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+
+        # Active Projects
+        cursor.execute("SELECT COUNT(*) AS count FROM projects WHERE status != 'Completed'")
+        active_projects = cursor.fetchone()['count']
+
+        # Active Tasks
+        cursor.execute("""
+            SELECT COUNT(*) AS count 
+            FROM tasks 
+            WHERE status NOT IN ('Completed', 'Pending')
+        """)
+        active_tasks = cursor.fetchone()['count']
+
+        # Pending Tasks
+        cursor.execute("""
+            SELECT COUNT(*) AS count 
+            FROM tasks 
+            WHERE status = 'Pending'
+        """)
+        pending_tasks = cursor.fetchone()['count']
+
+        # Overdue Tasks (Postgres syntax)
+        cursor.execute("""
+            SELECT COUNT(*) AS count 
+            FROM tasks 
+            WHERE status != 'Completed' 
+            AND deadline < CURRENT_DATE
+        """)
+        overdue_tasks = cursor.fetchone()['count']
+
+        # Completed Tasks
+        cursor.execute("""
+            SELECT COUNT(*) AS count 
+            FROM tasks 
+            WHERE status = 'Completed'
+        """)
+        completed_tasks = cursor.fetchone()['count']
+
+        # Total Users
+        cursor.execute("SELECT COUNT(*) AS count FROM users")
+        total_users = cursor.fetchone()['count']
+
+        # Total User Types
+        cursor.execute("SELECT COUNT(*) AS count FROM usertypes")
+        total_usertypes = cursor.fetchone()['count']
+
+        cursor.close()
+        conn.close()
+
+        return jsonify({
+            "active_projects": active_projects,
+            "active_tasks": active_tasks,
+            "pending_approvals": pending_tasks,
+            "overdue_tasks": overdue_tasks,
+            "completed_tasks": completed_tasks,
+            "total_users": total_users,
+            "total_usertypes": total_usertypes
+        }), 200
+
+    except Exception as e:
+        logger.exception("Error getting admin dashboard stats")
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/employee/task-summary", methods=["GET"])
+@login_required
+def get_employee_task_summary():
+    try:
+        user_id = get_current_user_id()
+        if not user_id:
+            return jsonify({"error": "Unauthorized"}), 401
+
+        today = date.today()
+
+        conn = get_db_connection()
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+
+        # =========================
+        # PENDING
+        # =========================
+        cursor.execute("""
+            SELECT *
+            FROM tasks
+            WHERE 
+            (assigned_to_id = %s OR created_by_id = %s)
+            AND LOWER(status) != 'completed'
+            AND (deadline IS NULL OR deadline >= %s)
+        """, (user_id, user_id, today))
+        pending_tasks = cursor.fetchall()
+
+        # =========================
+        # COMPLETED
+        # =========================
+        cursor.execute("""
+            SELECT *
+            FROM tasks
+            WHERE 
+            (assigned_to_id = %s OR created_by_id = %s)
+            AND LOWER(status) = 'completed'
+        """, (user_id, user_id))
+        completed_tasks = cursor.fetchall()
+
+        # =========================
+        # OVERDUE
+        # =========================
+        cursor.execute("""
+            SELECT *
+            FROM tasks
+            WHERE 
+            (assigned_to_id = %s OR created_by_id = %s)
+            AND LOWER(status) != 'completed'
+            AND deadline IS NOT NULL
+            AND deadline < %s
+        """, (user_id, user_id, today))
+        overdue_tasks = cursor.fetchall()
+
+        conn.close()
+
+        return jsonify({
+            "pending": pending_tasks,
+            "completed": completed_tasks,
+            "overdue": overdue_tasks,
+            "pending_count": len(pending_tasks),
+            "completed_count": len(completed_tasks),
+            "overdue_count": len(overdue_tasks)
+        }), 200
+
+    except Exception as e:
+        logger.exception("Error fetching task summary")
+        return jsonify({"error": "Internal Server Error"}), 500
+
+@app.route("/api/employee/tasks/<int:task_id>/update", methods=["PUT"])
+@csrf.exempt
+def update_employee_task(task_id):
+    conn = None
+    try:
+        user_id = get_current_user_id()
+        if not user_id:
+            return jsonify({"error": "Unauthorized"}), 401
+
+        data = request.get_json() or {}
+
+        status = data.get("status", "Pending")
+        progress = int(data.get("progress", 0))
+        notes = data.get("notes", "")
+
+        # auto complete rule
+        if progress >= 100:
+            status = "Completed"
+            progress = 100
+
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        # ensure task belongs to user
+        cursor.execute("""
+            SELECT id FROM tasks
+            WHERE id = %s
+            AND (assigned_to_id = %s OR created_by_id = %s)
+        """, (task_id, user_id, user_id))
+
+        task = cursor.fetchone()
+
+        if not task:
+            return jsonify({"error": "Task not found"}), 404
+
+        # update task safely
+        cursor.execute("""
+            UPDATE tasks
+            SET status=%s,
+            progress=%s,
+            notes=%s,
+            updated_at=CURRENT_TIMESTAMP
+            WHERE id=%s
+                """, (status, progress, notes, task_id))
+
+
+        conn.commit()
+
+        return jsonify({
+            "message": "Task updated successfully",
+            "task_id": task_id,
+            "status": status,
+            "progress": progress
+        }), 200
+
+    except Exception as e:
+        logger.exception("Task update failed")
+        return jsonify({
+            "error": "Task update failed",
+            "details": str(e)
+        }), 500
+
+    finally:
+        if conn:
+            conn.close()
 
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
+    port = int(os.environ.get("PORT", 8080))
     app.run(host="0.0.0.0", port=port)

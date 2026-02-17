@@ -2182,6 +2182,14 @@
 
         function openDailyReportModal() {
             document.getElementById("dailyReportForm").reset();
+            
+            // Set default date to today
+            const today = new Date().toISOString().split('T')[0];
+            const reportDateEl = document.getElementById("reportDate");
+            if (reportDateEl) {
+                reportDateEl.value = today;
+            }
+            
             document
                 .getElementById("dailyReportModal")
                 .classList.add("active");

@@ -62,6 +62,7 @@ def init_db():
         cursor.execute("DROP TABLE IF EXISTS document_versions CASCADE")
         cursor.execute("DROP TABLE IF EXISTS document_comments CASCADE")
         cursor.execute("DROP TABLE IF EXISTS comments CASCADE")
+        cursor.execute("DROP TABLE IF EXISTS daily_task_reports CASCADE")
         cursor.execute("DROP TABLE IF EXISTS tasks CASCADE")
         cursor.execute("DROP TABLE IF EXISTS milestones CASCADE")
         cursor.execute("DROP TABLE IF EXISTS project_assignments CASCADE")
@@ -140,6 +141,8 @@ def init_db():
             completed_at TIMESTAMP,
             approval_status TEXT DEFAULT 'pending',
             weightage INTEGER DEFAULT 1,
+            progress INTEGER DEFAULT 0,
+            notes TEXT,
             FOREIGN KEY (project_id) REFERENCES projects(id),
             FOREIGN KEY (created_by_id) REFERENCES users(id),
             FOREIGN KEY (assigned_to_id) REFERENCES users(id)
@@ -237,6 +240,26 @@ def init_db():
             UNIQUE(user_id, skill_name)
         )''')
 
+        cursor.execute('''CREATE TABLE daily_task_reports (
+            id SERIAL PRIMARY KEY,
+            user_id INTEGER NOT NULL,
+            task_id INTEGER NOT NULL,
+            project_id INTEGER NOT NULL,
+            report_date DATE NOT NULL,
+            work_description TEXT,
+            time_spent INTEGER DEFAULT 0,
+            status TEXT DEFAULT 'In Progress',
+            blocker TEXT,
+            approval_status TEXT DEFAULT 'pending',
+            reviewed_by INTEGER,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id),
+            FOREIGN KEY (task_id) REFERENCES tasks(id),
+            FOREIGN KEY (project_id) REFERENCES projects(id),
+            FOREIGN KEY (reviewed_by) REFERENCES users(id)
+        )''')
+
         # Insert default user types
         cursor.execute(
             "INSERT INTO usertypes (user_role) VALUES ('Administrator')")
@@ -275,6 +298,8 @@ def migrate_db():
             ("users", "avatar_url", "TEXT"),
             ("projects", "completed_at", "TIMESTAMP"),
             ("projects", "reporting_time", "TIME"),
+            ("tasks", "progress", "INTEGER DEFAULT 0"),
+            ("tasks", "notes", "TEXT"),
         ]
 
         for table, column, col_type in columns_to_add:
@@ -288,6 +313,33 @@ def migrate_db():
                     conn.rollback(
                     )  # Rollback if adding column fails, though typically we just ignore if exists.
                 pass  # Column likely already exists or other non-critical error
+
+        # Create daily_task_reports table if it doesn't exist
+        try:
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS daily_task_reports (
+                    id SERIAL PRIMARY KEY,
+                    user_id INTEGER NOT NULL,
+                    task_id INTEGER NOT NULL,
+                    project_id INTEGER NOT NULL,
+                    report_date DATE NOT NULL,
+                    work_description TEXT,
+                    time_spent INTEGER DEFAULT 0,
+                    status TEXT DEFAULT 'In Progress',
+                    blocker TEXT,
+                    approval_status TEXT DEFAULT 'pending',
+                    reviewed_by INTEGER,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (user_id) REFERENCES users(id),
+                    FOREIGN KEY (task_id) REFERENCES tasks(id),
+                    FOREIGN KEY (project_id) REFERENCES projects(id),
+                    FOREIGN KEY (reviewed_by) REFERENCES users(id)
+                )
+            ''')
+        except psycopg2.Error as e:
+            print(f"[INFO] daily_task_reports table creation: {str(e)}")
+            pass  # Table likely already exists
 
         conn.commit()
         print("[OK] Database migration completed!")
@@ -1823,6 +1875,190 @@ def complete_employee_task(task_id):
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/api/employee/tasks/<int:task_id>/update", methods=["PUT"])
+@login_required
+def update_employee_task(task_id):
+    """Update task progress, status, and notes"""
+    try:
+        data = request.get_json() or {}
+        status = data.get("status", "").strip()
+        progress = data.get("progress")
+        notes = data.get("notes", "").strip()
+
+        user_id = get_current_user_id()
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        # Verify user has permission to update this task
+        cursor.execute(
+            '''
+            SELECT id, project_id FROM tasks 
+            WHERE id = %s AND (assigned_to_id = %s OR created_by_id = %s)
+        ''', (task_id, user_id, user_id))
+        task = cursor.fetchone()
+
+        if not task:
+            conn.close()
+            return jsonify({"error": "Task not found or permission denied"}), 404
+
+        # Validate progress value
+        if progress is not None:
+            try:
+                progress = int(progress)
+                if progress < 0 or progress > 100:
+                    return jsonify({"error": "Progress must be between 0 and 100"}), 400
+            except (ValueError, TypeError):
+                return jsonify({"error": "Invalid progress value"}), 400
+
+        # Build update query dynamically based on provided fields
+        update_fields = []
+        update_values = []
+
+        if status:
+            update_fields.append("status = %s")
+            update_values.append(status)
+
+        if progress is not None:
+            update_fields.append("progress = %s")
+            update_values.append(progress)
+
+        if notes:
+            update_fields.append("notes = %s")
+            update_values.append(notes)
+
+        # Always update the updated_at timestamp
+        update_fields.append("updated_at = CURRENT_TIMESTAMP")
+
+        if not update_fields:
+            conn.close()
+            return jsonify({"error": "No fields to update"}), 400
+
+        # Execute update
+        update_query = f"UPDATE tasks SET {', '.join(update_fields)} WHERE id = %s"
+        update_values.append(task_id)
+
+        cursor.execute(update_query, update_values)
+        conn.commit()
+
+        # Fetch updated task
+        cursor.execute(
+            '''
+            SELECT id, title, status, progress, notes, updated_at 
+            FROM tasks WHERE id = %s
+        ''', (task_id,))
+        updated_task = cursor.fetchone()
+        conn.close()
+
+        # Log activity
+        log_activity(user_id,
+                     'task_updated',
+                     f'Updated task ID: {task_id} - Progress: {progress}%' if progress is not None else f'Updated task ID: {task_id}',
+                     task_id=task_id)
+
+        return jsonify({
+            "message": "Task updated successfully!",
+            "task": dict(updated_task) if updated_task else None
+        }), 200
+
+    except Exception as e:
+        print(f"[ERROR] Task update failed: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/employee/daily-report", methods=["POST"])
+@login_required
+def submit_daily_report():
+    """Submit daily task report"""
+    try:
+        data = request.get_json() or {}
+        task_id = data.get("task_id")
+        project_id = data.get("project_id")
+        report_date = data.get("report_date", "").strip()
+        work_description = data.get("work_description", "").strip()
+        time_spent = data.get("time_spent")
+        status = data.get("status", "In Progress").strip()
+        blocker = data.get("blocker", "").strip()
+
+        # Validate required fields
+        if not task_id or not project_id or not report_date:
+            return jsonify({"error": "Missing required field: task_id, project_id, or report_date"}), 400
+
+        if not work_description:
+            return jsonify({"error": "Missing required field: work_description"}), 400
+
+        # Validate time_spent
+        if time_spent is not None:
+            try:
+                time_spent = int(time_spent)
+                if time_spent < 0:
+                    return jsonify({"error": "Time spent cannot be negative"}), 400
+            except (ValueError, TypeError):
+                return jsonify({"error": "Invalid time_spent value"}), 400
+        else:
+            time_spent = 0
+
+        user_id = get_current_user_id()
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        # Verify user is assigned to this task or created the task
+        cursor.execute(
+            '''
+            SELECT t.id, t.title, p.title as project_title
+            FROM tasks t
+            JOIN projects p ON t.project_id = p.id
+            WHERE t.id = %s AND p.id = %s 
+            AND (t.assigned_to_id = %s OR t.created_by_id = %s)
+        ''', (task_id, project_id, user_id, user_id))
+        task = cursor.fetchone()
+
+        if not task:
+            conn.close()
+            return jsonify({"error": "Task not found or permission denied"}), 404
+
+        # Insert daily report
+        try:
+            cursor.execute(
+                '''
+                INSERT INTO daily_task_reports 
+                (user_id, task_id, project_id, report_date, work_description, time_spent, status, blocker)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                RETURNING id, created_at
+            ''', (user_id, task_id, project_id, report_date, work_description, time_spent, status, blocker))
+
+            report = cursor.fetchone()
+            conn.commit()
+            conn.close()
+
+            # Log activity
+            log_activity(user_id,
+                         'daily_report_submitted',
+                         f'Submitted daily report for task ID: {task_id} on {report_date}',
+                         task_id=task_id,
+                         project_id=project_id)
+
+            return jsonify({
+                "message": "Daily report submitted successfully!",
+                "report_id": report['id'],
+                "created_at": str(report['created_at'])
+            }), 201
+
+        except psycopg2.IntegrityError as e:
+            conn.rollback()
+            conn.close()
+            print(f"[ERROR] Integrity error: {str(e)}")
+            return jsonify({"error": "Failed to submit report - possible duplicate"}), 400
+        except Exception as e:
+            conn.rollback()
+            conn.close()
+            print(f"[ERROR] Report submission error: {str(e)}")
+            return jsonify({"error": str(e)}), 500
+
+    except Exception as e:
+        print(f"[ERROR] Daily report endpoint error: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/api/employee/milestones", methods=["GET"])
 @login_required
 def get_employee_milestones():
@@ -2493,6 +2729,133 @@ def get_admin_milestones():
 
         return jsonify([dict(row) for row in milestones]), 200
     except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/admin/daily-reports", methods=["GET"])
+@admin_required
+def get_admin_daily_reports():
+    """Get all daily reports for admin dashboard with filtering and sorting"""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        # Get query parameters for filtering
+        task_id = request.args.get("task_id")
+        project_id = request.args.get("project_id")
+        user_id = request.args.get("user_id")
+        start_date = request.args.get("start_date")
+        end_date = request.args.get("end_date")
+        approval_status = request.args.get("approval_status")
+
+        # Build the query with optional filters
+        query = '''
+            SELECT 
+                dr.id, 
+                dr.user_id, 
+                u.username as employee_name,
+                u.email as employee_email,
+                dr.task_id, 
+                t.title as task_title,
+                dr.project_id, 
+                p.title as project_title,
+                dr.report_date, 
+                dr.work_description, 
+                dr.time_spent,
+                dr.status, 
+                dr.blocker, 
+                dr.approval_status,
+                dr.reviewed_by,
+                reviewer.username as reviewed_by_name,
+                dr.created_at, 
+                dr.updated_at
+            FROM daily_task_reports dr
+            LEFT JOIN users u ON dr.user_id = u.id
+            LEFT JOIN tasks t ON dr.task_id = t.id
+            LEFT JOIN projects p ON dr.project_id = p.id
+            LEFT JOIN users reviewer ON dr.reviewed_by = reviewer.id
+            WHERE 1=1
+        '''
+
+        params = []
+
+        if task_id:
+            query += " AND dr.task_id = %s"
+            params.append(int(task_id))
+
+        if project_id:
+            query += " AND dr.project_id = %s"
+            params.append(int(project_id))
+
+        if user_id:
+            query += " AND dr.user_id = %s"
+            params.append(int(user_id))
+
+        if start_date:
+            query += " AND dr.report_date >= %s"
+            params.append(start_date)
+
+        if end_date:
+            query += " AND dr.report_date <= %s"
+            params.append(end_date)
+
+        if approval_status:
+            query += " AND dr.approval_status = %s"
+            params.append(approval_status)
+
+        query += " ORDER BY dr.report_date DESC, dr.created_at DESC"
+
+        cursor.execute(query, params)
+        reports = cursor.fetchall()
+        conn.close()
+
+        return jsonify([dict(row) for row in reports]), 200
+    except Exception as e:
+        print(f"[ERROR] Failed to fetch daily reports: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/admin/daily-reports/<int:report_id>/approve", methods=["PUT"])
+@admin_required
+def approve_daily_report(report_id):
+    """Approve or reject a daily report"""
+    try:
+        data = request.get_json() or {}
+        approval_status = (data.get("approval_status") or "").strip().lower()
+
+        if approval_status not in ["approved", "rejected"]:
+            return jsonify({"error": "approval_status must be 'approved' or 'rejected'"}), 400
+
+        admin_id = session.get('admin_id')  # Get admin user ID if available, otherwise use a flag
+
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        # Check if report exists
+        cursor.execute('SELECT id FROM daily_task_reports WHERE id = %s', (report_id,))
+        if not cursor.fetchone():
+            conn.close()
+            return jsonify({"error": "Report not found"}), 404
+
+        # Update report approval status
+        cursor.execute(
+            '''
+            UPDATE daily_task_reports 
+            SET approval_status = %s, reviewed_by = %s, updated_at = CURRENT_TIMESTAMP
+            WHERE id = %s
+        ''', (approval_status, admin_id, report_id))
+
+        conn.commit()
+        conn.close()
+
+        return jsonify({
+            "message": f"Report {approval_status} successfully!",
+            "report_id": report_id,
+            "approval_status": approval_status
+        }), 200
+
+    except Exception as e:
+        print(f"[ERROR] Failed to approve report: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
 

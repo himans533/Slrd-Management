@@ -3667,7 +3667,9 @@ def get_employee_tasks():
                 t.assigned_to_id,
                 COALESCE(u.username,'Unassigned') AS assigned_to_name,
                 t.created_at,
-                COALESCE(t.approval_status,'Pending') AS approval_status
+                COALESCE(t.approval_status,'Pending') AS approval_status,
+                COALESCE(t.progress,0) AS progress,
+                COALESCE(t.notes,'') AS notes
             FROM tasks t
             LEFT JOIN projects p ON t.project_id = p.id
             LEFT JOIN users u ON t.assigned_to_id = u.id

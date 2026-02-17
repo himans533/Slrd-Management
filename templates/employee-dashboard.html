@@ -2202,6 +2202,12 @@
                 return;
             }
 
+            console.log("[v0] populateTaskDropdown with tasks:", tasks);
+
+            // Store tasks globally for submitDailyReport to access project_id
+            window.allTasks = tasks;
+            console.log("[v0] Stored allTasks globally with project_id:", tasks.map(t => ({ id: t.id, project_id: t.project_id, title: t.title })));
+
             const select = document.getElementById("reportTaskId");
             if (!select) return;
 
@@ -2236,22 +2242,19 @@
 
             const taskId = parseInt(reportTaskIdEl.value);
 
-            // Find the project_id from allTasks or use current project if available
+            // Find the project_id from allTasks - this is critical
             let projectId = null;
-            if (window.allTasks) {
+            if (window.allTasks && Array.isArray(window.allTasks)) {
                 const task = window.allTasks.find(t => t.id === taskId);
+                console.log("[v0] Found task:", task);
                 if (task) {
                     projectId = task.project_id;
+                    console.log("[v0] Found project_id from task:", projectId);
                 }
             }
 
-            // Fallback: find from any visible project context
-            if (!projectId && window.currentProjectId) {
-                projectId = window.currentProjectId;
-            }
-
             if (!projectId) {
-                alert("Could not determine project for this task");
+                alert("Could not determine project for this task. Please refresh and try again.");
                 return;
             }
 
@@ -2265,7 +2268,7 @@
                 blocker: document.getElementById("reportBlockers").value || "",
             };
 
-            console.log("[v0] Submitting daily report:", data);
+            console.log("[v0] Submitting daily report with data:", data);
 
             try {
                 const response = await fetch(`${API_BASE}/employee/daily-report`, {
@@ -2275,6 +2278,7 @@
                 });
 
                 const result = await response.json();
+                console.log("[v0] Daily report response:", result, "Status:", response.status);
 
                 if (response.ok) {
                     alert("Daily report submitted successfully!");
@@ -2283,6 +2287,7 @@
                     // Reload to show updated reports
                     await loadDashboardData();
                 } else {
+                    console.error("[v0] Report submission failed:", result);
                     alert(result.error || "Failed to submit report");
                 }
             } catch (error) {
@@ -2348,7 +2353,16 @@
 
                 if (response.ok) {
                     alert("✅ Task updated successfully!");
-                    location.reload();
+                    console.log("[v0] Task update successful. Refreshing dashboard...");
+                    
+                    // Close modal first
+                    closeModal("updateTaskModal");
+                    
+                    // Refresh dashboard data without full page reload for better UX
+                    setTimeout(async () => {
+                        await loadDashboardData();
+                        console.log("[v0] Dashboard refreshed with updated progress");
+                    }, 500);
                 } else {
                     console.error("Server error:", result);
                     alert(result.error || result.message || "Task update failed");

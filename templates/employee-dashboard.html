@@ -2033,15 +2033,26 @@
         function updateProjectProgress(project) {
             if (!project) return;
 
-            const totalTasks = project.total_tasks || allTasks.length || 0;
-            const completedTasks =
-                project.completed_tasks ||
-                allTasks.filter((t) => t.status === "Completed").length ||
-                0;
-            const progress =
-                totalTasks > 0
-                    ? Math.round((completedTasks / totalTasks) * 100)
-                    : 0;
+            console.log("[v0] updateProjectProgress - Project:", project, "All Tasks:", allTasks);
+
+            // Filter tasks that belong to this project
+            const projectTasks = allTasks.filter(t => t.project_id === project.id);
+            console.log("[v0] Tasks for project", project.id, ":", projectTasks);
+
+            const totalTasks = projectTasks.length || 0;
+            const completedTasks = projectTasks.filter(t => (t.status || "").toLowerCase() === "completed").length || 0;
+
+            // Calculate average progress from all task progress values
+            let avgProgress = 0;
+            if (totalTasks > 0) {
+                const totalProgress = projectTasks.reduce((sum, t) => sum + (Number(t.progress) || 0), 0);
+                avgProgress = Math.round(totalProgress / totalTasks);
+            }
+
+            // Use average progress for the overall progress
+            const progress = avgProgress;
+
+            console.log("[v0] Project progress calculated - Total:", totalTasks, "Completed:", completedTasks, "Avg Progress:", avgProgress);
 
             document.getElementById("currentProjectName").textContent =
                 project.title || "Current Project";
@@ -2362,6 +2373,12 @@
                     setTimeout(async () => {
                         await loadDashboardData();
                         console.log("[v0] Dashboard refreshed with updated progress");
+                        
+                        // Explicitly update project progress after load
+                        if (allProjects && allProjects.length > 0) {
+                            updateProjectProgress(allProjects[0]);
+                            console.log("[v0] Project progress banner updated after task change");
+                        }
                     }, 500);
                 } else {
                     console.error("Server error:", result);

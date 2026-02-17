@@ -1965,6 +1965,68 @@ def update_employee_task(task_id):
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/api/employee/daily-reports", methods=["GET"])
+@login_required
+def get_employee_daily_reports():
+    """Get daily reports for the current employee"""
+    try:
+        user_id = get_current_user_id()
+        
+        # Get query parameters for filtering
+        start_date = request.args.get("start_date")
+        end_date = request.args.get("end_date")
+        project_id = request.args.get("project_id")
+
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        query = '''
+            SELECT 
+                dr.id, 
+                dr.task_id, 
+                t.title as task_title,
+                dr.project_id, 
+                p.title as project_title,
+                dr.report_date, 
+                dr.work_description, 
+                dr.time_spent,
+                dr.status, 
+                dr.blocker, 
+                dr.approval_status,
+                dr.created_at, 
+                dr.updated_at
+            FROM daily_task_reports dr
+            LEFT JOIN tasks t ON dr.task_id = t.id
+            LEFT JOIN projects p ON dr.project_id = p.id
+            WHERE dr.user_id = %s
+        '''
+
+        params = [user_id]
+
+        if start_date:
+            query += " AND dr.report_date >= %s"
+            params.append(start_date)
+
+        if end_date:
+            query += " AND dr.report_date <= %s"
+            params.append(end_date)
+
+        if project_id:
+            query += " AND dr.project_id = %s"
+            params.append(int(project_id))
+
+        query += " ORDER BY dr.report_date DESC, dr.created_at DESC"
+
+        cursor.execute(query, params)
+        reports = cursor.fetchall()
+        conn.close()
+
+        return jsonify([dict(row) for row in reports]), 200
+    except Exception as e:
+        print(f"[ERROR] Failed to fetch employee daily reports: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/api/employee/daily-report", methods=["POST"])
 @login_required
 def submit_daily_report():

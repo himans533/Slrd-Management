@@ -7,11 +7,13 @@ import sys
 import os
 
 # Add parent directory to path to import main.py
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+parent_dir = '/vercel/share/v0-project'
+if parent_dir not in sys.path:
+    sys.path.insert(0, parent_dir)
 
-from main import init_db, migrate_db
-
-if __name__ == "__main__":
+try:
+    from main import init_db, migrate_db
+    
     print("[INFO] Starting database initialization...")
     
     # Initialize database schema
@@ -21,3 +23,7 @@ if __name__ == "__main__":
     migrate_db()
     
     print("[INFO] Database initialization completed successfully!")
+except Exception as e:
+    print(f"[ERROR] Database initialization failed: {str(e)}")
+    import traceback
+    traceback.print_exc()
